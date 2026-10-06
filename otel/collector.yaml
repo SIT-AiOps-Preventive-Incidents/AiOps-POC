@@ -1,0 +1,68 @@
+receivers:
+  # Network devices: firewall + load balancer access logs (JSON lines)
+  filelog/firewall:
+    include: [/var/log/edge/firewall.log]
+    start_at: end
+    operators:
+      - type: json_parser
+      - type: add
+        field: resource["service.name"]
+        value: edge-firewall
+      - type: add
+        field: resource["device.type"]
+        value: firewall
+  filelog/lb:
+    include: [/var/log/edge/lb.log]
+    start_at: end
+    operators:
+      - type: json_parser
+      - type: add
+        field: resource["service.name"]
+        value: edge-lb
+      - type: add
+        field: resource["device.type"]
+        value: load-balancer
+  otlp:
+    protocols:
+      grpc: {endpoint: 0.0.0.0:4317}
+      http: {endpoint: 0.0.0.0:4318}
+
+processors:
+  memory_limiter: {check_interval: 2s, limit_mib: 300}
+  batch: {timeout: 2s}
+
+connectors:
+  # RED metrics (rate / errors / duration) derived from traces, tagged with the
+  # version + commit hash the service reported, so anomalies can be pinned to a deploy.
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [10ms, 25ms, 50ms, 100ms, 200ms, 400ms, 800ms, 1500ms, 3s, 6s]
+    dimensions:
+      - name: app.version
+      - name: app.commit
+    metrics_flush_interval: 10s
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls: {insecure: true}
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo, spanmetrics]
+    metrics:
+      receivers: [otlp, spanmetrics]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp, filelog/firewall, filelog/lb]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]

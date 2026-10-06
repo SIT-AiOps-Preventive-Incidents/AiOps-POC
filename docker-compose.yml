@@ -1,0 +1,185 @@
+name: aiops
+
+x-demo: &demo
+  build: ./demo-apps
+  image: aiops-demo-app:latest
+  restart: unless-stopped
+  mem_limit: 256m
+  networks: [aiops]
+
+services:
+  # ---------------- Observability (namespace "obs") ----------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel/collector.yaml"]
+    volumes:
+      - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
+      - edge-logs:/var/log/edge:ro
+    ports: ["4317:4317", "4318:4318"]
+    restart: unless-stopped
+    mem_limit: 384m
+    networks: [aiops]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: prometheus
+    user: "0"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=3d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/targets:/etc/prometheus/targets
+      - prom-data:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+    restart: unless-stopped
+    mem_limit: 512m
+    networks: [aiops]
+
+  loki:
+    image: grafana/loki:3.5.0
+    container_name: loki
+    user: "0"
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes: ["./loki/config.yaml:/etc/loki/config.yaml:ro", "loki-data:/loki"]
+    restart: unless-stopped
+    mem_limit: 512m
+    networks: [aiops]
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    container_name: tempo
+    user: "0"
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    volumes: ["./tempo/config.yaml:/etc/tempo/config.yaml:ro", "tempo-data:/var/tempo"]
+    restart: unless-stopped
+    mem_limit: 512m
+    networks: [aiops]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    container_name: grafana
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+    volumes: ["./grafana/provisioning:/etc/grafana/provisioning:ro"]
+    ports: ["3001:3000"]
+    restart: unless-stopped
+    mem_limit: 256m
+    networks: [aiops]
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: node-exporter
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes: ["/:/host:ro,rslave"]
+    restart: unless-stopped
+    mem_limit: 64m
+    networks: [aiops]
+
+  # ---------------- Agentic AI (namespace "agentic-ai") ----------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes: ["ollama:/root/.ollama"]
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_NUM_PARALLEL: "1"
+    restart: unless-stopped
+    mem_limit: 3g
+    cpus: 3.0
+    networks: [aiops]
+
+  # ---------------- Platform web app (namespace "app") ----------------
+  aiops-api:
+    build: ./aiops-api
+    image: aiops-api:latest
+    container_name: aiops-api
+    environment:
+      DB_PATH: /data/aiops.db
+      PROM_URL: http://prometheus:9090
+      LOKI_URL: http://loki:3100
+      TEMPO_URL: http://tempo:3200
+      OLLAMA_URL: http://ollama:11434
+      TARGETS_DIR: /targets
+      PUBLIC_URL: ${PUBLIC_URL:-http://cp26pt1.sit.kmutt.ac.th:8080}
+      GRAFANA_URL: ${GRAFANA_URL:-http://cp26pt1.sit.kmutt.ac.th:3001}
+    volumes:
+      - api-data:/data
+      - ./prometheus/targets:/targets
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./edge:/edge
+      - edge-logs:/var/log/edge
+    ports: ["8080:8080"]
+    depends_on: [prometheus, loki, tempo, ollama]
+    restart: unless-stopped
+    mem_limit: 384m
+    networks: [aiops]
+
+  # ---------------- Customer demo services (instrumented with OTel) ----------------
+  # ---------------- Customer network edge: firewall -> load balancer ----------------
+  edge-fw:
+    image: nginx:1.29.1-otel
+    container_name: edge-fw
+    volumes:
+      - ./edge/fw.conf:/etc/nginx/nginx.conf:ro
+      - ./edge:/etc/nginx/edge
+      - edge-logs:/var/log/edge
+    restart: unless-stopped
+    mem_limit: 64m
+    networks: [aiops]
+  edge-lb:
+    image: nginx:1.29.1-otel
+    container_name: edge-lb
+    volumes:
+      - ./edge/lb.conf:/etc/nginx/nginx.conf:ro
+      - ./edge:/etc/nginx/edge
+      - edge-logs:/var/log/edge
+    restart: unless-stopped
+    mem_limit: 64m
+    networks: [aiops]
+    depends_on: [frontend-a, frontend-b]
+
+  frontend-a:
+    <<: *demo
+    container_name: frontend-a
+    environment: {SERVICE: frontend, INSTANCE: frontend-a, APP_VERSION: "1.2.0", APP_COMMIT: "9f3c2e1"}
+  frontend-b:
+    <<: *demo
+    container_name: frontend-b
+    environment: {SERVICE: frontend, INSTANCE: frontend-b, APP_VERSION: "1.2.0", APP_COMMIT: "9f3c2e1"}
+  checkout:
+    <<: *demo
+    container_name: checkout
+    environment: {SERVICE: checkout, APP_VERSION: "1.2.0", APP_COMMIT: "4b7d0a9"}
+  payment:
+    <<: *demo
+    container_name: payment
+    environment: {SERVICE: payment, APP_VERSION: "1.2.0", APP_COMMIT: "c81e5f2"}
+  inventory:
+    <<: *demo
+    container_name: inventory
+    environment: {SERVICE: inventory, APP_VERSION: "1.2.0", APP_COMMIT: "e2a94d7"}
+  loadgen:
+    <<: *demo
+    container_name: loadgen
+    environment: {SERVICE: loadgen}
+    depends_on: [edge-fw, edge-lb, checkout, payment, inventory]
+
+volumes:
+  prom-data:
+  loki-data:
+  tempo-data:
+  api-data:
+  edge-logs:
+  ollama:
+    external: true
+
+networks:
+  aiops:
+    external: true

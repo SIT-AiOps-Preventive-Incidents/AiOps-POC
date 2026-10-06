@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIOps One Solution</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<aside id="nav">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" width="28" height="28"><path d="M16 2 30 16 16 30 2 16z" fill="#1496ff"/><path d="M16 9 23 16 16 23 9 16z" fill="#12131f"/><circle cx="16" cy="16" r="3" fill="#2ab06f"/></svg>
+    <div><b>AIOps</b><span>One Solution</span></div>
+  </div>
+  <nav id="menu"></nav>
+  <div class="navfoot" id="navfoot"></div>
+</aside>
+<main>
+  <header id="top">
+    <div id="crumb"></div>
+    <div class="topright">
+      <span id="llmpill" class="pill">LLM ...</span>
+      <span id="detpill" class="pill">Detector ...</span>
+      <a id="grafana" class="btn ghost sm" target="_blank">Grafana</a>
+    </div>
+  </header>
+  <section id="view"></section>
+</main>
+<div id="modal" class="modal hidden"><div class="modal-box"><button class="x" onclick="closeModal()">&times;</button><div id="modal-body"></div></div></div>
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
