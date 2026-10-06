@@ -1,4 +1,12 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AIOps One Solution PoC</title>
+</head>
+<body>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -272,6 +280,117 @@ pre.mermaid{background:var(--surface);border:1px solid var(--rule);border-radius
     <div class="zone" style="--zc:var(--c-app)"><h3>app</h3><p>หน้าเว็บสไตล์ Dynatrace ที่ใช้ connect, ดู problem และ approve รวมถึงตัว executor ที่รันได้แค่ action ใน allow-list และจะรันหลังมีคน approve แล้วเท่านั้น</p></div>
   </div>
 
+  <h2 id="infra">Infrastructure: Architecture (ตอบข้อ 1–6)</h2>
+
+  <h3>1. Environment ที่มี</h3>
+  <div class="tbl"><table>
+    <tr><th>Environment</th><th>สถานะ</th><th>ใช้ทำอะไร</th></tr>
+    <tr><td><b>dev / PoC</b></td><td><span class="chip ok">ใช้งานอยู่</span></td><td>ที่เดียวที่ deploy จริงตอนนี้ ใช้พัฒนา ทดสอบ chaos scenario และ demo</td></tr>
+    <tr><td>UAT</td><td><span class="chip warn">แผน</span></td><td>แยก VM ไว้ลองต่อกับระบบลูกค้าจริงก่อนขึ้น production</td></tr>
+    <tr><td>production</td><td><span class="chip warn">แผน</span></td><td>Kubernetes ตามสไลด์ แบ่ง namespace เป็น app / obs / agentic-ai</td></tr>
+  </table></div>
+
+  <h3 class="mt8">2. Host ในแต่ละ Environment</h3>
+  <p><b>dev / PoC:</b> VM ของคณะ SIT, KMUTT (on-premise) <code>CP26PT1.sit.kmutt.ac.th</code> (10.4.82.20) · Ubuntu 26.04 LTS · 4 vCPU · 7.2 GB RAM · 76 GB disk · ไม่มี GPU · เข้าได้จากเครือข่ายคณะหรือ VPN เท่านั้น · ufw เปิดแค่ 22, 8080, 3001, 4317 และ 4318</p>
+
+  <h3 class="mt8">3. Container</h3>
+  <p>ใช้ Docker Engine 29.1 + Docker Compose 2.40 ทั้งหมด 17 containers อยู่ใน bridge network <code>aiops</code> เดียวกัน ไม่ใช้ Kubernetes เพราะ resource ไม่พอรัน control plane คู่กับ LLM แต่ยังแบ่งกลุ่ม container ตาม namespace ในสไลด์</p>
+  <div class="tbl"><table>
+    <tr><th>กลุ่ม</th><th>Containers</th></tr>
+    <tr><td>app</td><td class="mono">aiops-api</td></tr>
+    <tr><td>agentic-ai</td><td class="mono">ollama (+ detector/agent ที่รันใน aiops-api)</td></tr>
+    <tr><td>obs</td><td class="mono">otel-collector, prometheus, loki, tempo, grafana, node-exporter</td></tr>
+    <tr><td>customer (demo)</td><td class="mono">edge-fw, edge-lb, frontend-a, frontend-b, checkout, payment, inventory, loadgen</td></tr>
+  </table></div>
+
+  <h3 class="mt8">4. Services, port และ protocol</h3>
+  <div class="tbl"><table>
+    <tr><th>Service</th><th>หน้าที่</th><th>Port (container → host)</th><th>Protocol</th></tr>
+    <tr><td class="mono">aiops-api</td><td>Web UI, REST API, detector, agent, dry run, remediation</td><td>8080 → <b>8080</b></td><td>HTTP (HTML, REST/JSON)</td></tr>
+    <tr><td class="mono">ollama</td><td>LLM qwen2.5:1.5b (CPU)</td><td>11434</td><td>HTTP/JSON</td></tr>
+    <tr><td class="mono">otel-collector</td><td>รับ telemetry, spanmetrics, อ่าน log ของ firewall/LB</td><td>4317, 4318 → <b>4317, 4318</b> · 8889</td><td>OTLP/gRPC, OTLP/HTTP, HTTP /metrics</td></tr>
+    <tr><td class="mono">prometheus</td><td>metrics (เก็บ 3 วัน)</td><td>9090 → 127.0.0.1:9090</td><td>HTTP (scrape, PromQL)</td></tr>
+    <tr><td class="mono">loki</td><td>logs (เก็บ 72 ชม.)</td><td>3100</td><td>HTTP (OTLP ingest, LogQL)</td></tr>
+    <tr><td class="mono">tempo</td><td>traces (เก็บ 48 ชม.)</td><td>3200, 4317</td><td>HTTP (TraceQL), OTLP/gRPC</td></tr>
+    <tr><td class="mono">grafana</td><td>dashboards</td><td>3000 → <b>3001</b></td><td>HTTP</td></tr>
+    <tr><td class="mono">node-exporter</td><td>host metrics</td><td>9100</td><td>HTTP /metrics</td></tr>
+    <tr><td class="mono">edge-fw</td><td>firewall, deny list</td><td>80</td><td>HTTP · OTLP/gRPC (span)</td></tr>
+    <tr><td class="mono">edge-lb</td><td>load balancer round-robin</td><td>80</td><td>HTTP · OTLP/gRPC (span)</td></tr>
+    <tr><td class="mono">frontend-a/b, checkout, payment, inventory</td><td>demo shop</td><td>8000</td><td>HTTP REST/JSON · OTLP/gRPC</td></tr>
+    <tr><td class="mono">loadgen</td><td>จำลองผู้ใช้และผู้โจมตี</td><td>8000</td><td>HTTP</td></tr>
+  </table></div>
+  <p class="note">ช่องทางที่ไม่ใช่ network port: aiops-api คุยกับ Docker Engine ผ่าน unix socket (ใช้ดู stats, restart, รัน nginx -t/reload) · firewall/LB ส่ง access log ให้ collector ผ่าน shared volume <code>edge-logs</code> · aiops-api เขียน deny list ให้ firewall ผ่าน bind mount <code>./edge</code></p>
+
+  <h3 class="mt8">5. ความสัมพันธ์ของ Container/Service (ลูกศร = ทิศทาง request)</h3>
+  <pre class="mermaid">
+flowchart LR
+  user([Browser SRE / owner]) -- "HTTP :8080" --> api
+  user -- "HTTP :3001" --> grafana
+  ci([CI/CD]) -- "HTTP POST /api/deployments" --> api
+  subgraph customer[Customer environment]
+    loadgen -- "HTTP :80" --> fw[edge-fw]
+    fw -- "HTTP :80" --> lb[edge-lb]
+    lb -- "HTTP :8000" --> fa[frontend-a]
+    lb -- "HTTP :8000" --> fb[frontend-b]
+    fa -- "HTTP :8000" --> checkout
+    fb -- "HTTP :8000" --> checkout
+    checkout -- "HTTP :8000" --> payment
+    checkout -- "HTTP :8000" --> inventory
+    nodeexp[node-exporter]
+  end
+  subgraph obs[obs]
+    otel[otel-collector]
+    prom[prometheus]
+    loki
+    tempo
+    grafana
+  end
+  customer -- "OTLP gRPC :4317" --> otel
+  fw -. "access log volume" .-> otel
+  lb -. "access log volume" .-> otel
+  otel -- "OTLP gRPC :4317" --> tempo
+  otel -- "OTLP HTTP :3100" --> loki
+  prom -- "scrape :8889" --> otel
+  prom -- "scrape :9100" --> nodeexp
+  grafana --> prom
+  grafana --> loki
+  grafana --> tempo
+  subgraph agentic[app + agentic-ai]
+    api[aiops-api]
+    ollama
+  end
+  api -- "PromQL :9090" --> prom
+  api -- "LogQL :3100" --> loki
+  api -- "TraceQL :3200" --> tempo
+  api -- "HTTP :11434" --> ollama
+  api -- "HTTPS :443 webhook" --> teams([Microsoft Teams])
+  api == "หลัง owner approve: rollback / restart / block IP" ==> customer
+  </pre>
+
+  <h3 class="mt8">6. External Entity</h3>
+  <div class="tbl"><table>
+    <tr><th>Entity</th><th>ใช้ทำอะไร</th><th>Protocol</th><th>สถานะ</th></tr>
+    <tr><td>Microsoft Teams</td><td>แจ้ง incident, RCA และผลการแก้ให้ owner</td><td>HTTPS :443 (webhook) ขาออก</td><td>รองรับแล้ว ยังไม่ได้ใส่ URL</td></tr>
+    <tr><td>Docker Hub, PyPI</td><td>ดึง image และ package ตอน build</td><td>HTTPS :443 ขาออก</td><td>ใช้ตอน deploy</td></tr>
+    <tr><td>Ollama registry</td><td>โหลด model ครั้งแรก</td><td>HTTPS :443 ขาออก</td><td>ใช้ครั้งเดียว</td></tr>
+    <tr><td>Google Fonts</td><td>font ของหน้าเว็บ</td><td>HTTPS จาก browser</td><td>ไม่มีก็ใช้ fallback font ได้</td></tr>
+    <tr><td>KMUTT network / VPN</td><td>เข้าถึง VM</td><td>SSH :22, HTTP :8080/:3001</td><td>จำเป็น</td></tr>
+    <tr><td>CI/CD ของลูกค้า</td><td>แจ้ง version + commit หลัง deploy</td><td>HTTP POST</td><td>มี API แล้ว</td></tr>
+    <tr><td>Identity provider (เช่น MS Identity Platform)</td><td>login และ RBAC ของ owner</td><td>OIDC</td><td><span class="chip warn">ยังไม่มี</span></td></tr>
+  </table></div>
+  <p class="note">LLM รันในเครื่องเดียวกัน จึงไม่ต้องใช้ LLM API ภายนอก ข้อมูล incident ของลูกค้าไม่ออกจาก host</p>
+
+  <h3 class="mt8">ความสอดคล้องกับโครงงาน</h3>
+  <ul class="tight">
+    <li><b>C1 Late detection:</b> detector ทุก 15 วินาที ใช้ adaptive baseline วัดได้ว่า detect ภายใน 35–50 วินาที</li>
+    <li><b>C2 Scattered telemetry:</b> metrics, logs, traces, log ของ firewall/LB และ deploy history รวมอยู่ใน obs stack เดียว ผูกกันด้วย trace_id</li>
+    <li><b>C3 Manual RCA:</b> agent ทำ RCA เสร็จใน 1–2 นาที ถ้าเคยเจอ pattern นี้แล้วใช้ 23 วินาที</li>
+    <li><b>C4 Hidden change impact:</b> ทุก span มี app.version / app.commit และ CI ส่ง deploy event เข้ามา</li>
+    <li><b>C5 Multi-team handoffs:</b> หน้า Problem เดียวมีทั้ง RCA, dry run และ owner approve พร้อมแจ้ง Teams ไปที่ owner</li>
+    <li><b>C6 Growing toil:</b> runbook memory + scoring · ตาม OUT scope คือไม่แก้ source code และไม่ทำงานเองโดยไม่มีคนอนุมัติ</li>
+    <li><b>Resource:</b> Docker Compose แทน K8s · LLM 1.5B บน CPU · ทุก container มี memory limit · ตอนปกติใช้ CPU ราว 4% และ RAM ราว 20%</li>
+  </ul>
+
   <h2>ปรับจากสไลด์ยังไง</h2>
   <div class="tbl"><table>
     <tr><th>ในสไลด์</th><th>ใน PoC</th><th>เหตุผล</th></tr>
@@ -357,18 +476,28 @@ stateDiagram-v2
   <p class="note">Improve Score: ถ้าคะแนน 4-5 และ problem resolved จะเก็บเป็น runbook ใน memory ถ้าคะแนนต่ำ comment จะกลายเป็น lesson ใน prompt ครั้งถัดไป และ runbook ที่ได้คะแนนเฉลี่ยต่ำกว่า 2.5 จะถูกปิด</p>
 
   <h2>ผลทดสอบ</h2>
+  <p>รันผ่าน <code>scripts_e2e.sh</code> บน VM จริง ทุกรอบไล่ครบ inject → detect → RCA → dry run → owner approve → pre-flight → แก้ → verify</p>
   <div class="tbl"><table>
-    <tr><th>Scenario</th><th>Agent หาเจอว่า</th><th>Action</th><th>RCA ใช้เวลา</th><th>ผล</th></tr>
-    <tr><td>Bad deploy payment v1.3.0</td><td>error มาจาก payment, commit 939f00a, <code>discount.py:42</code></td><td>rollback ไป v1.2.0</td><td>101 s</td><td><span class="chip ok">resolved</span></td></tr>
-    <tr><td>Bad deploy ซ้ำ (commit ใหม่)</td><td>ตรงกับ RB-1 ใช้ runbook เดิม</td><td>rollback</td><td>23 s</td><td><span class="chip ok">resolved</span></td></tr>
-    <tr><td>Connection pool เต็ม (inventory)</td><td>self-time และ log ชี้ไปที่ inventory</td><td>restart inventory</td><td>73 s</td><td><span class="chip ok">resolved</span></td></tr>
-    <tr><td>CPU เต็มจาก batch job</td><td>container payment กิน CPU, host อยู่ที่ 98.8%</td><td>restart payment</td><td>268 s</td><td><span class="chip ok">resolved</span></td></tr>
-    <tr><td>Credential stuffing</td><td>สั่ง inject ไปแล้วแต่ยังไม่ได้อ่านผล</td><td>block IP</td><td>-</td><td><span class="chip warn">ยังไม่ยืนยัน</span></td></tr>
+    <tr><th>Scenario</th><th>Agent หาเจอว่า</th><th>Dry run</th><th>Action</th><th>RCA</th><th>ผล</th></tr>
+    <tr><td>Bad deploy payment v1.3.0</td><td>payment, commit ที่พัง, <code>discount.py:42</code></td><td>ผ่าน: v1.2.0 known-good</td><td>rollback ไป v1.2.0</td><td>101–108 s</td><td><span class="chip ok">resolved</span></td></tr>
+    <tr><td>Bad deploy ซ้ำ</td><td>ตรงกับ RB-1</td><td>ผ่าน</td><td>rollback</td><td>8–23 s</td><td><span class="chip ok">resolved</span></td></tr>
+    <tr><td>Instance เดียวพัง (frontend-b)</td><td>LB log: 5xx 100% มาจาก frontend-b</td><td>ผ่าน: frontend-a รับ traffic ต่อได้</td><td>restart เฉพาะ frontend-b</td><td>113–167 s</td><td><span class="chip ok">resolved</span></td></tr>
+    <tr><td>Connection pool เต็ม (inventory)</td><td>self-time + log ชี้ inventory</td><td>ผ่าน</td><td>restart inventory</td><td>73 s</td><td><span class="chip ok">resolved</span></td></tr>
+    <tr><td>CPU เต็มจาก batch job</td><td>container payment กิน CPU</td><td>ผ่าน</td><td>restart payment</td><td>268 s</td><td><span class="chip ok">resolved</span></td></tr>
+    <tr><td>Credential stuffing</td><td>firewall log + app log ชี้ IP เดียวกัน 203.0.113.77</td><td>ผ่าน 5/5 รวม <code>nginx -t</code></td><td>block IP ที่ edge-fw</td><td>79 s</td><td><span class="chip ok">resolved</span></td></tr>
   </table></div>
-  <p class="note">Detect ได้ภายในประมาณ 35-50 วินาทีหลัง inject ช่วงที่ CPU เต็มอยู่แล้ว LLM จะช้าลงประมาณ 3 เท่า</p>
+  <p class="note">Detect ภายใน 35–50 วินาทีหลัง inject · ช่วงที่ CPU เต็ม LLM จะช้าลงราว 3 เท่า · ถ้า LLM ไม่ตอบหรือตอบขัดกับ evidence ระบบจะใช้ข้อความที่สร้างจาก evidence แทน และบันทึกไว้ใน timeline</p>
 
   <h2>ปัญหาที่เจอระหว่างทดสอบ และวิธีแก้</h2>
   <div class="fix">
+    <div>
+      <h3>Rollback ไปหา build ที่พังอีกตัว</h3>
+      <p>ตอนกด inject ซ้ำ 2 ครั้ง agent เลือก rollback ไป "deploy ก่อนหน้า" ซึ่งก็พังเหมือนกัน วิธีแก้คือเพิ่มการ dry run ที่เช็คจาก metrics ย้อนหลัง 24 ชม. ว่า build เป้าหมายดีจริง ตอนนี้ agent ไล่ deploy history หา build ล่าสุดที่ผ่านเกณฑ์ และในการทดสอบรอบหลัง dry run ก็จับ target ที่ไม่ดีได้จริง</p>
+    </div>
+    <div>
+      <h3>Verify เร็วไปจนนับ error ช่วงที่กำลัง restart</h3>
+      <p>Restart instance ใช้เวลาราว 8 วินาที LB ยังส่ง request ไปหา instance นั้นอยู่ ทำให้ 502 ค้างอยู่ใน window 1 นาทีตอนเช็ค วิธีแก้มี 2 ส่วน ส่วนแรกตั้ง LB ให้ retry ไป instance อื่นเมื่อต่อไม่ติด (500 จาก app ยังส่งผ่านไปตามปกติ evidence จึงไม่หาย) ส่วนที่สองให้ verify เช็คซ้ำได้สูงสุด 5 รอบ</p>
+    </div>
     <div>
       <h3>LLM ตัวเล็กเขียน root cause กลับด้าน</h3>
       <p>รอบแรก model เขียนว่า</p>
@@ -422,3 +551,10 @@ sudo docker compose up -d --build aiops-api # deploy หลังแก้โค
 
 sudo docker exec ollama ollama pull qwen2.5:3b   # ลอง model ใหญ่ขึ้น แล้วเลือกในหน้า Settings</pre>
 </div>
+
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+mermaid.initialize({startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default"});
+</script>
+</body>
+</html>
