@@ -72,7 +72,7 @@ async def build(minutes: int = 5, max_traces: int = 14) -> dict:
         p95s = [v["p95_ms"] for v in im.values() if v["p95_ms"] is not None]
         a = apps.get(s, {})
         insts = [{"id": i, **v, "problem_id": problem_for(i)} for i, v in sorted(im.items())] if len(im) > 1 else []
-        nodes.append({"id": s, "kind": a.get("kind") or "service", "owner": a.get("owner") or a.get("team"),
+        nodes.append({"id": s, "kind": a.get("kind") or "service", "owner": a.get("owner") or a.get("team"), "language": a.get("language"),
                       "rps": round(rps, 3) if im else None, "error_rate": round(err, 4) if err is not None else None,
                       "p95_ms": max(p95s) if p95s else None, "instances": insts, "problem_id": problem_for(s),
                       "connected": s in apps})

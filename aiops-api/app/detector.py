@@ -118,6 +118,9 @@ async def check_host(host: str) -> list[dict]:
     out = []
     self_noise = _is_platform_host(host) and llm.busy_recently()
     up = await tm.prom_value(tm.host_expr(host, "up"))
+    hrow = db.one("SELECT kind FROM hosts WHERE name=?", (host,)) or {}
+    if up == 0 and hrow.get("kind") == "workstation":
+        return out  # a laptop leaving the network is "offline", not an outage
     if up == 0:
         out.append({"kind": "host_down", "entity_type": "host", "entity": host, "value": 1, "threshold": 0,
                     "baseline": 0, "unit": "down"})
