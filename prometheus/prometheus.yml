@@ -7,6 +7,10 @@ scrape_configs:
     static_configs:
       - targets: ["otel-collector:8889"]
 
+  - job_name: otel-push
+    static_configs:
+      - targets: ["otel-collector:8890"]
+
   # Hosts registered through "Connect Infrastructure" in the web app.
   # aiops-api writes targets/infra.json; Prometheus re-reads it every 15s.
   - job_name: infra

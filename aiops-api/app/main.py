@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -18,6 +18,8 @@ TARGETS_DIR = os.environ.get("TARGETS_DIR", "/targets")
 GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://localhost:3001")
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8080")
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+AGENT_DIST = os.path.join(os.path.dirname(__file__), "agent_dist")
+OTLP_PUBLIC = os.environ.get("OTLP_PUBLIC_URL") or PUBLIC_URL.rsplit(":", 1)[0] + ":4318"
 
 DEMO_APPS = [
     ("Shop Frontend", "frontend", "web gateway", "team-web", "9f3c2e1"),
@@ -109,7 +111,10 @@ async def host_health(h: dict) -> dict:
     up, cpu, mem, disk, load = vals
     open_inc = db.one("SELECT id FROM incidents WHERE entity=? AND entity_type='host' "
                       "AND status NOT IN ('resolved','rejected','closed') LIMIT 1", (h["name"],))
-    status = "no-data" if up is None else ("down" if up == 0 else ("problem" if open_inc else "healthy"))
+    if up is None or (up == 0 and h.get("kind") == "workstation"):
+        status = "offline" if h.get("agent") == "aiops-agent" else "no-data"
+    else:
+        status = "down" if up == 0 else ("problem" if open_inc else "healthy")
     return {**h, "up": up, "cpu": cpu, "mem": mem, "disk": disk, "load": load, "status": status,
             "problem_id": open_inc and open_inc["id"]}
 
@@ -118,7 +123,8 @@ async def host_health(h: dict) -> dict:
 async def overview():
     apps = db.q("SELECT * FROM apps ORDER BY id")
     hosts = db.q("SELECT * FROM hosts ORDER BY id")
-    svcs = await asyncio.gather(*(service_health(a["service_name"]) for a in apps))
+    svcs = [{**h, "name": a["name"], "language": a.get("language"), "kind": a.get("kind")}
+            for a, h in zip(apps, await asyncio.gather(*(service_health(a["service_name"]) for a in apps)))]
     hs = await asyncio.gather(*(host_health(h) for h in hosts))
     incs = db.q("SELECT * FROM incidents ORDER BY id DESC")
     open_ = [i for i in incs if i["status"] not in ("resolved", "rejected", "closed")]
@@ -136,7 +142,7 @@ async def overview():
 
 # ---------------- services / connect app ----------------
 class AppIn(BaseModel):
-    name: str
+    name: str = ""
     service_name: str
     language: str = "python"
     team: str = ""
@@ -159,6 +165,9 @@ async def create_app(body: AppIn):
     if db.one("SELECT id FROM apps WHERE service_name=?", (body.service_name,)):
         raise HTTPException(409, "service_name already connected")
     data = body.model_dump()
+    data["service_name"] = data["service_name"].strip()
+    data["name"] = data["name"] or data["service_name"].replace("-", " ").replace("_", " ").title()
+    data["team"] = data["team"] or data["owner"]
     data["owner"] = data["owner"] or data["team"] or "unassigned"
     rid = db.insert("apps", {**data, "kind": "service", "created_at": time.time()})
     return db.one("SELECT * FROM apps WHERE id=?", (rid,))
@@ -256,6 +265,77 @@ async def create_host(body: HostIn):
     return db.one("SELECT * FROM hosts WHERE id=?", (rid,))
 
 
+class RegisterIn(BaseModel):
+    name: str
+    os: str = ""
+    arch: str = ""
+    kind: str = "server"
+
+
+@app.post("/api/hosts/register")
+async def register_host(body: RegisterIn):
+    """Called by the agent installer. Idempotent: re-running the installer keeps the same host."""
+    h = db.one("SELECT id FROM hosts WHERE name=?", (body.name,))
+    data = {"address": "push (aiops-agent)", "os": f"{body.os} {body.arch}".strip(), "agent": "aiops-agent",
+            "kind": body.kind if body.kind in ("server", "workstation") else "server"}
+    if h:
+        db.update("hosts", h["id"], data)
+    else:
+        db.insert("hosts", {"name": body.name, "environment": "poc", "labels": {"role": data["kind"]},
+                            "owner": "team-platform", "created_at": time.time(), **data})
+    return db.one("SELECT * FROM hosts WHERE name=?", (body.name,))
+
+
+@app.get("/api/discover")
+async def discover():
+    """Telemetry that is arriving but not connected yet - one tap to add it."""
+    known = {a["service_name"] for a in db.q("SELECT service_name FROM apps")}
+    seen = {}
+    for r in await tm.prom(f'sum by (service_name) (rate({tm.CALLS}{{span_kind="SPAN_KIND_SERVER"}}[15m]))'):
+        n = r["metric"].get("service_name")
+        if n:
+            seen[n] = round(float(r["value"][1]), 3)
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            vals = (await c.get(f"{tm.LOKI}/loki/api/v1/label/service_name/values",
+                                params={"start": int((time.time() - 900) * 1e9)})).json().get("data", [])
+        for n in vals:
+            seen.setdefault(n, None)
+    except Exception:
+        pass
+    services = [{"service_name": n, "rps": r} for n, r in sorted(seen.items())
+                if n not in known and n not in ("aiops-agent", "unknown_service")]
+    hosts_known = {h["name"] for h in db.q("SELECT name FROM hosts")}
+    hosts = [r["metric"].get("host_name") for r in await tm.prom("max by (host_name) (aiops_host_up)")]
+    return {"services": services, "hosts": [h for h in hosts if h and h not in hosts_known],
+            "otlp_endpoint": OTLP_PUBLIC, "api": PUBLIC_URL}
+
+
+@app.get("/api/ping")
+async def ping():
+    return {"ok": True}
+
+
+def _dist(name: str) -> str:
+    with open(os.path.join(AGENT_DIST, name)) as f:
+        return f.read().replace("__API__", PUBLIC_URL).replace("__OTLP__", OTLP_PUBLIC)
+
+
+@app.get("/install/agent.sh", response_class=PlainTextResponse)
+async def install_script():
+    return _dist("install.sh")
+
+
+@app.get("/install/uninstall.sh", response_class=PlainTextResponse)
+async def uninstall_script():
+    return _dist("uninstall.sh")
+
+
+@app.get("/install/aiops-agent.py", response_class=PlainTextResponse)
+async def agent_py():
+    return _dist("aiops-agent.py")
+
+
 @app.delete("/api/hosts/{hid}")
 async def delete_host(hid: int):
     db.ex("DELETE FROM hosts WHERE id=?", (hid,))
@@ -273,7 +353,10 @@ async def host_detail(name: str):
         r = await tm.prom_range(tm.host_expr(name, m), minutes=60, step=30)
         series[m] = r[0]["points"] if r else []
     is_local = h["address"].startswith("node-exporter")
-    return {"host": await host_health(h), "series": series,
+    procs = []
+    if h.get("agent") == "aiops-agent":
+        procs = (await agent.t_getTopProcesses(name)).get("processes", [])
+    return {"host": await host_health(h), "series": series, "processes": procs,
             "containers": await tm.containers(with_stats=True) if is_local else [],
             "incidents": db.q("SELECT id,title,status,severity,detected_at FROM incidents WHERE entity=? "
                               "ORDER BY id DESC LIMIT 10", (name,))}

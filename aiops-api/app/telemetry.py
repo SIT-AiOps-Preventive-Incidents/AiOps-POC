@@ -70,7 +70,23 @@ def svc_expr(svc: str, metric: str, window: str = "1m") -> str:
     raise ValueError(metric)
 
 
+def host_agent(host: str) -> str:
+    from . import db
+    h = db.one("SELECT agent FROM hosts WHERE name=?", (host,))
+    return (h or {}).get("agent") or "node_exporter"
+
+
 def host_expr(host: str, metric: str) -> str:
+    if host_agent(host) == "aiops-agent":
+        # pushed by the AIOps host agent over OTLP (laptops, VMs without inbound access)
+        sel = f'host_name="{host}"'
+        return {
+            "cpu": f"max(aiops_host_cpu_utilization{{{sel}}})",
+            "mem": f"max(aiops_host_memory_utilization{{{sel}}})",
+            "disk": f"max(aiops_host_disk_utilization{{{sel}}})",
+            "load": f"max(aiops_host_load1{{{sel}}})",
+            "up": f"max(aiops_host_up{{{sel}}}) or vector(0)",
+        }[metric]
     sel = f'job="infra",host="{host}"'
     return {
         "cpu": f'100 * (1 - avg(rate(node_cpu_seconds_total{{{sel},mode="idle"}}[1m])))',

@@ -46,6 +46,12 @@ connectors:
 exporters:
   prometheus:
     endpoint: 0.0.0.0:8889
+  # Metrics pushed by agents (host agent, app SDK metrics): keep resource attributes such as host.name
+  # as labels, and drop a series 90 s after its sender goes quiet so "offline" is detectable.
+  prometheus/push:
+    endpoint: 0.0.0.0:8890
+    resource_to_telemetry_conversion: {enabled: true}
+    metric_expiration: 90s
   otlp/tempo:
     endpoint: tempo:4317
     tls: {insecure: true}
@@ -59,9 +65,13 @@ service:
       processors: [memory_limiter, batch]
       exporters: [otlp/tempo, spanmetrics]
     metrics:
-      receivers: [otlp, spanmetrics]
+      receivers: [spanmetrics]
       processors: [memory_limiter, batch]
       exporters: [prometheus]
+    metrics/push:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus/push]
     logs:
       receivers: [otlp, filelog/firewall, filelog/lb]
       processors: [memory_limiter, batch]

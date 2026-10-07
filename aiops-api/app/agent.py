@@ -31,7 +31,7 @@ SKILLS = {
         "category": "Infrastructure", "name": "Infrastructure resource analysis",
         "kinds": ["host_cpu", "host_mem", "host_disk", "host_down"],
         "description": "Host saturation or outage: host metrics, per-container usage, logs of the busiest workload.",
-        "tools": ["getHostMetrics", "getContainerStats", "searchLogs", "getDeployHistory"]},
+        "tools": ["getHostMetrics", "getContainerStats", "getTopProcesses", "searchLogs", "getDeployHistory"]},
     "security-auth-analysis": {
         "category": "Security", "name": "Security / authentication analysis", "kinds": ["auth_bruteforce"],
         "description": "Suspicious authentication activity: firewall + app logs, failed-login bursts, source IP concentration.",
@@ -193,6 +193,19 @@ async def t_getHostMetrics(host: str):
     return out
 
 
+async def t_getTopProcesses(host: str):
+    """Latest process list pushed by the AIOps host agent on that machine."""
+    logs = await tm.loki_logs('{service_name="aiops-agent"}', minutes=3, limit=20,
+                              line_filter=f'|= "\\"host\\": \\"{host}\\""')
+    for lg in logs:
+        try:
+            d = json.loads(lg["line"])
+            return {"host": host, "ts": lg["ts"], "processes": d.get("processes", [])}
+        except ValueError:
+            continue
+    return {"host": host, "processes": [], "note": "no process data in the last 3 minutes"}
+
+
 async def t_getContainerStats():
     stats = await tm.containers(with_stats=True)
     return {"top_by_cpu": stats[:8]}
@@ -202,7 +215,7 @@ TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVers
          "getDeployHistory": t_getDeployHistory, "searchTraces": t_searchTraces, "searchLogs": t_searchLogs,
          "getTopSourceIPs": t_getTopSourceIPs, "getHostMetrics": t_getHostMetrics,
          "getContainerStats": t_getContainerStats, "searchLoadBalancerLogs": t_searchLoadBalancerLogs,
-         "searchFirewallLogs": t_searchFirewallLogs}
+         "searchFirewallLogs": t_searchFirewallLogs, "getTopProcesses": t_getTopProcesses}
 
 
 class Run:
@@ -319,6 +332,16 @@ async def play_service_latency(run: Run, sig: dict) -> tuple[dict, list]:
 async def play_infra(run: Run, sig: dict) -> tuple[dict, list]:
     host = sig["entity"]
     hm = await run.tool("getHostMetrics", host=host)
+    if tm.host_agent(host) == "aiops-agent":
+        tp = await run.tool("getTopProcesses", host=host)
+        procs = tp.get("processes") or []
+        hog = procs[0] if procs else None
+        facts = {"host": host, "host_metrics": hm, "top_processes": procs[:5],
+                 "busiest_workload": hog and {"name": hog["name"], "cpu_pct": hog["cpu"], "mem_pct": hog["mem"]},
+                 "remote_host": True}
+        facts["evidence_confidence"] = 0.7 if hog else 0.5
+        # Remote machines are observe-only: the platform never executes anything on them.
+        return facts, [{"type": "manual", "params": {}}]
     cs = await run.tool("getContainerStats")
     apps = {c: a["service_name"] for a in db.q("SELECT container, service_name FROM apps")
             for c in remediation._split(a["container"]) or [a["service_name"]]}
@@ -433,7 +456,9 @@ def findings(kind: str, facts: dict) -> list[str]:
         out.append(f"Host {f.get('host')}: CPU {hm.get('cpu')}%, memory {hm.get('mem')}%, disk {hm.get('disk')}%, load {hm.get('load')}.")
         w = f.get("busiest_workload")
         if w:
-            out.append(f"Busiest workload: container {w['name']} at {w['cpu_pct']}% CPU.")
+            out.append(f"Busiest {'process' if f.get('remote_host') else 'workload: container'} {w['name']} at {w['cpu_pct']}% CPU.")
+        if f.get("remote_host"):
+            out.append("This machine is observe-only; the fix is a manual step for its owner.")
         for l in f.get("busiest_workload_logs") or []:
             out.append(f"Log from that workload: {l}")
     return out
@@ -460,6 +485,13 @@ def fallback_text(kind: str, facts: dict, action: dict) -> dict:
     else:
         w = facts.get("busiest_workload") or {}
         rc = f"Host {facts.get('host')} saturated; busiest workload {w.get('name')} at {w.get('cpu_pct')}% CPU"
+    if kind.startswith("host_"):
+        w = (facts.get("busiest_workload") or {}).get("name", "the busiest process")
+        steps = {"host_disk": ["Find the largest folders (e.g. `du -sh ~/* | sort -h`)", "Empty caches, old downloads and Docker images",
+                               "Confirm disk use is below 80%"],
+                 "host_down": ["Check the machine is powered on and on the network", "Check the agent log (~/.aiops-agent/agent.log)"]
+                 }.get(kind, [f"Check whether {w} should be using this much", a, "Confirm CPU/memory return to normal"])
+        return {"root_cause": rc, "summary": " ".join(findings(kind, facts)), "runbook": steps}
     return {"root_cause": rc, "summary": " ".join(findings(kind, facts)),
             "runbook": ["Confirm the evidence in the linked traces and logs", a,
                         "Watch the failure rate / latency for 5 minutes", "Open a follow-up ticket for the owning team"]}
@@ -614,7 +646,7 @@ async def analyze(inc_id: int):
             else inc["title"]
         run.step("done", f"RCA + dry-run plan ready - waiting for approval from owner {owner}", detail=action["label"])
         db.update("incidents", inc_id, {
-            "owner": owner, "dry_run": action["dry_run"],
+            "owner": owner, "dry_run": action["dry_run"], "evidence": findings(inc["kind"], facts),
             "status": "awaiting_approval", "analyzed_at": time.time(), "title": title, "path": path,
             "root_cause": res["root_cause"], "summary": res["summary"], "confidence": res["confidence"],
             "runbook": res["runbook"], "facts": facts, "action": action, "candidates": cands,

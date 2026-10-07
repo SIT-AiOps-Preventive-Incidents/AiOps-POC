@@ -48,6 +48,8 @@ MIGRATIONS = [
     "ALTER TABLE hosts ADD COLUMN owner TEXT",
     "ALTER TABLE incidents ADD COLUMN owner TEXT",
     "ALTER TABLE incidents ADD COLUMN dry_run TEXT",
+    "ALTER TABLE hosts ADD COLUMN agent TEXT DEFAULT 'node_exporter'",
+    "ALTER TABLE hosts ADD COLUMN kind TEXT DEFAULT 'server'",
 ]
 
 DEFAULT_SETTINGS = {
