@@ -61,6 +61,6 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 .mb { margin-bottom: 12px; }
 .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .sw { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.sw span { height: 44px; border-radius: 10px; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+.sw span { height: 44px; border-radius: 10px; box-shadow: inset 0 0 0 0.5px var(--c-separator); }
 .type { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 0.5px solid var(--c-separator); }
 </style>

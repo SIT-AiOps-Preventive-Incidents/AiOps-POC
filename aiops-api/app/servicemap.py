@@ -92,6 +92,8 @@ async def build(minutes: int = 5, max_traces: int = 14, force: bool = False) -> 
     for n in names:
         a = registered.get(n, {})
         im = metrics.get(n, {})
+        if len(im) > 1 and any(v["rps"] for v in im.values()):  # a restarted process leaves its old instance at 0 req/s
+            im = {i: v for i, v in im.items() if v["rps"]}
         rps = sum(v["rps"] for v in im.values()) if im else None
         err = (sum(v["rps"] * v["error_rate"] for v in im.values()) / rps) if rps else None
         p95s = [v["p95_ms"] for v in im.values() if v["p95_ms"] is not None]

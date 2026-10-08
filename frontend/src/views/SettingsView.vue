@@ -20,6 +20,12 @@ async function testTeams() {
 <template>
   <div v-if="d" class="page page--narrow">
     <UiPageHeader title="Settings" />
+    <div class="section-label">Appearance</div>
+    <UiCard>
+      <UiSegmented :model-value="ui.prefs.theme || 'auto'" label="Appearance" @update:model-value="ui.setTheme"
+                   :options="[{ value: 'auto', label: 'Auto', icon: 'dark_theme' }, { value: 'light', label: 'Light', icon: 'weather_sunny' }, { value: 'dark', label: 'Dark', icon: 'weather_moon' }]" />
+      <p class="small muted mt-2">Auto follows your computer's light or dark setting. Saved in this browser only.</p>
+    </UiCard>
     <div class="section-label row"><UiLogo name="teams" :size="16" />Microsoft Teams</div>
     <UiCard>
       <UiField v-model="s.teams_webhook" label="Teams link (Incoming Webhook or Workflow URL)" placeholder="https://...webhook.office.com/..." />

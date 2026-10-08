@@ -45,3 +45,8 @@ code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Black-only brand marks: readable on dark surfaces, untouched on the white logo tiles */
+:root[data-theme="dark"] .ui-logo--mono { filter: invert(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ui-logo--mono { filter: invert(1); } }
+.ui-tile .ui-logo--mono { filter: none !important; }
