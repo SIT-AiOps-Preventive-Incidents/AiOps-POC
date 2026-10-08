@@ -24,6 +24,7 @@ async def service_health(s: dict, problems: dict | None = None) -> dict:
     dep = dep[0] if dep else None
     out = {"service": name, "name": s.get("display_name") or name, "kind": s["kind"], "source": s["source"],
            "language": s.get("language"), "owner": s.get("owner"), "hosts": s.get("hosts") or [],
+           "instrumentation": s.get("instrumentation"),
            "problem_id": problems.get(name), "version": dep and dep["version"], "commit": dep and dep["commit_hash"],
            "deployed_at": dep and dep["ts"], "rps": None, "error_rate": None, "p95_ms": None}
     if s["kind"] in ("process", "external"):

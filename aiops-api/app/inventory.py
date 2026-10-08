@@ -2,6 +2,8 @@
 
 Connecting a computer is enough to see what runs on it:
   * every listening TCP port -> a "process" service (python3-8000, postgres-5432, ...)
+    and, on Linux, an eBPF instrumentation target: the agent traces it without code changes and
+    the service is promoted to a traced "service" as soon as its spans arrive (promote_traced)
   * every container          -> linked to its traced service if one exists, otherwise a discovered service
   * every established TCP connection to a known listener -> a line on the service map
 """
@@ -51,11 +53,12 @@ def ingest(host: str, inv: dict) -> dict:
     ips = sorted(set(inv.get("ips") or []))
     db.ex("UPDATE hosts SET ip_addresses=%s, last_inventory_at=now() WHERE name=%s", (ips, host))
 
+    db.ex("UPDATE hosts SET auto_instrument=%s WHERE name=%s", (db.J(inv["ebpf"]) if inv.get("ebpf") else None, host))
     found, listeners = [], {}  # (port) -> service_name, for matching local connections
     # ---- containers ----
     traced_by_container = {i["container"]: s["service_name"] for s in repo.list_services(("service", "network"))
                            for i in s["instances"] if i.get("container")}
-    ignore = platform_ignores()
+    ignore = platform_ignores() | {"aiops-ebpf"}  # the agent's own eBPF tracer
     for c in inv.get("containers") or []:
         name = c.get("name", "")
         if not name or name in ignore:
@@ -107,7 +110,35 @@ def ingest(host: str, inv: dict) -> dict:
         if dst and dst != src:
             repo.upsert_connection(src, dst, host)
             edges += 1
-    return {"host": host, "services": sorted(set(found)), "edges": edges}
+    return {"host": host, "services": sorted(set(found)), "edges": edges, "instrument": _targets(listeners)}
+
+
+def _targets(listeners: dict) -> list[dict]:
+    """Ports the agent should trace with eBPF: discovered listeners, except databases (no HTTP/gRPC spans to give)
+    and services someone instrumented with an SDK (double spans)."""
+    out = []
+    for port, svc in sorted(listeners.items()):
+        s = repo.service(svc) or {}
+        if s.get("instrumentation") == "sdk" or s.get("kind") == "external" or port in DB_PORTS:
+            continue
+        out.append({"service": svc, "port": port})
+    return out
+
+
+async def promote_traced(targets: list[dict]) -> list[str]:
+    """A discovered process whose eBPF spans reached Prometheus becomes a traced service: from then on it gets
+    RED metrics, health checks, incidents and trace edges like any SDK-instrumented app."""
+    from . import telemetry as tm
+    promoted = []
+    for t in targets:
+        s = repo.service(t["service"])
+        if not s or s["kind"] != "process":
+            continue
+        n = await tm.prom_value(f'count({tm.CALLS}{{service_name="{s["service_name"]}"}})')
+        if n:
+            repo.update_service(s["service_name"], kind="service", source="traced", instrumentation="ebpf")
+            promoted.append(s["service_name"])
+    return promoted
 
 
 def _service_of_process(listeners: dict, proc: str | None, pid: int | None, inv: dict) -> str | None:

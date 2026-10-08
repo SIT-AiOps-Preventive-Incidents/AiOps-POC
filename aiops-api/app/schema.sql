@@ -256,3 +256,7 @@ CREATE TABLE IF NOT EXISTS settings (
   key    TEXT PRIMARY KEY,
   value  TEXT NOT NULL
 );
+
+-- Release 1.1: automatic (eBPF) instrumentation. How a service is traced, and what the host's agent reports about it.
+ALTER TABLE services ADD COLUMN IF NOT EXISTS instrumentation TEXT;   -- NULL = not traced, 'sdk' = OpenTelemetry SDK, 'ebpf' = traced by the host agent
+ALTER TABLE hosts    ADD COLUMN IF NOT EXISTS auto_instrument JSONB;  -- last eBPF status from the agent: {state, services, error, version}

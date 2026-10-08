@@ -5,15 +5,15 @@
       <router-link to="/connect/computer" class="choice">
         <UiAppTile icon="laptop" color="var(--c-chart-4)" :size="48" />
         <b>A computer or server</b>
-        <span class="muted">Paste one command. You get CPU, memory and disk, and every service running on it appears on the service map automatically.</span>
-        <span class="logos"><UiLogo name="apple" :size="26" alt="macOS" /><UiLogo name="linux" :size="26" alt="Linux" /><UiLogo name="docker" :size="26" alt="Docker" /></span>
+        <span class="muted">Paste one command. You get CPU, memory and disk, and every service running on it appears on the service map. On Linux those services are also traced automatically with eBPF - no code change.</span>
+        <span class="logos"><UiLogo v-for="[l, a] in [['apple', 'macOS'], ['ubuntu', 'Ubuntu'], ['debian', 'Debian'], ['redhat', 'Red Hat'], ['linux', 'Linux'], ['docker', 'Docker']]" :key="l" :name="l" :size="26" :alt="a" /></span>
         <span class="go">Recommended · 1 command ›</span>
       </router-link>
       <router-link to="/connect/service" class="choice">
-        <UiAppTile icon="cube" color="var(--c-primary)" :size="48" />
+        <UiAppTile logo="otel" :size="48" />
         <b>Request-level detail for an app</b>
         <span class="muted">Turn on OpenTelemetry in one app to see its requests, errors, latency and the exact hop where a request fails.</span>
-        <span class="logos"><UiLogo v-for="l in ['python', 'node', 'java', 'dotnet', 'otel']" :key="l" :name="l" :size="26" :alt="l" /></span>
+        <span class="logos"><UiLogo v-for="l in ['python', 'node', 'java', 'dotnet', 'go', 'ruby', 'php']" :key="l" :name="l" :size="26" :alt="l" /></span>
         <span class="go">3 steps ›</span>
       </router-link>
     </div>
