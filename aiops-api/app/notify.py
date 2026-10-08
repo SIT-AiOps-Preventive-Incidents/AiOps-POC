@@ -3,7 +3,7 @@ import os
 
 import httpx
 
-from . import db
+from . import db, repo
 
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8080")
 
@@ -29,7 +29,7 @@ def _card(inc: dict, event: str) -> dict:
     if inc.get("root_cause"):
         body.append({"type": "TextBlock", "wrap": True, "text": f"**Root cause:** {inc['root_cause']}"})
     if inc.get("action") and event == "rca_ready":
-        dr = inc.get("dry_run") or {}
+        dr = inc["action"].get("dry_run") or {}
         body.append({"type": "TextBlock", "wrap": True,
                      "text": f"**Proposed action:** {inc['action'].get('label', '')} - dry run "
                              f"{'passed' if dr.get('ok') else 'FAILED'} "
@@ -42,7 +42,9 @@ def _card(inc: dict, event: str) -> dict:
                     "actions": [{"type": "Action.OpenUrl", "title": "Open in AIOps", "url": link}]}}]}
 
 
-async def send(inc: dict, event: str):
+async def send(inc: dict | int, event: str):
+    if isinstance(inc, int):
+        inc = repo.incident(inc)
     url = db.setting("teams_webhook").strip()
     payload = _card(inc, event)
     status = "skipped: no Teams webhook configured"
@@ -53,5 +55,4 @@ async def send(inc: dict, event: str):
             status = f"sent: HTTP {r.status_code}"
         except Exception as e:
             status = f"failed: {e}"[:200]
-    db.insert("notifications", {"ts": db.now(), "channel": "teams", "incident_id": inc["id"], "event": event,
-                                "status": status, "payload": payload})
+    repo.add_notification(inc.get("id") or None, event, status, payload)
