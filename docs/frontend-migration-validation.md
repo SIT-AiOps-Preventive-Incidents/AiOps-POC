@@ -40,12 +40,13 @@ Validated on 2026-10-08:
 - Production dependency audit (`npm audit --omit=dev`): 0 vulnerabilities.
 - Python syntax check for `aiops-api/app/main.py`: passed.
 - `docker compose config --quiet`: passed.
+- `docker compose up -d --build`: passed after removing the Linux-only `rslave` propagation flag from the read-only node-exporter host mount.
+- Live container checks returned HTTP 200 for `/`, `/settings`, `/legacy`, and `/api/ping`; `node-exporter` started and listened on port 9100.
 - Vite history smoke test: all 17 functional routes returned HTTP 200, including both parameterized detail routes and the connect hub.
 - Figma comparison: all three pages and their direct child frames/components were inspected. Layout, tokens, components, sidebar assets, and all 15 screen structures were compared during implementation. This was a design-context comparison, not an automated pixel-diff.
 
 ## Known limitations and unexecuted checks
 
-- `docker compose build aiops-api` was attempted but could not run because the local Docker daemon was not running. The Compose model still validates successfully.
-- A full live-stack E2E run was not executed, so mutations were verified against backend schemas and code paths but not against running Prometheus/Loki/Tempo/Ollama/demo containers.
+- A full incident-injection/approval/remediation E2E run was not executed, so mutation workflows were verified against backend schemas and code paths but not exercised through an entire live incident lifecycle.
 - Browser automation was unavailable for the local in-app browser. Route serving was checked over HTTP and visual implementation was compared to Figma design context/screenshots, but no automated screenshot-diff artifact was produced.
 - The install reports advisories in development-only transitive tooling; the production dependency audit reports zero vulnerabilities. No force upgrade was applied because it would introduce avoidable breaking-version risk.
