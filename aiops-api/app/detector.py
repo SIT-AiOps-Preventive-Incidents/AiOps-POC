@@ -11,7 +11,9 @@ import math
 import time
 import traceback
 
-from . import agent, db, llm, notify
+import os
+
+from . import agent, db, llm, notify, repo
 from . import telemetry as tm
 
 INTERVAL = 15
@@ -34,14 +36,15 @@ def _baseline_check(key: str, value: float, floor: float, min_std: float) -> tup
     return anomalous, limit, b["mean"]
 
 
+PLATFORM_HOST = os.environ.get("PLATFORM_HOST", "cp26pt1")
+
+
 def open_incident(entity: str, kind: str) -> dict | None:
-    return db.one("SELECT * FROM incidents WHERE entity=? AND kind=? AND status NOT IN ('resolved','rejected','closed') "
-                  "ORDER BY id DESC LIMIT 1", (entity, kind))
+    return repo.open_incident(entity, kind)
 
 
 def related_incident(kind: str) -> dict | None:
-    return db.one("SELECT * FROM incidents WHERE kind=? AND status NOT IN ('resolved','rejected','closed') "
-                  "AND detected_at>? ORDER BY id DESC LIMIT 1", (kind, time.time() - 600))
+    return repo.related_incident(kind, time.time() - 600)
 
 
 async def raise_signal(sig: dict):
@@ -54,11 +57,8 @@ async def raise_signal(sig: dict):
         return
     rel = related_incident(sig["kind"]) if sig["entity_type"] == "service" else None
     if rel:
-        s = rel["signal"]
-        affected = s.setdefault("affected", [])
-        if sig["entity"] not in affected and sig["entity"] != rel["entity"]:
-            affected.append(sig["entity"])
-            db.update("incidents", rel["id"], {"signal": s})
+        if sig["entity"] != rel["entity"]:
+            repo.add_affected(rel["id"], sig["entity"])
         return
     if sig["kind"] == "error_rate":
         sig["by_version"] = await tm.error_rate_by_version(sig["entity"])
@@ -66,12 +66,9 @@ async def raise_signal(sig: dict):
     if sig["kind"] == "auth_bruteforce":
         sev = "major"
     title = f"{agent.KIND_LABEL[sig['kind']]} - {sig['entity']}"
-    iid = db.insert("incidents", {
-        "title": title, "kind": sig["kind"], "entity_type": sig["entity_type"], "entity": sig["entity"],
-        "severity": sev, "status": "open", "started_at": st["first"] - INTERVAL, "detected_at": time.time(),
-        "signal": sig, "steps": []})
-    inc = db.one("SELECT * FROM incidents WHERE id=?", (iid,))
-    await notify.send(inc, "detected")
+    iid = repo.create_incident(title, sig["kind"], sev, sig["entity_type"], sig["entity"], sig,
+                               started_at=st["first"] - INTERVAL)
+    await notify.send(iid, "detected")
     if db.setting("auto_analyze") == "1":
         asyncio.create_task(_safe_analyze(iid))
 
@@ -81,8 +78,7 @@ async def _safe_analyze(iid: int):
         await agent.analyze(iid)
     except Exception as e:
         traceback.print_exc()
-        db.update("incidents", iid, {"status": "awaiting_approval", "root_cause": f"Analysis failed: {e}",
-                                     "action": {"type": "manual", "params": {}, "label": "Manual investigation"}})
+        repo.set_incident(iid, status="awaiting_approval", root_cause=f"Analysis failed: {e}")
 
 
 def clear(kind: str, entity: str):
@@ -110,15 +106,14 @@ async def check_service(svc: str) -> list[dict]:
 
 
 def _is_platform_host(host: str) -> bool:
-    h = db.one("SELECT address FROM hosts WHERE name=?", (host,))
-    return bool(h and h["address"].startswith("node-exporter"))
+    return host == PLATFORM_HOST
 
 
 async def check_host(host: str) -> list[dict]:
     out = []
     self_noise = _is_platform_host(host) and llm.busy_recently()
     up = await tm.prom_value(tm.host_expr(host, "up"))
-    hrow = db.one("SELECT kind FROM hosts WHERE name=?", (host,)) or {}
+    hrow = repo.host(host) or {}
     if up == 0 and hrow.get("kind") == "workstation":
         return out  # a laptop leaving the network is "offline", not an outage
     if up == 0:
@@ -152,9 +147,9 @@ async def check_security() -> list[dict]:
 
 async def tick():
     sigs = []
-    for a in db.q("SELECT service_name FROM apps"):
+    for a in repo.list_services(("service", "network")):
         sigs += await check_service(a["service_name"])
-    for h in db.q("SELECT name FROM hosts"):
+    for h in repo.list_hosts():
         sigs += await check_host(h["name"])
     sigs += await check_security()
     # Raise the most upstream-agnostic one first: highest value relative to threshold.
