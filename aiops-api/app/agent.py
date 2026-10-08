@@ -14,7 +14,7 @@ import re
 import time
 from collections import Counter
 
-from . import db, llm, notify, remediation, servicemap
+from . import db, llm, notify, remediation, repo, servicemap
 from . import telemetry as tm
 
 SKILLS = {
@@ -53,9 +53,7 @@ def rule_skill(kind: str) -> str:
 
 
 def lessons(skill: str) -> list[str]:
-    rows = db.q("SELECT feedback FROM incidents WHERE skill=? AND feedback IS NOT NULL AND feedback!='' "
-                "AND score IS NOT NULL AND score<=3 ORDER BY id DESC LIMIT 3", (skill,))
-    return [r["feedback"] for r in rows]
+    return repo.lessons(skill)
 
 
 # ---------------- tools (read-only) ----------------
@@ -75,11 +73,7 @@ async def t_getErrorRateByVersion(service: str):
 
 
 async def t_getDeployHistory(service: str | None = None, minutes: int = 120):
-    since = time.time() - minutes * 60
-    if service:
-        rows = db.q("SELECT * FROM deployments WHERE ts>=? AND service=? ORDER BY ts DESC", (since, service))
-    else:
-        rows = db.q("SELECT * FROM deployments WHERE ts>=? ORDER BY ts DESC LIMIT 20", (since,))
+    rows = repo.deployments(service, since=time.time() - minutes * 60, limit=20)
     return {"window_min": minutes, "deployments": rows}
 
 
@@ -219,14 +213,18 @@ TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVers
 
 
 class Run:
-    """Collects agent steps so the UI can replay the investigation."""
+    """Writes each agent step to agent_steps as it happens, so the UI can follow the investigation live."""
 
     def __init__(self, inc_id: int):
-        self.inc_id, self.steps = inc_id, []
+        self.inc_id, self.last = inc_id, None
 
-    def step(self, kind: str, title: str, **data):
-        self.steps.append({"ts": time.time(), "kind": kind, "title": title, **data})
-        db.update("incidents", self.inc_id, {"steps": self.steps})
+    def step(self, kind: str, title: str, detail: str | None = None, ms: int | None = None, **data):
+        self.last = repo.add_step(self.inc_id, kind, title, detail=detail, data=data, duration_ms=ms)
+        return self.last
+
+    def update_last(self, **data):
+        meta = data.get("meta") or {}
+        repo.update_step(self.last, data=data, duration_ms=meta.get("ms"))
 
     async def tool(self, name: str, **args):
         t0 = time.time()
@@ -240,7 +238,7 @@ class Run:
 
 # ---------------- skill playbooks: tools -> facts -> action candidates ----------------
 def _prev_deploy(service: str, before_ts: float) -> dict | None:
-    return db.one("SELECT * FROM deployments WHERE service=? AND ts<? ORDER BY ts DESC LIMIT 1", (service, before_ts))
+    return next((d for d in repo.deployments(service, limit=50) if d["ts"] < before_ts), None)
 
 
 def _multi_instance(service: str) -> bool:
@@ -343,8 +341,7 @@ async def play_infra(run: Run, sig: dict) -> tuple[dict, list]:
         # Remote machines are observe-only: the platform never executes anything on them.
         return facts, [{"type": "manual", "params": {}}]
     cs = await run.tool("getContainerStats")
-    apps = {c: a["service_name"] for a in db.q("SELECT container, service_name FROM apps")
-            for c in remediation._split(a["container"]) or [a["service_name"]]}
+    apps = {i["container"]: a["service_name"] for a in repo.list_services() for i in a["instances"] if i.get("container")}
     top = [c for c in cs.get("top_by_cpu", []) if c.get("name") not in APP_CONTAINERS_EXCLUDE]
     hog = top[0] if top else None
     facts = {"host": host, "host_metrics": hm, "top_containers": cs.get("top_by_cpu", [])[:5], "busiest_workload": hog}
@@ -535,8 +532,7 @@ async def summarize(inc: dict, skill: str, facts: dict, action: dict, run: Run) 
             f'"runbook": 3-5 short imperative steps, the main one being: {remediation.label(action)}')
     run.step("llm", "DevOps specialist agent: summarize & recommend", prompt_chars=len(user), findings=fl)
     out, meta = await llm.chat_json(system, user, max_tokens=400)
-    run.steps[-1].update(meta=meta, output=out)
-    db.update("incidents", inc["id"], {"steps": run.steps})
+    run.update_last(meta=meta, output=out)
     fb = fallback_text(inc["kind"], facts, action)
     if not out or not isinstance(out.get("root_cause"), str):
         run.step("guard", "LLM output unusable - using evidence template", detail=meta.get("error", "invalid JSON"))
@@ -571,7 +567,7 @@ async def pick_skill(inc: dict, run: Run) -> tuple[str, str]:
         "You are an SRE triage agent. Choose the single best investigation skill. Reply with JSON only.",
         f"Alert: {inc['title']} (signal type: {inc['kind']}, entity: {inc['entity']})\nSkills:\n{lst}\n"
         'Reply: {"skill": "<one id from the list>", "reason": "<max 12 words>"}', max_tokens=50, timeout=120)
-    run.steps[-1].update(meta=meta, output=out)
+    run.update_last(meta=meta, output=out)
     choice = (out or {}).get("skill")
     if choice in SKILLS:
         reason = str(out.get("reason", ""))[:300]
@@ -584,17 +580,17 @@ async def pick_skill(inc: dict, run: Run) -> tuple[str, str]:
 
 async def analyze(inc_id: int):
     async with _sem:
-        inc = db.one("SELECT * FROM incidents WHERE id=?", (inc_id,))
+        inc = repo.incident_row(inc_id)
         if not inc:
             return
         t0 = time.time()
-        db.update("incidents", inc_id, {"status": "analyzing"})
+        repo.set_incident(inc_id, status="analyzing")
         run = Run(inc_id)
         run.step("info", "Agentic AI orchestrator started", detail=f"signal={inc['kind']} entity={inc['entity']}")
         skill, reason = await pick_skill(inc, run)
         sk = SKILLS[skill]
         run.step("skill", f"Skill selected: {sk['name']} ({sk['category']})", detail=reason, tools=sk["tools"])
-        db.update("incidents", inc_id, {"skill": skill, "skill_reason": reason})
+        repo.set_incident(inc_id, skill_id=skill, skill_reason=reason)
 
         facts, cands = await PLAYBOOKS[skill](run, {**inc["signal"], "incident_id": inc_id})
         for c in cands:
@@ -622,19 +618,19 @@ async def analyze(inc_id: int):
                                      inc["entity"] if inc["entity_type"] == "host" else None, inc["kind"])
 
         sig = signature(inc["kind"], facts, action)
-        rb = db.one("SELECT * FROM runbooks WHERE signature=? AND enabled=1", (sig,))
+        rb = repo.runbook_by_signature(sig)
         if rb:
             run.step("memory", f"Runbook found in incident memory: RB-{rb['id']} '{rb['title']}'",
-                     detail=f"used {rb['uses']}x, avg score {round(rb['score_sum'] / rb['score_n'], 1) if rb['score_n'] else '-'}"
+                     detail=f"used {rb['uses']}x, avg score {rb['avg_score'] or '-'}"
                             " - skipping new RCA generation, reusing approved runbook")
             fb = fallback_text(inc["kind"], facts, action)
             res = {"root_cause": fb["root_cause"],
-                   "summary": f"Matches known incident pattern RB-{rb['id']} (first seen in P-{rb['source_incident']}). "
+                   "summary": f"Matches known incident pattern RB-{rb['id']} (first seen in P-{rb['source_incident_id']}). "
                               + fb["summary"],
-                   "runbook": rb["runbook"] if isinstance(rb["runbook"], list) else json.loads(rb["runbook"]),
+                   "runbook": rb["steps"] or fb["runbook"],
                    "confidence": round(min(0.97, facts.get("evidence_confidence", 0.6) + 0.15), 2), "llm_ok": 0,
                    "model": "runbook-memory"}
-            db.ex("UPDATE runbooks SET uses=uses+1, updated_at=? WHERE id=?", (time.time(), rb["id"]))
+            repo.set_runbook(rb["id"], use=True)
             path = "known"
         else:
             run.step("memory", "No matching runbook - new incident, generating RCA & recommendation", detail=sig)
@@ -645,11 +641,10 @@ async def analyze(inc_id: int):
         title = f"{KIND_LABEL.get(inc['kind'], inc['kind'])} - root cause in {origin}" if origin != inc["entity"] \
             else inc["title"]
         run.step("done", f"RCA + dry-run plan ready - waiting for approval from owner {owner}", detail=action["label"])
-        db.update("incidents", inc_id, {
-            "owner": owner, "dry_run": action["dry_run"], "evidence": findings(inc["kind"], facts),
-            "status": "awaiting_approval", "analyzed_at": time.time(), "title": title, "path": path,
+        repo.save_analysis(inc_id, {
+            "owner": owner, "status": "awaiting_approval", "analyzed_at": time.time(), "title": title, "path": path,
             "root_cause": res["root_cause"], "summary": res["summary"], "confidence": res["confidence"],
-            "runbook": res["runbook"], "facts": facts, "action": action, "candidates": cands,
-            "runbook_id": rb["id"] if rb else None, "llm_model": res["model"], "llm_ok": res["llm_ok"],
-            "analysis_ms": int((time.time() - t0) * 1000), "steps": run.steps})
-        await notify.send(db.one("SELECT * FROM incidents WHERE id=?", (inc_id,)), "rca_ready")
+            "facts": facts, "runbook_id": rb["id"] if rb else None, "llm_model": res["model"],
+            "llm_ok": bool(res["llm_ok"]), "analysis_ms": int((time.time() - t0) * 1000)},
+            evidence=findings(inc["kind"], facts), runbook=res["runbook"], cands=cands)
+        await notify.send(inc_id, "rca_ready")

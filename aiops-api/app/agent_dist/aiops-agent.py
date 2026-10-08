@@ -15,16 +15,19 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
-HOST, OTLP = CFG["host"], CFG["otlp"].rstrip("/")
+HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
 DARWIN = platform.system() == "Darwin"
 NCPU = os.cpu_count() or 1
 
 
 def sh(cmd):
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
 
 
 def cpu_pct():
@@ -77,6 +80,89 @@ def top_processes(n=5):
     return rows
 
 
+# ---------------- service discovery ----------------
+def _split_addr(a):
+    a = a.strip().strip("[]")
+    host, _, port = a.rpartition(":")
+    return host.strip("[]"), int(port) if port.isdigit() else 0
+
+
+def _lsof(state):
+    """macOS: full command names via lsof field output (-F)."""
+    out, cur = [], {}
+    for line in sh(["lsof", "+c", "0", "-nP", "-iTCP", "-sTCP:" + state, "-Fpcn"]).splitlines():
+        tag, val = line[:1], line[1:]
+        if tag == "p":
+            cur = {"pid": int(val)}
+        elif tag == "c":
+            cur["process"] = val
+        elif tag == "n":
+            out.append({**cur, "name": val})
+    return out
+
+
+def _ss(args):
+    """Linux: ss output; the users:(("proc",pid=1,...)) part is only present for our own processes."""
+    rows = []
+    for line in sh(["ss", "-H", "-tn"] + args).splitlines():
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+        m = re.search(r'users:\(\("([^"]+)",pid=(\d+)', line)
+        rows.append({"local": parts[3], "remote": parts[4], "process": m.group(1) if m else "", "pid": int(m.group(2)) if m else None})
+    return rows
+
+
+def ip_addresses():
+    if DARWIN:
+        return sorted(set(re.findall(r"inet (\d+\.\d+\.\d+\.\d+)", sh(["ifconfig"]))) - {"127.0.0.1"})
+    return [x for x in sh(["hostname", "-I"]).split() if ":" not in x]
+
+
+def inventory():
+    listeners, conns = [], []
+    if DARWIN:
+        for r in _lsof("LISTEN"):
+            _, port = _split_addr(r["name"])
+            listeners.append({"process": r.get("process", ""), "pid": r.get("pid"), "port": port})
+        for r in _lsof("ESTABLISHED"):
+            if "->" not in r["name"]:
+                continue
+            loc, rem = r["name"].split("->", 1)
+            _, lport = _split_addr(loc)
+            rip, rport = _split_addr(rem)
+            conns.append({"process": r.get("process", ""), "pid": r.get("pid"), "local_port": lport,
+                          "remote_ip": rip, "remote_port": rport})
+    else:
+        for r in _ss(["-lp"]):
+            _, port = _split_addr(r["local"])
+            listeners.append({"process": r["process"], "pid": r["pid"], "port": port})
+        for r in _ss(["-p", "state", "established"]):
+            _, lport = _split_addr(r["local"])
+            rip, rport = _split_addr(r["remote"])
+            conns.append({"process": r["process"], "pid": r["pid"], "local_port": lport, "remote_ip": rip, "remote_port": rport})
+    seen, uniq = set(), []
+    for l in listeners:  # same process often listens on IPv4 and IPv6
+        k = (l["process"], l["port"])
+        if l["port"] and k not in seen:
+            seen.add(k)
+            uniq.append(l)
+    containers = []
+    for line in sh(["docker", "ps", "--format", "{{.Names}}\t{{.Image}}\t{{.Ports}}"]).splitlines():
+        p = line.split("\t")
+        if len(p) >= 2:
+            containers.append({"name": p[0], "image": p[1], "ports": p[2] if len(p) > 2 else ""})
+    return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers}
+
+
+def push_inventory():
+    if not API:
+        return
+    req = urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/inventory", data=json.dumps(inventory()).encode(),
+                                 method="POST", headers={"Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=15).read()
+
+
 RESOURCE = {"attributes": [
     {"key": "service.name", "value": {"stringValue": "aiops-agent"}},
     {"key": "host.name", "value": {"stringValue": HOST}},
@@ -116,6 +202,8 @@ def main():
             push_metrics(vals)
             if tick % 2 == 0:
                 push_log({"type": "top_processes", "host": HOST, "processes": top_processes()})
+            if tick % 4 == 0:  # every minute: what runs here and who it talks to
+                push_inventory()
         except Exception as e:  # keep running through network blips (e.g. laptop leaves the VPN)
             print(f"{time.strftime('%H:%M:%S')} push failed: {e}", file=sys.stderr, flush=True)
         tick += 1

@@ -14,7 +14,7 @@ import time
 
 import httpx
 
-from . import db
+from . import db, repo
 from . import telemetry as tm
 
 EDGE_DIR = os.environ.get("EDGE_DIR", "/edge")
@@ -38,37 +38,33 @@ def label(action: dict) -> str:
         return action.get("type", "?")
 
 
-def _split(v: str | None) -> list[str]:
-    return [x.strip() for x in (v or "").split(",") if x.strip()]
-
-
 def app_row(service: str) -> dict | None:
-    return db.one("SELECT * FROM apps WHERE service_name=?", (service,))
+    return repo.service(service)
 
 
 def admin_urls(service: str) -> list[str]:
-    return _split((app_row(service) or {}).get("admin_url"))
+    return repo.admin_urls(service)
 
 
-def admin_url(service: str) -> str | None:  # kept for callers that only need "is it managed?"
+def admin_url(service: str) -> str | None:  # "is this service controllable at runtime?"
     urls = admin_urls(service)
     return urls[0] if urls else None
 
 
 def containers_of(service: str) -> list[str]:
-    return _split((app_row(service) or {}).get("container")) or [service]
+    return repo.containers_of(service)
 
 
 def owner_of(service: str | None = None, host: str | None = None, kind: str = "") -> str:
     if kind == "auth_bruteforce":
-        r = app_row("edge-firewall")
+        r = repo.service("edge-firewall")
         return (r or {}).get("owner") or "team-security"
     if service:
-        r = app_row(service)
+        r = repo.service(service)
         if r:
-            return r.get("owner") or r.get("team") or "unassigned"
+            return r.get("owner") or "unassigned"
     if host:
-        h = db.one("SELECT owner FROM hosts WHERE name=?", (host,))
+        h = repo.host(host)
         return (h or {}).get("owner") or "team-platform"
     return "unassigned"
 
@@ -115,7 +111,7 @@ async def last_known_good(service: str, bad_versions: set[tuple[str, str]]) -> t
     traffic over the last 24 h was healthy. A deploy record alone is not proof (a rollback can be wrong)."""
     seen, considered = set(), []
     thr = db.fsetting("err_threshold")
-    for d in db.q("SELECT * FROM deployments WHERE service=? ORDER BY ts DESC", (service,)):
+    for d in repo.deployments(service, limit=200):
         key = (d["version"], d["commit_hash"])
         if key in seen:
             continue
@@ -233,10 +229,8 @@ async def execute(action: dict, incident_id: int, approver: str) -> dict:
     if t == "rollback_deployment":
         await set_app_state(p["service"], {"version": p["to_version"], "commit": p["to_commit"], "profile": "healthy",
                                            "error_rate": 0, "error_msg": "", "latency_ms": 0})
-        db.insert("deployments", {"service": p["service"], "version": p["to_version"], "commit_hash": p["to_commit"],
-                                  "author": f"aiops-bot (approved by {approver})",
-                                  "message": f"rollback by AIOps for P-{incident_id}", "profile": "healthy",
-                                  "ts": db.now()})
+        repo.add_deployment(p["service"], p["to_version"], p["to_commit"], author=f"aiops-bot (approved by {approver})",
+                            message=f"rollback by AIOps for P-{incident_id}", profile="healthy")
         return {"ok": True, "detail": f"{p['service']} now running v{p['to_version']} ({p['to_commit']})"}
     if t in ("restart_service", "restart_instance"):
         names = [p["instance"]] if t == "restart_instance" else containers_of(p["service"])

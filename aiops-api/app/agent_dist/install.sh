@@ -12,7 +12,7 @@ PY=$(command -v python3 || true)
 say() { printf '  %s\n' "$1"; }
 echo "AIOps agent -> $API"
 [ -n "$PY" ] || { say "python3 not found. Install it first (macOS: xcode-select --install)."; exit 1; }
-curl -fsS -m 5 "$API/api/ping" >/dev/null || { say "Cannot reach $API - are you on the campus network / VPN?"; exit 1; }
+curl -fsS -m 5 "$API/api/v1/health" -o /dev/null || curl -fsS -m 5 "$API/api/ping" >/dev/null || { say "Cannot reach $API - are you on the campus network / VPN?"; exit 1; }
 
 mkdir -p "$DIR"
 curl -fsSL "$API/install/aiops-agent.py" -o "$DIR/aiops-agent.py"
@@ -20,8 +20,8 @@ printf '{"host":"%s","otlp":"%s","api":"%s"}\n' "$NAME" "$OTLP" "$API" > "$DIR/c
 say "installed to $DIR"
 
 OS=$(uname -s)
-curl -fsS -X POST "$API/api/hosts/register" -H 'Content-Type: application/json' \
-  -d "{\"name\":\"$NAME\",\"os\":\"$(uname -sr)\",\"arch\":\"$(uname -m)\",\"kind\":\"$( [ "$OS" = Darwin ] && echo workstation || echo server )\"}" >/dev/null
+curl -fsS -X PUT "$API/api/v1/hosts/$NAME" -H 'Content-Type: application/json' \
+  -d "{\"os\":\"$(uname -sr)\",\"arch\":\"$(uname -m)\",\"kind\":\"$( [ "$OS" = Darwin ] && echo workstation || echo server )\"}" >/dev/null
 say "registered as '$NAME'"
 
 if [ "$OS" = Darwin ]; then

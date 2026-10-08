@@ -71,9 +71,8 @@ def svc_expr(svc: str, metric: str, window: str = "1m") -> str:
 
 
 def host_agent(host: str) -> str:
-    from . import db
-    h = db.one("SELECT agent FROM hosts WHERE name=?", (host,))
-    return (h or {}).get("agent") or "node_exporter"
+    from . import repo
+    return repo.host_agent(host)
 
 
 def host_expr(host: str, metric: str) -> str:
