@@ -46,6 +46,7 @@ class Inventory(BaseModel):
     listeners: list[dict] = []
     connections: list[dict] = []
     containers: list[dict] = []
+    ebpf: dict | None = None  # {state: running|starting|unavailable|disabled|error, services, error, version}
 
 
 class DeploymentIn(BaseModel):

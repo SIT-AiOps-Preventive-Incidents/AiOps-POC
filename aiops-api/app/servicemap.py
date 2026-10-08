@@ -50,7 +50,16 @@ async def build(minutes: int = 5, max_traces: int = 14, force: bool = False) -> 
     if not force and _cache["data"] and time.time() - _cache["ts"] < 20:
         return _cache["data"]
     traces = await tm.tempo_search("{ }", minutes=minutes, limit=60)
-    spans_all = await asyncio.gather(*(tm.tempo_trace(t["traceID"]) for t in traces[:max_traces]))
+    spans_all = list(await asyncio.gather(*(tm.tempo_trace(t["traceID"]) for t in traces[:max_traces])))
+    # The latest traces are dominated by the busiest app; top up with a couple of traces from every traced service
+    # that did not appear, so quiet apps (e.g. ones the host agent traces with eBPF) still get their arrows.
+    seen = {s["service"] for spans in spans_all for s in spans}
+    quiet = [r["service_name"] for r in repo.list_services(("service",)) if r["service_name"] not in seen]
+    extra = await asyncio.gather(*(tm.tempo_search(f'{{ resource.service.name = "{n}" }}', minutes=minutes, limit=2)
+                                   for n in quiet))
+    ids = {t["traceID"] for t in traces[:max_traces]}
+    more = list(dict.fromkeys(t["traceID"] for ts in extra for t in ts if t["traceID"] not in ids))[:max_traces]
+    spans_all += await asyncio.gather(*(tm.tempo_trace(i) for i in more))
     svc_edges, inst_edges, inst_of, roots = Counter(), Counter(), {}, Counter()
     for spans in spans_all:
         by_id = {s["id"]: s for s in spans}

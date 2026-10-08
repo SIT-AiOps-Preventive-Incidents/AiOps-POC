@@ -18,7 +18,7 @@ const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
 <template>
   <div class="page page--wide">
     <UiPageHeader title="Service Map" subtitle="Every hop a request takes, left to right. Computers you connect show what runs on them below.">
-      <UiButton icon="play" :loading="busy" :disabled="!entry" @click="map.runTest()">{{ busy ? "Running test..." : "Send test request" }}</UiButton>
+      <UiButton icon="play" :loading="busy" :disabled="!entry" @click="map.runTest()">{{ busy ? "Running test…" : "Send test request" }}</UiButton>
     </UiPageHeader>
     <UiSegmented v-model="map.filter" :options="filters" label="Filter the map" class="filter" />
     <div :class="['layout', { 'with-side': map.selected || map.test.phase !== 'idle' }]">

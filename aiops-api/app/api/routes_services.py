@@ -26,6 +26,7 @@ async def create_service(body: ServiceIn, response: Response):
                             kind="service", source="manual", language=body.language, owner=body.owner or "unassigned",
                             repo=body.repo, environment=body.environment, entry_url=body.entry_url,
                             entry_method=body.entry_method)
+    s = repo.update_service(s["service_name"], instrumentation="sdk")  # the "Connect a service" wizard = SDK setup
     response.headers["Location"] = f"/api/v1/services/{s['service_name']}"
     return s
 

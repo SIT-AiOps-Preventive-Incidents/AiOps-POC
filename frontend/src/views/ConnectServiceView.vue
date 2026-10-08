@@ -83,7 +83,7 @@ const ok = (b) => (b ? "ok" : "neutral");
             <p class="small muted">Add this at the end of your CI pipeline so the AI can tie a problem to the commit behind it.</p><UiCodeBlock :code="ci" /></UiDisclosure>
         </template><p v-else class="small muted">Pick your language after step 1.</p></div></li>
       <li :class="['step', { done: step === 3, todo: step < 2 }]"><span class="n">3</span><div class="body"><h2>Check the data arrives</h2>
-        <UiWait v-if="step === 2" :title="`Waiting for the first data from ${svc}...`" subtitle="This updates by itself." />
+        <UiWait v-if="step === 2" :title="`Waiting for the first data from ${svc}…`" subtitle="This updates by itself." />
         <template v-else-if="step === 3">
           <UiWait done :title="`${svc} is sending data`"><span class="row row--wrap mt-2"><UiPill :tone="ok(status?.traces)">traces</UiPill><UiPill :tone="ok(status?.metrics)">metrics</UiPill><UiPill :tone="ok(status?.logs)">logs</UiPill></span></UiWait>
           <div class="row mt"><UiButton :to="`/services/${svc}`">Open {{ svc }}</UiButton><UiButton variant="tint" to="/map">See it on the map</UiButton></div>

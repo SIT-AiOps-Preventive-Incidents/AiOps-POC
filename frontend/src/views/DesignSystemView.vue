@@ -52,7 +52,7 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
       <div><UiField v-model="field" label="Text field" hint="(hint)" /><UiButton variant="tint" class="mt" @click="sheet = true">Open sheet</UiButton></div></div></UiCard>
     <div class="section-label">Data</div>
     <div class="grid grid--2"><UiAreaChart title="Requests / s" :points="pts" /><UiCard title="Code block"><UiCodeBlock code="curl -fsSL http://cp26pt1.sit.kmutt.ac.th:8080/install/agent.sh | sh" /></UiCard></div>
-    <div class="grid grid--2 mt"><UiWait title="Waiting for my-mac..." subtitle="This updates by itself." /><UiWait done title="my-mac is connected" subtitle="CPU 12% · Memory 70%" /></div>
+    <div class="grid grid--2 mt"><UiWait title="Waiting for my-mac…" subtitle="This updates by itself." /><UiWait done title="my-mac is connected" subtitle="CPU 12% · Memory 70%" /></div>
     <UiSheet v-model="sheet" title="Sheet"><p class="muted">Centered on desktop, slides up from the bottom on phones.</p>
       <template #footer><UiButton variant="plain" @click="sheet = false">Cancel</UiButton><UiButton @click="sheet = false">Done</UiButton></template></UiSheet>
   </div>

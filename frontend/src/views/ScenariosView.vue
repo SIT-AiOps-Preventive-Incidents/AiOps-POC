@@ -17,7 +17,7 @@ async function run(id) {
   busy.value = id;
   try {
     await api.scenarios.run(id);
-    ui.toast(id === "reset" ? "Everything reset" : "Started. Opening Problems...");
+    ui.toast(id === "reset" ? "Everything reset" : "Started. Opening Problems…");
     if (id !== "reset") setTimeout(() => router.push("/problems"), 900);
   } catch (e) { ui.toast(e.message); } finally { busy.value = ""; }
 }

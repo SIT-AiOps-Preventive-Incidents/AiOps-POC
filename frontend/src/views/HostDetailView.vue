@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -34,6 +35,7 @@ async function remove() { await cat.removeHost(props.name); router.push("/comput
     <div class="section-label">Services on this computer ({{ d.services.length }})</div>
     <UiList><ServiceRow v-for="s in d.services" :key="s.service" :service="s" />
       <UiEmpty v-if="!d.services.length">Nothing found yet. The agent reports listening ports and containers every minute.</UiEmpty></UiList>
+    <AutoTraceStatus v-if="d.host.agent === 'aiops-agent'" class="mt" :host="d.host" :services="d.services" />
     <template v-if="d.processes.length">
       <div class="section-label">Busiest processes</div>
       <UiList plain><UiListRow v-for="p in d.processes" :key="p.pid" :title="p.name" :subtitle="`PID ${p.pid}`">
@@ -51,4 +53,5 @@ async function remove() { await cat.removeHost(props.name); router.push("/comput
       <template #footer><UiButton variant="plain" @click="confirmRemove = false">Cancel</UiButton><UiButton variant="danger" @click="remove">Remove</UiButton></template>
     </UiSheet>
   </div>
+  <div v-else class="page"><UiPageHeader :title="name" subtitle="Loading…" :back="{ to: '/computers', label: 'Computers' }" /></div>
 </template>

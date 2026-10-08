@@ -35,6 +35,7 @@ def ensure_demo():
         else:
             repo.update_service(svc, admin_urls=admin, entry_url=entry, entry_method="POST" if entry else "GET",
                                 language=lang, kind=kind)
+        repo.update_service(svc, instrumentation="sdk")  # demo apps use the OpenTelemetry SDK / nginx otel module
         for c in conts:
             repo.ensure_instance(svc, c, host=PLATFORM_HOST, container=c)
         if svc in COMMITS and not repo.deployments(svc, limit=1):

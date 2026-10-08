@@ -39,12 +39,20 @@ export const STEP_KIND = {
 // Health of a service/host -> dot tone
 export const HEALTH_TONE = { healthy: "ok", problem: "bad", down: "bad", offline: "neutral", "no-data": "neutral" };
 
+// Order matters: databases before languages ("mongod" is not Go, "javascript" is not Java).
 const LANGS = [
+  [/postgres/, "postgres"], [/mongo/, "mongodb"], [/redis/, "redis"], [/mysql|mariadb/, "mysql"],
+  [/rabbit/, "rabbitmq"], [/kafka/, "kafka"], [/elastic|opensearch/, "elasticsearch"], [/memcache/, "memcached"],
+  [/oracle/, "oracle"], [/sqlserver|mssql/, "sqlserver"],
   [/python|uvicorn|gunicorn/, "python"], [/node|javascript|typescript|bun|deno/, "node"], [/java/, "java"],
-  [/\.?net|c#|csharp|dotnet/, "dotnet"], [/nginx/, "nginx"], [/docker/, "docker"], [/postgres/, "postgres"],
+  [/\.?net|c#|csharp|dotnet/, "dotnet"], [/^go$|golang/, "go"], [/ruby|puma|rails/, "ruby"], [/php/, "php"],
+  [/rust/, "rust"], [/nginx/, "nginx"], [/docker/, "docker"], [/grafana|tempo|loki/, "grafana"],
+  [/prometheus/, "prometheus"], [/otel|opentelemetry/, "otel"], [/ollama/, "ollama"],
 ];
 const KNOWN_LOGOS = new Set(["python", "node", "java", "dotnet", "nginx", "docker", "apple", "linux", "grafana",
-  "prometheus", "otel", "teams", "ollama"]);
+  "prometheus", "otel", "teams", "ollama", "postgres", "mongodb", "redis", "mysql", "rabbitmq", "kafka",
+  "elasticsearch", "memcached", "oracle", "sqlserver", "go", "ruby", "php", "rust", "ubuntu", "debian", "redhat",
+  "windows"]);
 
 export function languageLogo(lang) {
   const l = (lang || "").toLowerCase();
@@ -53,7 +61,11 @@ export function languageLogo(lang) {
 }
 export function osLogo(os) {
   if (/darwin|mac/i.test(os || "")) return "apple";
-  if (/linux|ubuntu|debian|centos|rhel/i.test(os || "")) return "linux";
+  if (/ubuntu/i.test(os || "")) return "ubuntu";
+  if (/debian/i.test(os || "")) return "debian";
+  if (/red ?hat|rhel|centos|rocky|alma/i.test(os || "")) return "redhat";
+  if (/windows/i.test(os || "")) return "windows";
+  if (/linux/i.test(os || "")) return "linux";
   return null;
 }
 export const kindIcon = (kind) => ({ network: "shield", process: "apps", external: "database", client: "globe" }[kind] || "cube");

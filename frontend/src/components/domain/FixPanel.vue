@@ -73,7 +73,7 @@ async function decide(decision) {
         <template v-if="ap.preflight"><dt>Re-checked</dt><dd :class="ap.preflight.ok ? 'ok' : 'bad'">{{ ap.preflight.ok ? "Dry run passed again before applying" : "Pre-flight failed" }}</dd></template>
         <template v-if="ap.execution"><dt>Result</dt><dd :class="ap.execution.ok ? 'ok' : 'bad'">{{ ap.execution.detail }}</dd></template>
         <template v-if="ap.execution && ap.execution.verified != null"><dt>Verified</dt><dd :class="ap.execution.verified ? 'ok' : 'bad'">{{ ap.execution.verified ? "Metrics back to normal" : "Still abnormal" }}</dd></template>
-        <template v-if="inc.status === 'verifying'"><dt>Status</dt><dd class="muted">Checking the metrics...</dd></template>
+        <template v-if="inc.status === 'verifying'"><dt>Status</dt><dd class="muted">Checking the metrics…</dd></template>
       </dl>
     </template>
   </UiCard>

@@ -1,4 +1,5 @@
 """/api/v1/hosts - computers and servers (pushed by the AIOps agent or pulled from node_exporter)."""
+import asyncio
 from fastapi import APIRouter, Response
 
 from .. import agent, health, inventory, repo
@@ -48,9 +49,11 @@ async def register_host(name: str, body: HostRegistration):
 @router.post("/{name}/inventory", summary="Agent report: listening processes, containers and connections")
 async def post_inventory(name: str, body: Inventory):
     try:
-        return inventory.ingest(name, body.model_dump())
+        out = inventory.ingest(name, body.model_dump())
     except KeyError:
         raise not_found("host", name)
+    out["promoted"] = await inventory.promote_traced(out["instrument"])
+    return out
 
 
 @router.get("/{name}", summary="Host detail: charts, services on it, busiest processes / containers")
@@ -58,14 +61,19 @@ async def get_host(name: str):
     h = repo.host(name)
     if not h:
         raise not_found("host", name)
-    series = {}
-    for m in ("cpu", "mem", "disk", "load"):
-        r = await tm.prom_range(tm.host_expr(name, m), minutes=60, step=30)
-        series[m] = r[0]["points"] if r else []
-    procs = (await agent.t_getTopProcesses(name)).get("processes", []) if h["agent"] == "aiops-agent" else []
-    services = [s for s in await health.services_health() if name in s["hosts"]]
-    return {"host": await health.host_health(h), "series": series, "processes": procs, "services": services,
-            "containers": await tm.containers(with_stats=True) if name == PLATFORM_HOST else [],
+    metrics = ("cpu", "mem", "disk", "load")
+
+    async def nothing():
+        return None
+    # everything below is independent - fetch it concurrently (container stats alone take ~2 s)
+    *ranges, procs, services, host_h, containers = await asyncio.gather(
+        *(tm.prom_range(tm.host_expr(name, m), minutes=60, step=30) for m in metrics),
+        agent.t_getTopProcesses(name) if h["agent"] == "aiops-agent" else nothing(),
+        health.services_health(), health.host_health(h),
+        tm.containers(with_stats=True) if name == PLATFORM_HOST else nothing())
+    series = {m: r[0]["points"] if r else [] for m, r in zip(metrics, ranges)}
+    return {"host": host_h, "series": series, "processes": (procs or {}).get("processes", []),
+            "services": [s for s in services if name in s["hosts"]], "containers": containers or [],
             "incidents": [i for i in repo.list_incidents(limit=200) if i["entity"] == name][:10]}
 
 

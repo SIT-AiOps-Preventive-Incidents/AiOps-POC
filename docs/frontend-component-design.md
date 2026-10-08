@@ -69,7 +69,7 @@ nothing about routing; only views and stores call the API.
 
 Domain components (built only from Ui*): `ServiceRow` (4 views), `ProblemRow` (3), `TraceWaterfall` (3), `StatusPill` (2),
 `HostRow`, `SeverityPill`, `DryRunChecklist`, `FixPanel`, `FeedbackCard`, `InvestigationTimeline`, `ServiceMapCanvas`,
-`MapSidePanel`, `TestRequestPanel`.
+`MapSidePanel`, `TestRequestPanel`, `AutoTraceStatus` (Connect a computer + Computer detail: what the eBPF tracer is doing).
 
 ### State management (Pinia)
 

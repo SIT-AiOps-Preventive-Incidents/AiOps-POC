@@ -15,7 +15,7 @@ const rate = (e) => (e.rps != null ? `${num(e.rps)}/s` : "network");
   <aside v-if="node" class="side stack">
     <UiCard>
       <div class="row row--between">
-        <div class="row"><UiAppTile :logo="languageLogo(node.kind === 'network' ? 'nginx' : node.language)" :icon="node.kind === 'client' ? 'globe' : 'apps'" :size="36" />
+        <div class="row"><UiAppTile :logo="languageLogo(node.kind === 'network' ? 'nginx' : node.language || node.id)" :icon="node.kind === 'client' ? 'globe' : 'apps'" :size="36" />
           <div><h2>{{ node.id === "clients" ? "Clients" : node.name || node.id }}</h2>
             <div class="small muted">{{ node.kind === "process" ? "Discovered process" : node.kind === "external" ? "External dependency" : node.kind === "network" ? "Network device" : node.kind === "client" ? "Users" : "Service" }}{{ node.owner ? ` · ${node.owner}` : "" }}</div></div></div>
         <UiButton variant="plain" size="sm" @click="map.select(null)">Done</UiButton>

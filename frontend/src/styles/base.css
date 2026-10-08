@@ -27,7 +27,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
 .split { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: var(--sp-4); align-items: start; }
 .section-title { font-size: var(--fs-xl); font-weight: var(--fw-bold); letter-spacing: -0.015em; margin: var(--sp-6) 0 var(--sp-3); display: flex; justify-content: space-between; align-items: baseline; }
 .section-title a { font-size: var(--fs-md); font-weight: var(--fw-regular); }
-.section-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.03em; margin: var(--sp-6) var(--sp-4) var(--sp-2); }
+.section-label { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--c-text); letter-spacing: -0.01em; text-wrap: balance; margin: var(--sp-6) var(--sp-4) var(--sp-2); }
 .muted { color: var(--c-text-2); }
 .dim { color: var(--c-text-3); }
 .small { font-size: var(--fs-sm); }

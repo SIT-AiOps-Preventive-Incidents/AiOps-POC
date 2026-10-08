@@ -31,7 +31,7 @@ const g = computed(() => {
 <style scoped>
 .chart { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 16px 18px; min-width: 0; }
 .chart__head { display: flex; justify-content: space-between; align-items: baseline; }
-.chart__head h3 { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.03em; }
+.chart__head h3 { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); letter-spacing: -0.01em; }
 .chart__v { font-size: 22px; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 svg { width: 100%; display: block; margin-top: 6px; }
 .chart__axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--c-text-3); }

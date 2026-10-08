@@ -106,7 +106,7 @@ const kindText = (n) => n.kind === "client" ? "Users on the internet" : n.kind =
   : n.kind === "process" ? `Discovered on ${n.hosts?.[0] || "-"}` : n.kind === "external" ? "External dependency" : `Service · ${n.owner || "no owner"}`;
 const metric = (n) => n.kind === "client" ? "" : n.rps != null ? `${num(n.rps)} req/s · ${pct(n.error_rate)} errors`
   : n.kind === "process" || n.kind === "external" ? (n.seen_recently ? "running · not traced" : "not seen recently") : "no traffic yet";
-const logoOf = (n) => n.kind === "client" ? null : languageLogo(n.kind === "network" ? "nginx" : n.language);
+const logoOf = (n) => n.kind === "client" ? null : languageLogo(n.kind === "network" ? "nginx" : n.language || n.id);
 
 // ---------------- test request playback ----------------
 const visited = ref({});      // node id -> { ms, error }
@@ -158,7 +158,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <g v-for="lane in graph.laneBoxes" :key="lane.host">
         <rect x="12" :y="lane.y" :width="graph.W - 24" :height="lane.h" rx="14" class="lane" />
         <image v-if="osLogo(lane.os)" :href="`/icons/b/${osLogo(lane.os)}.svg`" x="26" :y="lane.y + 11" width="16" height="16" />
-        <text :x="osLogo(lane.os) ? 48 : 26" :y="lane.y + 24" class="lane-title">{{ lane.host }} <tspan class="lane-sub">· {{ lane.count }} discovered, not on the request path yet</tspan></text>
+        <text :x="osLogo(lane.os) ? 48 : 26" :y="lane.y + 24" class="lane-title">{{ lane.host }} <tspan class="lane-sub">· {{ lane.count }} {{ lane.count === 1 ? "service" : "services" }} outside the shop request path</tspan></text>
       </g>
 
       <!-- edges -->
@@ -172,7 +172,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <!-- nodes -->
       <g v-for="n in graph.nodes.filter((x) => x.x != null)" :key="n.id"
          :class="['node', { bad: bad(n), sel: map.selected === n.id, faded: focus && !focus.has(n.id) && n.id !== 'clients', disc: n.kind === 'process' || n.kind === 'external', hit: visited[n.id] }]"
-         role="button" :aria-label="n.name" tabindex="0" @click="emit('select', n.id)" @keydown.enter="emit('select', n.id)">
+         role="button" :aria-label="n.name" tabindex="0" @click="emit('select', n.id)" @keydown.enter="emit('select', n.id)" @keydown.space.prevent="emit('select', n.id)">
         <rect class="box" :x="n.x" :y="n.y" :width="W" :height="nodeH(n)" rx="14" />
         <circle :cx="n.x + 24" :cy="n.y + 24" r="14" class="logo-bg" />
         <image v-if="logoOf(n)" :href="`/icons/b/${logoOf(n)}.svg`" :x="n.x + 15" :y="n.y + 15" width="18" height="18" />
@@ -223,6 +223,7 @@ svg { display: block; width: 100%; height: auto; }
 .node.hit .box { stroke: var(--c-primary); stroke-width: 2.2; fill: var(--c-primary-tint); }
 .node.faded { opacity: 0.25; }
 .node:focus { outline: none; }
+.node:focus-visible .box { stroke-width: 2.5; }
 .logo-bg { fill: var(--c-fill); }
 .sdot { stroke: var(--c-surface); stroke-width: 2; }
 .sdot.ok { fill: var(--c-ok); } .sdot.bad { fill: var(--c-bad); } .sdot.off { fill: var(--c-neutral); }
