@@ -56,7 +56,7 @@ Every error has the same body ([`errors.py`](../aiops-api/app/api/errors.py)):
 | **Connect a computer** | `GET /hosts` | 200 | |
 | | `POST /hosts` (node_exporter server) | 201 | 409, 422 |
 | | `PUT /hosts/{name}` (agent registration, idempotent) | 200 | 422 |
-| | `POST /hosts/{name}/inventory` (agent: processes, containers, connections) | 200 | 404, 422 |
+| | `POST /hosts/{name}/inventory` (agent: processes, containers, connections, eBPF status) → `{services, edges, instrument: [{service, port}], promoted: [...]}` - the agent traces `instrument` with eBPF | 200 | 404, 422 |
 | | `GET /hosts/{name}` | 200 | 404 |
 | | `DELETE /hosts/{name}` | 204 | 404 |
 | **Service map** | `GET /service-map` | 200 | |

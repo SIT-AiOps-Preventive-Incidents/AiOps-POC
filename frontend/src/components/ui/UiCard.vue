@@ -15,5 +15,5 @@ defineProps({ title: String, flush: Boolean });
 .ui-card--flush { padding: 0; overflow: hidden; }
 .ui-card__head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
 .ui-card--flush .ui-card__head { padding: 16px 20px 0; }
-.ui-card__title { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.03em; }
+.ui-card__title { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text); letter-spacing: -0.01em; }
 </style>

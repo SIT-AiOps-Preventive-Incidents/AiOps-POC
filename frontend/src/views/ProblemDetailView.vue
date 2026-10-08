@@ -59,7 +59,7 @@ async function openTrace(id) {
             <div class="row small"><span class="muted">AI confidence</span><div class="conf"><div :style="{ width: `${(inc.confidence || 0) * 100}%` }" /></div><b>{{ Math.round((inc.confidence || 0) * 100) }}%</b></div>
             <p class="small dim mt-2">{{ inc.path === "known" ? "Matched a known problem from runbook memory" : `Written by ${inc.llm_model || "AI"}${inc.llm_ok ? "" : " (from evidence)"}` }} · analysis took {{ dur((inc.analysis_ms || 0) / 1000) }}</p>
           </template>
-          <UiWait v-else title="The AI is reading metrics, traces and logs..." />
+          <UiWait v-else title="The AI is reading metrics, traces and logs…" />
         </UiCard>
         <UiCard v-if="inc.evidence.length" title="Evidence">
           <ul class="ev"><li v-for="(e, i) in inc.evidence" :key="i">{{ e }}</li></ul>
@@ -84,7 +84,7 @@ async function openTrace(id) {
     </div>
     <UiSheet v-model="traceOpen" title="Request trace" :width="980"><TraceWaterfall :spans="trace || []" /></UiSheet>
   </div>
-  <div v-else class="page"><UiPageHeader title="Loading..." :back="{ to: '/problems', label: 'Problems' }" /></div>
+  <div v-else class="page"><UiPageHeader title="Loading…" :back="{ to: '/problems', label: 'Problems' }" /></div>
 </template>
 <style scoped>
 .rc { font-size: 19px; font-weight: var(--fw-semibold); line-height: 1.35; letter-spacing: -0.01em; }

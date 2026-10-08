@@ -13,7 +13,7 @@ const errored = computed(() => t.value.hops.some((h) => h.error) || (t.value.run
   <UiCard v-if="t.phase !== 'idle'" title="Test request">
     <template #actions><UiButton variant="plain" size="sm" @click="map.resetTest()">Clear</UiButton></template>
     <UiWait v-if="t.phase === 'sending'" title="Sending a request" subtitle="Through the firewall and load balancer like a real user" />
-    <UiWait v-else-if="t.phase === 'tracing'" title="Waiting for the trace" :subtitle="`HTTP ${t.run?.http_status} in ${ms(t.run?.duration_ms)} · collecting spans from every hop...`" />
+    <UiWait v-else-if="t.phase === 'tracing'" title="Waiting for the trace" :subtitle="`HTTP ${t.run?.http_status} in ${ms(t.run?.duration_ms)} · collecting spans from every hop…`" />
     <div v-else-if="t.phase === 'error'" class="bad">{{ t.error }}</div>
     <template v-else>
       <div class="summary">

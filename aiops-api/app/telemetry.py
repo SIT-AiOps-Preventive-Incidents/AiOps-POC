@@ -327,7 +327,7 @@ def _list_containers(with_stats: bool) -> list[dict]:
         return [{"name": c.name, "image": c.image.tags[0] if c.image.tags else "", "status": c.status} for c in cs]
     from concurrent.futures import ThreadPoolExecutor
     running = [c for c in cs if c.status == "running"]
-    with ThreadPoolExecutor(8) as ex:
+    with ThreadPoolExecutor(max(len(running), 1)) as ex:  # each stats call waits ~1-2 s for a second sample
         stats = list(ex.map(_container_stats, running))
     return sorted(stats, key=lambda x: -x["cpu_pct"])
 

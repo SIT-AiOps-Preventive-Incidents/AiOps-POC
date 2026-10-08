@@ -33,6 +33,7 @@ erDiagram
     int team_id FK
     text_array admin_urls
     text entry_url "test request entry"
+    text instrumentation "sdk, ebpf"
   }
   HOST {
     int id PK
@@ -43,6 +44,7 @@ erDiagram
     text_array ip_addresses
     int team_id FK
     timestamptz last_inventory_at
+    jsonb auto_instrument "eBPF tracer status"
   }
   DEPLOYMENT {
     int id PK
@@ -317,6 +319,7 @@ erDiagram
 | **Owner is a Team, referenced from Service, Host and Incident** | Ownership is copied onto the incident at analysis time, so history stays correct if a service later changes owner. |
 | **`entity_name` kept on Incident besides the FK** | The FK is `SET NULL` when a service is deleted; the incident still says what it was about. |
 | **Service kinds `service / network / process / external`, source `manual / traced / discovered`** | Traced apps, network devices, processes found by the host agent and external databases all share the map, the health checks and the incidents. |
+| **`instrumentation` on Service, `auto_instrument` on Host** (Release 1.1) | A discovered process is promoted to a traced service (`kind=service, source=traced, instrumentation=ebpf`) as soon as the host agent's eBPF tracer delivers its spans; the host keeps the tracer's last status for the UI. |
 | **Connection (service → service) observed by a Host** | Lines on the service map for apps that do not run OpenTelemetry yet. |
 | **Runbook score is derived, not stored** | Average of `FEEDBACK.score` over incidents that reused the runbook: no counters to drift. |
 | **`signal`, `facts`, `params`, `data` are JSONB** | They are snapshots whose shape depends on the skill/action (evidence of what the AI saw), not data we query by column. |

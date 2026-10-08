@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -41,15 +42,16 @@ async function addNodeExporter() {
         <UiSegmented v-model="os" :options="[{ value: 'mac', label: 'macOS', logo: 'apple' }, { value: 'linux', label: 'Linux', logo: 'linux' }]" label="System" /></div></li>
       <li class="step done"><span class="n">2</span><div class="body"><h2>Paste this in Terminal {{ os === "mac" ? "on the Mac" : "on the server" }}</h2>
         <UiCodeBlock :code="command" />
-        <p class="small muted mt-2">{{ os === "mac" ? "No admin password and nothing opened on your Mac. It starts again by itself when you log in." : "No sudo needed, only python3. Docker containers are found if the user can run docker." }}</p></div></li>
+        <p class="small muted mt-2">{{ os === "mac" ? "No admin password and nothing opened on your Mac. It starts again by itself when you log in." : "No sudo needed, only python3. If this user can run Docker, the services found are also traced with eBPF - no code change. Opt out with AIOPS_EBPF=0." }}</p></div></li>
       <li :class="['step', { done: connected }]"><span class="n">3</span><div class="body"><h2>See it and its services appear</h2>
-        <UiWait v-if="!host" :title="`Waiting for ${clean}...`" subtitle="This updates by itself." />
-        <UiWait v-else-if="!connected" :title="`${clean} is registered`" subtitle="Waiting for its first measurements..." />
+        <UiWait v-if="!host" :title="`Waiting for ${clean}…`" subtitle="This updates by itself." />
+        <UiWait v-else-if="!connected" :title="`${clean} is registered`" subtitle="Waiting for its first measurements…" />
         <template v-else>
           <UiWait done :title="`${clean} is connected`">CPU {{ Math.round(host.cpu) }}% · Memory {{ Math.round(host.mem) }}% · Disk {{ Math.round(host.disk) }}%</UiWait>
           <div class="section-label">Services found on {{ clean }} ({{ services.length }})</div>
           <UiList><ServiceRow v-for="s in services" :key="s.service" :service="s" />
-            <UiEmpty v-if="!services.length"><UiSpinner :size="16" /> Looking for listening ports and containers (about 1 minute)...</UiEmpty></UiList>
+            <UiEmpty v-if="!services.length"><UiSpinner :size="16" /> Looking for listening ports and containers (about 1 minute)…</UiEmpty></UiList>
+          <AutoTraceStatus class="mt" :host="host" :services="services" />
           <div class="row mt"><UiButton :to="`/computers/${clean}`">View {{ clean }}</UiButton><UiButton variant="tint" to="/map">See it on the map</UiButton></div>
         </template></div></li>
     </ol>

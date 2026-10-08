@@ -70,7 +70,8 @@ def create_service(service_name: str, display_name: str = "", kind: str = "servi
     return service(service_name)
 
 
-_SVC_FIELDS = {"display_name", "kind", "source", "language", "repo", "environment", "admin_urls", "entry_url", "entry_method"}
+_SVC_FIELDS = {"display_name", "kind", "source", "language", "repo", "environment", "admin_urls", "entry_url", "entry_method",
+               "instrumentation"}
 
 
 def update_service(name: str, **fields) -> dict | None:
