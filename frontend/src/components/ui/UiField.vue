@@ -18,6 +18,6 @@ const id = useId();
 .ui-field label { display: block; font-size: var(--fs-sm); color: var(--c-text-2); margin: 12px 0 6px; font-weight: var(--fw-medium); }
 .ui-field__hint { color: var(--c-text-3); font-weight: var(--fw-regular); }
 input, textarea { width: 100%; background: var(--c-fill); border: 1px solid transparent; border-radius: var(--radius-md); padding: 10px 12px; font-size: var(--fs-md); }
-input:focus, textarea:focus { outline: none; border-color: var(--c-primary); background: var(--c-surface); box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15); }
+input:focus, textarea:focus { outline: none; border-color: var(--c-primary); background: var(--c-surface); box-shadow: var(--focus-ring); }
 input.mono { font-family: var(--font-mono); font-size: 14px; }
 </style>

@@ -52,7 +52,7 @@ const badge = computed(() => app.kpi.open || 0);
 </template>
 <style scoped>
 .sidebar { width: var(--sidebar-w); flex: none; height: 100vh; display: flex; flex-direction: column; z-index: 30;
-  background: rgba(246, 246, 248, 0.92); backdrop-filter: saturate(180%) blur(20px); border-right: 0.5px solid var(--c-separator); }
+  background: var(--c-chrome-side); backdrop-filter: saturate(180%) blur(20px); border-right: 0.5px solid var(--c-separator); }
 .brand { display: flex; gap: 10px; align-items: center; padding: 20px 18px 14px; }
 .brand__logo { width: 32px; height: 32px; border-radius: 8px; background: var(--c-primary); color: #fff; display: grid; place-items: center; }
 .brand b { display: block; font-size: 16px; letter-spacing: -0.02em; }
@@ -61,7 +61,7 @@ nav { flex: 1; overflow: auto; padding: 4px 10px 10px; }
 .nav__sec { font-size: 12px; font-weight: var(--fw-semibold); color: var(--c-text-3); padding: 16px 10px 6px; }
 .nav__item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; color: var(--c-text); margin: 1px 0; }
 .nav__item .ui-icon { color: var(--c-primary); }
-.nav__item:hover { background: rgba(0, 0, 0, 0.04); }
+.nav__item:hover { background: var(--c-hover); }
 .nav__item.active { background: var(--c-primary); color: #fff; }
 .nav__item.active .ui-icon { color: #fff; }
 .nav__badge { margin-left: auto; background: var(--c-bad); color: #fff; font-size: 12px; font-weight: var(--fw-semibold); border-radius: 999px; padding: 0 7px; min-width: 20px; text-align: center; }

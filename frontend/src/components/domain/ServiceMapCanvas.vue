@@ -22,8 +22,12 @@ const graph = computed(() => {
   const clients = { id: "clients", name: "Clients", kind: "client", instances: [], hosts: [] };
   const all = [clients, ...d.nodes];
   const by = Object.fromEntries(all.map((n) => [n.id, { ...n }]));
+  // Clients enter at the public entry point (a service with a test-request URL). Other traced roots - e.g. apps the
+  // host agent traces with eBPF - are their own little flows and are drawn inside their computer's lane.
+  const publicEntries = d.entry.filter((r) => by[r]?.entry_url);
+  const entries = publicEntries.length ? publicEntries : d.entry.filter((r) => by[r]).slice(0, 1);
   const edges = [...d.edges.filter((e) => by[e.from] && by[e.to]),
-    ...d.entry.filter((r) => by[r]).map((r) => ({ from: "clients", to: r, type: "traced", rps: by[r].rps }))];
+    ...entries.map((r) => ({ from: "clients", to: r, type: "traced", rps: by[r].rps }))];
 
   // main flow = reachable from clients
   const main = new Set(["clients"]);
@@ -102,6 +106,16 @@ const edgeViews = computed(() => (graph.value?.edges || []).map((e) => {
   return { ...e, ...gm, key: `${e.from}>${e.to}`, bad: (e.error_rate ?? 0) > THR, sel, faded };
 }).filter(Boolean));
 
+// "frontend-a" -> "a", "CP26PT1.sit.kmutt.ac.th:3133630" -> "pid 3133630"; clipped to the chip width
+function chipLabel(n, inst) {
+  let id = inst.id.replace(`${n.id}-`, "");
+  const pid = id.match(/:(\d+)$/);
+  if (pid && id.includes(".")) id = `pid ${pid[1]}`;
+  const text = `${id} · ${Math.round((inst.rps / (n.rps || 1)) * 100)}%`;
+  const max = Math.floor(((W - 24 - (n.instances.length - 1) * 6) / n.instances.length - 12) / 6.2);
+  return text.length > max ? `${text.slice(0, Math.max(max - 1, 3))}…` : text;
+}
+
 const kindText = (n) => n.kind === "client" ? "Users on the internet" : n.kind === "network" ? (n.id.includes("firewall") ? "Firewall" : "Load balancer")
   : n.kind === "process" ? `Discovered on ${n.hosts?.[0] || "-"}` : n.kind === "external" ? "External dependency" : `Service · ${n.owner || "no owner"}`;
 const metric = (n) => n.kind === "client" ? "" : n.rps != null ? `${num(n.rps)} req/s · ${pct(n.error_rate)} errors`
@@ -149,7 +163,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
   <div class="canvas">
     <svg v-if="graph" :viewBox="`0 0 ${graph.W} ${graph.H}`" :style="{ minWidth: `${Math.min(graph.W, 860)}px` }" role="img" aria-label="Service map">
       <defs>
-        <marker v-for="[id, c] in [['a', '#c7c7cc'], ['ab', '#ff3b30'], ['as', '#0078d4']]" :id="`m-${id}`" :key="id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 9 5 0 9z" :fill="c" /></marker>
+        <marker v-for="[id, c] in [['a', 'var(--c-edge)'], ['ab', 'var(--c-bad)'], ['as', 'var(--c-primary)']]" :id="`m-${id}`" :key="id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 9 5 0 9z" :style="{ fill: c }" /></marker>
         <filter id="glow"><feGaussianBlur stdDeviation="3" /></filter>
       </defs>
       <text v-for="l in graph.mainLayers" :key="l" :x="24 + (l - 1) * CW" y="22" class="lane-label">{{ ["CLIENTS", "PERIMETER", "LOAD BALANCING", "WEB", "APPLICATION", "BACKEND", "DATA"][l - 1] || `TIER ${l}` }}</text>
@@ -157,7 +171,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <!-- host lanes -->
       <g v-for="lane in graph.laneBoxes" :key="lane.host">
         <rect x="12" :y="lane.y" :width="graph.W - 24" :height="lane.h" rx="14" class="lane" />
-        <image v-if="osLogo(lane.os)" :href="`/icons/b/${osLogo(lane.os)}.svg`" x="26" :y="lane.y + 11" width="16" height="16" />
+        <image v-if="osLogo(lane.os)" :class="{ 'ui-logo--mono': osLogo(lane.os) === 'apple' }" :href="`/icons/b/${osLogo(lane.os)}.svg`" x="26" :y="lane.y + 11" width="16" height="16" />
         <text :x="osLogo(lane.os) ? 48 : 26" :y="lane.y + 24" class="lane-title">{{ lane.host }} <tspan class="lane-sub">· {{ lane.count }} {{ lane.count === 1 ? "service" : "services" }} outside the shop request path</tspan></text>
       </g>
 
@@ -184,7 +198,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
         <g v-for="(inst, k) in n.instances" :key="inst.id" :class="['chip', { bad: inst.error_rate > THR || inst.problem_id, hit: visitedInst[inst.id] }]"
            :transform="`translate(${n.x + 12 + k * ((W - 24 - (n.instances.length - 1) * 6) / n.instances.length + 6)}, ${n.y + 64})`">
           <rect :width="(W - 24 - (n.instances.length - 1) * 6) / n.instances.length" height="24" rx="7" />
-          <text x="8" y="16">{{ inst.id.replace(`${n.id}-`, "") }} · {{ Math.round((inst.rps / (n.rps || 1)) * 100) }}%</text>
+          <text x="8" y="16">{{ chipLabel(n, inst) }}</text>
         </g>
         <g v-if="visited[n.id]" :transform="`translate(${n.x + W - 8}, ${n.y - 8})`">
           <rect :x="-60" y="0" width="64" height="20" rx="10" :class="['stamp', { bad: visited[n.id].error }]" />
@@ -207,7 +221,7 @@ svg { display: block; width: 100%; height: auto; }
 .lane { fill: var(--c-fill); stroke: var(--c-separator); stroke-dasharray: 5 5; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); }
 .lane-sub { font-weight: 400; fill: var(--c-text-2); }
-.edge { fill: none; stroke: #c7c7cc; stroke-width: 1.6; transition: opacity var(--dur); }
+.edge { fill: none; stroke: var(--c-edge); stroke-width: 1.6; transition: opacity var(--dur); }
 .edge.net { stroke-dasharray: 5 4; }
 .edge.bad { stroke: var(--c-bad); stroke-width: 2; }
 .edge.sel { stroke: var(--c-primary); stroke-width: 2.2; }
@@ -217,14 +231,14 @@ svg { display: block; width: 100%; height: auto; }
 .node { cursor: pointer; transition: opacity var(--dur); }
 .node .box { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1; }
 .node:hover .box, .node:focus-visible .box { stroke: var(--c-primary); }
-.node.disc .box { stroke-dasharray: 5 4; stroke: #b9b9c0; }
+.node.disc .box { stroke-dasharray: 5 4; stroke: var(--c-edge-disc); }
 .node.sel .box { stroke: var(--c-primary); stroke-width: 2; }
-.node.bad .box { stroke: var(--c-bad); stroke-width: 1.5; fill: #fff8f8; }
+.node.bad .box { stroke: var(--c-bad); stroke-width: 1.5; fill: var(--c-bad-surface); }
 .node.hit .box { stroke: var(--c-primary); stroke-width: 2.2; fill: var(--c-primary-tint); }
 .node.faded { opacity: 0.25; }
 .node:focus { outline: none; }
 .node:focus-visible .box { stroke-width: 2.5; }
-.logo-bg { fill: var(--c-fill); }
+.logo-bg { fill: var(--c-logo-bg); stroke: var(--c-separator); stroke-width: 0.5; }
 .sdot { stroke: var(--c-surface); stroke-width: 2; }
 .sdot.ok { fill: var(--c-ok); } .sdot.bad { fill: var(--c-bad); } .sdot.off { fill: var(--c-neutral); }
 .nm { font: 600 13.5px var(--font); fill: var(--c-text); }
@@ -238,6 +252,6 @@ svg { display: block; width: 100%; height: auto; }
 .stamp { fill: var(--c-primary); }
 .stamp.bad { fill: var(--c-bad); }
 .stamp-t { font: 700 11px var(--font); fill: #fff; }
-.halo { fill: rgba(0, 120, 212, 0.45); } .halo.bad { fill: rgba(255, 59, 48, 0.5); }
-.core { fill: var(--c-primary); stroke: #fff; stroke-width: 2; } .core.bad { fill: var(--c-bad); }
+.halo { fill: var(--c-halo); } .halo.bad { fill: var(--c-halo-bad); }
+.core { fill: var(--c-primary); stroke: var(--c-surface); stroke-width: 2; } .core.bad { fill: var(--c-bad); }
 </style>

@@ -15,6 +15,7 @@ Vue 3 (Composition API, `<script setup>`) + Vite + Pinia + Vue Router. Source: [
 | **Service map left-to-right by call depth, host lanes for discovered services, a "Send test request" that animates every hop** | Makes the request path tangible and shows where time is spent without reading a trace. |
 | **Semantic colour only for state** (green ok, red problem, purple AI, orange warning); brand blue only for actions | Status is visible at a glance and never confused with buttons. |
 | Real logos (Fluent UI icons, Devicon, Simple Icons) instead of drawn icons | Recognisable technologies; consistent icon grid. |
+| **Light and dark mode** (Auto follows the OS; toggle in the top bar and in Settings). Every colour is a token in `tokens.css` with a dark value; nothing in a component is hard-coded | Operators work at night and in dark NOCs; the choice is remembered per browser and applied before first paint (no white flash). |
 | Responsive: sidebar becomes a drawer < 760 px, sheets become bottom sheets, grids collapse | On-call engineers approve from their phone. |
 | Accessibility: focus ring on every control, `role=switch/radiogroup/meter`, `aria-live` toasts, reduced-motion respected (map animation is skipped) | |
 

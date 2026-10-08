@@ -23,7 +23,7 @@ onBeforeUnmount(() => removeEventListener("keydown", onKey));
   </Teleport>
 </template>
 <style scoped>
-.ui-sheet { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.28); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
+.ui-sheet { position: fixed; inset: 0; background: var(--c-overlay); overscroll-behavior: contain; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
 .ui-sheet__box { position: relative; background: var(--c-surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-2); padding: 24px; max-height: 88vh; overflow: auto; }
 .ui-sheet__title { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 6px; padding-right: 36px; }
 .ui-sheet__x { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--c-fill-2); color: var(--c-text-2); display: grid; place-items: center; cursor: pointer; }

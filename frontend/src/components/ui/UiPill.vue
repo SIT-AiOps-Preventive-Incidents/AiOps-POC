@@ -11,5 +11,5 @@ defineProps({ tone: { type: String, default: "neutral" } }); // ok bad warn ai i
 .ui-pill--ai { background: var(--c-ai-bg); color: var(--c-ai-text); }
 .ui-pill--info { background: var(--c-info-bg); color: var(--c-info-text); }
 .ui-pill--solid-bad { background: var(--c-bad-text); color: #fff; }
-.ui-pill--solid-warn { background: var(--c-warn); color: var(--c-text); }
+.ui-pill--solid-warn { background: var(--c-warn); color: #1d1d1f; }
 </style>
