@@ -651,4 +651,18 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 @app.get("/")
 async def index():
+    return FileResponse(os.path.join(STATIC, "vue", "index.html"))
+
+
+@app.get("/legacy")
+async def legacy_index():
+    """Keep the pre-migration UI available until Vue feature parity is accepted."""
     return FileResponse(os.path.join(STATIC, "index.html"))
+
+
+@app.get("/{frontend_path:path}")
+async def vue_history_fallback(frontend_path: str):
+    """Let Vue Router handle browser refreshes without masking missing API/static routes."""
+    if frontend_path.split("/", 1)[0] in {"api", "static", "install"}:
+        raise HTTPException(404)
+    return FileResponse(os.path.join(STATIC, "vue", "index.html"))

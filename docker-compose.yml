@@ -99,7 +99,9 @@ services:
 
   # ---------------- Platform web app (namespace "app") ----------------
   aiops-api:
-    build: ./aiops-api
+    build:
+      context: .
+      dockerfile: aiops-api/Dockerfile
     image: aiops-api:latest
     container_name: aiops-api
     environment:
