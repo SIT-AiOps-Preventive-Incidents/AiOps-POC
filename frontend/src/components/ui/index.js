@@ -1,0 +1,26 @@
+// Component library entry: every UI primitive, registered globally in main.js.
+export { default as UiAppTile } from "./UiAppTile.vue";
+export { default as UiAreaChart } from "./UiAreaChart.vue";
+export { default as UiButton } from "./UiButton.vue";
+export { default as UiCard } from "./UiCard.vue";
+export { default as UiCodeBlock } from "./UiCodeBlock.vue";
+export { default as UiDisclosure } from "./UiDisclosure.vue";
+export { default as UiEmpty } from "./UiEmpty.vue";
+export { default as UiField } from "./UiField.vue";
+export { default as UiIcon } from "./UiIcon.vue";
+export { default as UiList } from "./UiList.vue";
+export { default as UiListRow } from "./UiListRow.vue";
+export { default as UiLogo } from "./UiLogo.vue";
+export { default as UiMeter } from "./UiMeter.vue";
+export { default as UiPageHeader } from "./UiPageHeader.vue";
+export { default as UiPill } from "./UiPill.vue";
+export { default as UiSegmented } from "./UiSegmented.vue";
+export { default as UiSheet } from "./UiSheet.vue";
+export { default as UiSpinner } from "./UiSpinner.vue";
+export { default as UiStars } from "./UiStars.vue";
+export { default as UiStatusDot } from "./UiStatusDot.vue";
+export { default as UiStepper } from "./UiStepper.vue";
+export { default as UiSwitch } from "./UiSwitch.vue";
+export { default as UiTile } from "./UiTile.vue";
+export { default as UiToastHost } from "./UiToastHost.vue";
+export { default as UiWait } from "./UiWait.vue";

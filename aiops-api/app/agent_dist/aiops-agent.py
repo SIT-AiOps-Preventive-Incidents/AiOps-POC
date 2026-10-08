@@ -3,8 +3,11 @@
 
 Every 15 s it measures CPU, memory, disk and load, and every 30 s the top processes,
 then PUSHES them to the platform's OpenTelemetry endpoint (OTLP/HTTP JSON).
+Every minute it reports what listens here; the platform answers with the ports worth tracing, and on Linux
+the agent traces them with eBPF (Grafana Beyla in a container) - no code change in the apps.
 Nothing listens on this machine; it only makes outbound HTTP requests.
 """
+import hashlib
 import json
 import os
 import platform
@@ -15,16 +18,19 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.0.0"
+VERSION = "1.2.0"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
-HOST, OTLP = CFG["host"], CFG["otlp"].rstrip("/")
+HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
 DARWIN = platform.system() == "Darwin"
 NCPU = os.cpu_count() or 1
 
 
 def sh(cmd):
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
 
 
 def cpu_pct():
@@ -77,6 +83,153 @@ def top_processes(n=5):
     return rows
 
 
+# ---------------- service discovery ----------------
+def _split_addr(a):
+    a = a.strip().strip("[]")
+    host, _, port = a.rpartition(":")
+    return host.strip("[]"), int(port) if port.isdigit() else 0
+
+
+def _lsof(state):
+    """macOS: full command names via lsof field output (-F)."""
+    out, cur = [], {}
+    for line in sh(["lsof", "+c", "0", "-nP", "-iTCP", "-sTCP:" + state, "-Fpcn"]).splitlines():
+        tag, val = line[:1], line[1:]
+        if tag == "p":
+            cur = {"pid": int(val)}
+        elif tag == "c":
+            cur["process"] = val
+        elif tag == "n":
+            out.append({**cur, "name": val})
+    return out
+
+
+def _ss(args):
+    """Linux: ss output; the users:(("proc",pid=1,...)) part is only present for our own processes."""
+    rows = []
+    for line in sh(["ss", "-H", "-tn"] + args).splitlines():
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+        m = re.search(r'users:\(\("([^"]+)",pid=(\d+)', line)
+        rows.append({"local": parts[3], "remote": parts[4], "process": m.group(1) if m else "", "pid": int(m.group(2)) if m else None})
+    return rows
+
+
+def ip_addresses():
+    if DARWIN:
+        return sorted(set(re.findall(r"inet (\d+\.\d+\.\d+\.\d+)", sh(["ifconfig"]))) - {"127.0.0.1"})
+    return [x for x in sh(["hostname", "-I"]).split() if ":" not in x]
+
+
+def inventory():
+    listeners, conns = [], []
+    if DARWIN:
+        for r in _lsof("LISTEN"):
+            _, port = _split_addr(r["name"])
+            listeners.append({"process": r.get("process", ""), "pid": r.get("pid"), "port": port})
+        for r in _lsof("ESTABLISHED"):
+            if "->" not in r["name"]:
+                continue
+            loc, rem = r["name"].split("->", 1)
+            _, lport = _split_addr(loc)
+            rip, rport = _split_addr(rem)
+            conns.append({"process": r.get("process", ""), "pid": r.get("pid"), "local_port": lport,
+                          "remote_ip": rip, "remote_port": rport})
+    else:
+        for r in _ss(["-lp"]):
+            _, port = _split_addr(r["local"])
+            listeners.append({"process": r["process"], "pid": r["pid"], "port": port})
+        for r in _ss(["-p", "state", "established"]):
+            _, lport = _split_addr(r["local"])
+            rip, rport = _split_addr(r["remote"])
+            conns.append({"process": r["process"], "pid": r["pid"], "local_port": lport, "remote_ip": rip, "remote_port": rport})
+    seen, uniq = set(), []
+    for l in listeners:  # same process often listens on IPv4 and IPv6
+        k = (l["process"], l["port"])
+        if l["port"] and k not in seen:
+            seen.add(k)
+            uniq.append(l)
+    containers = []
+    for line in sh(["docker", "ps", "--format", "{{.Names}}\t{{.Image}}\t{{.Ports}}"]).splitlines():
+        p = line.split("\t")
+        if len(p) >= 2:
+            containers.append({"name": p[0], "image": p[1], "ports": p[2] if len(p) > 2 else ""})
+    return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers}
+
+
+def push_inventory():
+    if not API:
+        return
+    inv = inventory()
+    inv["ebpf"] = EBPF
+    req = urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/inventory", data=json.dumps(inv).encode(),
+                                 method="POST", headers={"Content-Type": "application/json"})
+    reply = json.loads(urllib.request.urlopen(req, timeout=15).read() or b"{}")
+    ebpf_apply(reply.get("instrument") or [])
+
+
+# ---------------- automatic tracing (eBPF) ----------------
+EBPF_IMAGE = CFG.get("ebpf_image", "grafana/beyla:3.38.0")
+EBPF_NAME = "aiops-ebpf"
+EBPF_CFG = os.path.join(DIR, "ebpf.yml")
+EBPF = {"state": "disabled", "services": [], "error": None, "version": EBPF_IMAGE.rsplit(":", 1)[-1]}
+
+
+def ebpf_blocker():
+    """Why automatic tracing cannot run here, or None."""
+    if str(CFG.get("ebpf", "auto")).lower() in ("off", "0", "false", "no"):
+        return "disabled", "turned off at install (AIOPS_EBPF=0)"
+    if DARWIN:
+        return "unavailable", "macOS has no eBPF - services are discovered, not traced"
+    if not os.path.exists("/sys/kernel/btf/vmlinux"):
+        return "unavailable", "kernel has no BTF (needs Linux 5.8+ with CONFIG_DEBUG_INFO_BTF)"
+    if not shutil.which("docker") or subprocess.run(["docker", "info"], capture_output=True).returncode != 0:
+        return "unavailable", "Docker is not installed or this user cannot run it (add the user to the docker group)"
+    return None
+
+
+def ebpf_config(targets):
+    lines = ["# generated by aiops-agent - which ports to trace and how each service is named",
+             "discovery:", "  exclude_otel_instrumented_services: true", "  instrument:"]
+    for t in targets:
+        lines += [f"    - open_ports: {int(t['port'])}", f"      name: {json.dumps(t['service'])}"]
+    lines += ["ebpf:", "  context_propagation: headers",
+              "otel_traces_export:", f"  endpoint: {OTLP}", ""]
+    return "\n".join(lines)
+
+
+def ebpf_apply(targets):
+    blocked = ebpf_blocker()
+    if blocked:
+        EBPF.update(state=blocked[0], error=blocked[1], services=[])
+        return
+    if not targets:
+        sh(["docker", "rm", "-f", EBPF_NAME])
+        EBPF.update(state="idle", error=None, services=[])
+        return
+    cfg = ebpf_config(targets)
+    digest = hashlib.sha1((cfg + EBPF_IMAGE).encode()).hexdigest()[:12]
+    cur = sh(["docker", "inspect", "-f", '{{index .Config.Labels "aiops.cfg"}} {{.State.Running}}', EBPF_NAME]).split()
+    EBPF["services"] = [t["service"] for t in targets]
+    if cur == [digest, "true"]:
+        EBPF.update(state="running", error=None)
+        return
+    with open(EBPF_CFG, "w") as f:
+        f.write(cfg)
+    sh(["docker", "rm", "-f", EBPF_NAME])
+    r = subprocess.run(["docker", "run", "-d", "--name", EBPF_NAME, "--restart", "unless-stopped", "--label", f"aiops.cfg={digest}",
+                        "--privileged", "--pid=host", "--network=host", "-v", f"{EBPF_CFG}:/config.yml:ro",
+                        "-v", "/sys/fs/bpf:/sys/fs/bpf", "-e", "BEYLA_CONFIG_PATH=/config.yml",
+                        "-e", f"OTEL_RESOURCE_ATTRIBUTES=host.name={HOST}", EBPF_IMAGE],
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode == 0:
+        EBPF.update(state="starting", error=None)
+        print(f"{time.strftime('%H:%M:%S')} eBPF tracing {len(targets)} service(s): {', '.join(EBPF['services'])}", flush=True)
+    else:
+        EBPF.update(state="error", error=(r.stderr or r.stdout).strip()[-300:])
+
+
 RESOURCE = {"attributes": [
     {"key": "service.name", "value": {"stringValue": "aiops-agent"}},
     {"key": "host.name", "value": {"stringValue": HOST}},
@@ -116,6 +269,8 @@ def main():
             push_metrics(vals)
             if tick % 2 == 0:
                 push_log({"type": "top_processes", "host": HOST, "processes": top_processes()})
+            if tick % 4 == 0:  # every minute: what runs here and who it talks to
+                push_inventory()
         except Exception as e:  # keep running through network blips (e.g. laptop leaves the VPN)
             print(f"{time.strftime('%H:%M:%S')} push failed: {e}", file=sys.stderr, flush=True)
         tick += 1

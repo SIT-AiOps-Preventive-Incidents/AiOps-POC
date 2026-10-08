@@ -1,6 +1,8 @@
 #!/bin/sh
 # AIOps host agent installer (macOS / Linux). No sudo, no inbound ports.
 #   curl -fsSL __API__/install/agent.sh | AIOPS_HOST_NAME=my-laptop sh
+# On Linux with Docker the agent also traces the services it finds with eBPF (no code change).
+# Opt out with AIOPS_EBPF=0.
 set -e
 API="__API__"
 OTLP="__OTLP__"
@@ -12,16 +14,20 @@ PY=$(command -v python3 || true)
 say() { printf '  %s\n' "$1"; }
 echo "AIOps agent -> $API"
 [ -n "$PY" ] || { say "python3 not found. Install it first (macOS: xcode-select --install)."; exit 1; }
-curl -fsS -m 5 "$API/api/ping" >/dev/null || { say "Cannot reach $API - are you on the campus network / VPN?"; exit 1; }
+curl -fsS -m 5 "$API/api/v1/health" -o /dev/null || curl -fsS -m 5 "$API/api/ping" >/dev/null || { say "Cannot reach $API - are you on the campus network / VPN?"; exit 1; }
 
 mkdir -p "$DIR"
 curl -fsSL "$API/install/aiops-agent.py" -o "$DIR/aiops-agent.py"
-printf '{"host":"%s","otlp":"%s","api":"%s"}\n' "$NAME" "$OTLP" "$API" > "$DIR/config.json"
+printf '{"host":"%s","otlp":"%s","api":"%s","ebpf":"%s"}\n' "$NAME" "$OTLP" "$API" "${AIOPS_EBPF:-auto}" > "$DIR/config.json"
 say "installed to $DIR"
 
 OS=$(uname -s)
-curl -fsS -X POST "$API/api/hosts/register" -H 'Content-Type: application/json' \
-  -d "{\"name\":\"$NAME\",\"os\":\"$(uname -sr)\",\"arch\":\"$(uname -m)\",\"kind\":\"$( [ "$OS" = Darwin ] && echo workstation || echo server )\"}" >/dev/null
+# distro name ("Ubuntu 26.04 LTS", "macOS 15.4") so the right logo is shown; kernel version as a fallback
+if [ "$OS" = Darwin ]; then OSNAME="macOS $(sw_vers -productVersion 2>/dev/null)"
+else OSNAME=$( . /etc/os-release 2>/dev/null && printf '%s' "$PRETTY_NAME" ); [ -n "$OSNAME" ] || OSNAME=$(uname -sr); fi
+OSNAME=$(printf '%s' "$OSNAME" | tr -d '"\\')
+curl -fsS -X PUT "$API/api/v1/hosts/$NAME" -H 'Content-Type: application/json' \
+  -d "{\"os\":\"$OSNAME\",\"arch\":\"$(uname -m)\",\"kind\":\"$( [ "$OS" = Darwin ] && echo workstation || echo server )\"}" >/dev/null
 say "registered as '$NAME'"
 
 if [ "$OS" = Darwin ]; then
@@ -47,6 +53,10 @@ else
   nohup "$PY" "$DIR/aiops-agent.py" >> "$DIR/agent.log" 2>&1 &
   ( crontab -l 2>/dev/null | grep -v aiops-agent.py; echo "@reboot $PY $DIR/aiops-agent.py >> $DIR/agent.log 2>&1" ) | crontab - 2>/dev/null || true
   say "running in background (restarts on reboot via crontab)"
+  if [ "${AIOPS_EBPF:-auto}" = 0 ]; then say "automatic tracing: off"
+  elif [ ! -e /sys/kernel/btf/vmlinux ]; then say "automatic tracing: not possible (kernel without BTF) - discovery only"
+  elif docker info >/dev/null 2>&1; then say "automatic tracing: on - services found here are traced with eBPF"
+  else say "automatic tracing: needs Docker for this user (sudo usermod -aG docker $USER) - discovery only for now"; fi
 fi
 echo "Done. '$NAME' shows up in AIOps within ~30 seconds."
 echo "Remove later with: curl -fsSL $API/install/uninstall.sh | sh"
