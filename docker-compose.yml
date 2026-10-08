@@ -98,8 +98,24 @@ services:
     networks: [aiops]
 
   # ---------------- Platform web app (namespace "app") ----------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: aiops
+      POSTGRES_PASSWORD: aiops  # internal network only, not published
+      POSTGRES_DB: aiops
+    volumes: ["pg-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "aiops"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+    mem_limit: 256m
+    networks: [aiops]
+
   aiops-api:
-    build: ./aiops-api
+    build: {context: ., dockerfile: aiops-api/Dockerfile}
     image: aiops-api:latest
     container_name: aiops-api
     environment:
@@ -111,6 +127,8 @@ services:
       TARGETS_DIR: /targets
       PUBLIC_URL: ${PUBLIC_URL:-http://cp26pt1.sit.kmutt.ac.th:8080}
       GRAFANA_URL: ${GRAFANA_URL:-http://cp26pt1.sit.kmutt.ac.th:3001}
+      DATABASE_URL: postgresql://aiops:aiops@postgres:5432/aiops
+      PLATFORM_HOST: cp26pt1
     volumes:
       - api-data:/data
       - ./prometheus/targets:/targets
@@ -118,7 +136,12 @@ services:
       - ./edge:/edge
       - edge-logs:/var/log/edge
     ports: ["8080:8080"]
-    depends_on: [prometheus, loki, tempo, ollama]
+    depends_on:
+      postgres: {condition: service_healthy}
+      prometheus: {condition: service_started}
+      loki: {condition: service_started}
+      tempo: {condition: service_started}
+      ollama: {condition: service_started}
     restart: unless-stopped
     mem_limit: 384m
     networks: [aiops]
@@ -178,6 +201,7 @@ volumes:
   loki-data:
   tempo-data:
   api-data:
+  pg-data:
   edge-logs:
   ollama:
     external: true
