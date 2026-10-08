@@ -14,7 +14,7 @@ defineProps({ logo: String, icon: { type: String, default: "cube" }, color: Stri
 </template>
 <style scoped>
 .ui-tile { position: relative; border-radius: var(--radius-sm); display: grid; place-items: center; flex: none; color: #fff; }
-.ui-tile--logo { background: var(--c-surface); color: var(--c-text-2); box-shadow: inset 0 0 0 0.5px var(--c-separator), 0 1px 2px rgba(0, 0, 0, 0.06); }
+.ui-tile--logo { background: var(--c-logo-bg); color: var(--c-text-2); box-shadow: inset 0 0 0 0.5px var(--c-separator), 0 1px 2px rgba(0, 0, 0, 0.06); }
 .ui-tile__dot { position: absolute; right: -3px; bottom: -3px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--c-surface); background: var(--c-neutral); }
 .tone-ok { background: var(--c-ok); } .tone-bad { background: var(--c-bad); } .tone-warn { background: var(--c-warn); }
 </style>

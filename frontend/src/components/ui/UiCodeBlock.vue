@@ -9,7 +9,7 @@ const { copy } = useClipboard();
   <div class="ui-code"><span ref="el">{{ code }}</span><button type="button" @click="copy(props.code, el)">Copy</button></div>
 </template>
 <style scoped>
-.ui-code { position: relative; background: #1d1d1f; color: #f5f5f7; border-radius: 12px; padding: 14px 76px 14px 16px;
+.ui-code { position: relative; background: var(--c-code-bg); color: var(--c-code-text); border-radius: 12px; padding: 14px 76px 14px 16px;
   font: 13px/1.6 var(--font-mono); white-space: pre-wrap; word-break: break-all; }
 button { position: absolute; top: 8px; right: 8px; background: rgba(255, 255, 255, 0.14); color: #fff; border: 0; border-radius: 7px;
   font: var(--fw-semibold) 12px var(--font); padding: 5px 10px; cursor: pointer; }
