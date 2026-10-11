@@ -5,7 +5,7 @@ import ProblemRow from "@/components/domain/ProblemRow.vue";
 import TraceWaterfall from "@/components/domain/TraceWaterfall.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
-import { ago, clockSec, ms, pct } from "@/lib/format";
+import { ago, clockSec, ms, num, pct } from "@/lib/format";
 import { useCatalogStore } from "@/stores/catalog";
 import { useUiStore } from "@/stores/ui";
 
@@ -37,9 +37,9 @@ async function remove() { await cat.removeService(props.name); router.push("/ser
     </div>
     <template v-else>
       <div class="grid grid--3">
-        <UiAreaChart title="Requests / s" :points="d.series.rps" />
-        <UiAreaChart title="Error rate" :points="d.series.error_rate" color="var(--c-chart-2)" :format="(v) => pct(v)" />
-        <UiAreaChart title="Response time (p95)" :points="d.series.p95" color="var(--c-chart-3)" :format="ms" />
+        <UiAreaChart title="Requests / s" :points="d.series.rps" :format="(v) => num(v)" :normal="d.normal?.rps" />
+        <UiAreaChart title="Error rate" :points="d.series.error_rate" color="var(--c-chart-2)" :format="(v) => pct(v)" :normal="d.normal?.error_rate" />
+        <UiAreaChart title="Response time (p95)" :points="d.series.p95" color="var(--c-chart-3)" :format="ms" :normal="d.normal?.p95" />
       </div>
       <div class="grid grid--2 mt">
         <div>

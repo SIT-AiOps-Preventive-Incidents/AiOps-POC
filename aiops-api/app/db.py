@@ -30,6 +30,8 @@ DEFAULT_SETTINGS = {
     "mem_threshold": "90",
     "disk_threshold": "90",
     "auth_fail_per_min": "40",
+    # how far from normal counts as a problem: low (fewer alerts) | normal | high (catch more)
+    "sensitivity": "normal",
     "verify_after_s": "60",
     # the platform's own containers are not part of the monitored application
     "discovery_ignore_containers": "aiops-api,ollama,prometheus,loki,tempo,grafana,otel-collector,node-exporter,postgres,loadgen",
