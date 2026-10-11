@@ -26,15 +26,16 @@ class Rule:
     down: bool = False          # alert when far below normal
     min_delta: float = 0.0      # never alert on a change smaller than this (absolute, metric units)
     min_rel: float = 0.0        # ... or smaller than this fraction of the normal level
-    min_value: float = 0.0      # "high" needs at least this value (2% errors, not 0.1%)
+    min_value: float = 0.0      # "high" needs at least this value (2% errors, not 0.1%; memory 70%, not 46%)
     min_level: float = 0.0      # "low" only makes sense if normal is at least this busy
     safety: float | None = None  # always alert at or above this, learned or not
 
 
 RULES = {
-    "cpu": Rule(up=True, down=True, min_delta=20, min_level=30),
-    "mem": Rule(up=True, down=True, min_delta=15, min_level=30, safety=97),
-    "disk": Rule(up=True, min_delta=8, safety=95),
+    # "higher than usual" only matters once the machine is actually getting full; below these it is shown, not raised
+    "cpu": Rule(up=True, down=True, min_delta=20, min_value=50, min_level=30),
+    "mem": Rule(up=True, down=True, min_delta=15, min_value=70, min_level=30, safety=97),
+    "disk": Rule(up=True, min_delta=8, min_value=80, safety=95),
     "error_rate": Rule(up=True, min_delta=0.02, min_value=0.02, safety=0.20),
     "p95": Rule(up=True, min_delta=100, min_rel=0.5),
     "rps": Rule(up=False, down=True, min_rel=0.6, min_level=0.5),
