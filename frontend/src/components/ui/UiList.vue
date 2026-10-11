@@ -1,5 +1,5 @@
 <script setup>
-// iOS inset grouped list. Rows are UiListRow; `plain` aligns separators to the left edge (rows without icons).
+// Bordered list of rows (UiListRow) with full-width dividers. `plain` is kept for older callers; it looks the same.
 defineProps({ plain: Boolean });
 </script>
 <template>
@@ -7,8 +7,8 @@ defineProps({ plain: Boolean });
     <slot />
   </div>
 </template>
-<style scoped>
-.ui-list { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: hidden; }
-.ui-list :deep(.ui-row + .ui-row)::before { content: ""; position: absolute; top: 0; left: 58px; right: 0; border-top: 0.5px solid var(--c-separator); }
-.ui-list--plain :deep(.ui-row + .ui-row)::before { left: 16px; }
+<style>
+/* not scoped: any row component placed in the list gets the divider */
+.ui-list { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; }
+.ui-list > * + * { border-top: 1px solid var(--c-separator); }
 </style>

@@ -20,7 +20,7 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Design System" subtitle="Tokens and components every page is built from. Light Azure blue on Apple system greys, SF system font, iOS inset lists. Rendered live from the code." />
+    <UiPageHeader title="Design system" subtitle="Tokens and components every page is built from, rendered live from the code. Blue means the system is working; orange means it is your turn. IBM Plex Sans and Plex Sans Thai, 1 px borders, dense rows." />
     <div class="section-label">Color tokens</div>
     <UiCard v-for="[group, list] in COLORS" :key="group" :title="group" class="mb">
       <div class="swatches"><div v-for="v in list" :key="v" class="sw"><span :style="{ background: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ values[v] }}</small></div></div>

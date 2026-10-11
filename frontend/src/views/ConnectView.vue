@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <UiPageHeader title="Connect" subtitle="What do you want AIOps to watch?" />
+    <UiPageHeader title="Add a host or service" subtitle="What do you want AIOps to watch?" />
     <div class="choices">
       <router-link to="/connect/computer" class="choice">
         <UiAppTile icon="laptop" color="var(--c-chart-4)" :size="48" />
@@ -27,7 +27,7 @@
 </template>
 <style scoped>
 .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.choice { background: var(--c-surface); border-radius: 18px; box-shadow: var(--shadow-1); padding: 22px; color: var(--c-text); display: flex; flex-direction: column; gap: 8px; border: 2px solid transparent; }
+.choice { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 22px; color: var(--c-text); display: flex; flex-direction: column; gap: 8px; border: 2px solid transparent; }
 .choice:hover { border-color: var(--c-primary); }
 .choice b { font-size: 19px; }
 .logos { display: flex; gap: 10px; }

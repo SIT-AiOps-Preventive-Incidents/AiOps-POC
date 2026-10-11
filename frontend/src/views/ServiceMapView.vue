@@ -9,7 +9,7 @@ import { useMapStore } from "@/stores/map";
 const map = useMapStore();
 usePolling(() => (map.test.phase === "playing" ? null : map.load()), 15000);
 const filters = computed(() => [
-  { value: "all", label: "All" }, { value: "problems", label: "Problems only" },
+  { value: "all", label: "All" }, { value: "problems", label: "Only problems" },
   ...(map.data?.hosts || []).map((h) => ({ value: `host:${h.name}`, label: h.name })),
 ]);
 const busy = computed(() => ["sending", "tracing", "playing"].includes(map.test.phase));
@@ -17,7 +17,7 @@ const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
 </script>
 <template>
   <div class="page page--wide">
-    <UiPageHeader title="Service Map" subtitle="Every hop a request takes, left to right. Computers you connect show what runs on them below.">
+    <UiPageHeader title="Service map" subtitle="Every hop a request takes, left to right. Computers you connect show what runs on them below.">
       <UiButton icon="play" :loading="busy" :disabled="!entry" @click="map.runTest()">{{ busy ? "Running test…" : "Send test request" }}</UiButton>
     </UiPageHeader>
     <UiSegmented v-model="map.filter" :options="filters" label="Filter the map" class="filter" />

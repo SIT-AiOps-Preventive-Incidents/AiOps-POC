@@ -1,5 +1,5 @@
 <script setup>
-// iOS segmented control. options: [{ value, label, logo?, icon? }]
+// Button group for one choice. options: [{ value, label, logo?, icon? }]
 import UiIcon from "./UiIcon.vue";
 import UiLogo from "./UiLogo.vue";
 defineProps({ modelValue: [String, Number], options: { type: Array, required: true }, label: String });
@@ -14,8 +14,10 @@ const emit = defineEmits(["update:modelValue"]);
   </div>
 </template>
 <style scoped>
-.ui-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; background: var(--c-fill-2); border-radius: 9px; padding: 2px; }
-.ui-seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 6px 14px; border-radius: 7px;
-  font-size: 13.5px; font-weight: var(--fw-medium); color: var(--c-text); cursor: pointer; touch-action: manipulation; }
-.ui-seg button.on { background: var(--c-surface); box-shadow: var(--shadow-seg); }
+.ui-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--c-border); border-radius: var(--radius-md); overflow: hidden; }
+.ui-seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--c-surface); padding: 6px 12px;
+  font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--c-text-2); cursor: pointer; touch-action: manipulation; }
+.ui-seg button + button { border-left: 1px solid var(--c-border); }
+.ui-seg button:hover { background: var(--c-fill); }
+.ui-seg button.on { background: var(--c-primary-tint); color: var(--c-primary); }
 </style>

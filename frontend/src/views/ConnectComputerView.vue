@@ -34,7 +34,7 @@ async function addNodeExporter() {
 </script>
 <template>
   <div class="page page--narrow">
-    <UiPageHeader title="Connect a computer" :back="{ to: '/connect', label: 'Connect' }" />
+    <UiPageHeader title="Add a host" :back="{ to: '/connect', label: 'Add a host or service' }" />
     <ol class="steps">
       <li class="step done"><span class="n">1</span><div class="body"><h2>Name it</h2>
         <UiField v-model="name" label="Computer name" />

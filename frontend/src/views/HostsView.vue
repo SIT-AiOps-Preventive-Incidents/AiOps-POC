@@ -7,8 +7,8 @@ usePolling(() => cat.loadHosts(), 10000);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Computers & Servers" subtitle="Machines that report CPU, memory and disk - and the services found running on them.">
-      <UiButton icon="add" to="/connect/computer">Connect a computer</UiButton>
+    <UiPageHeader title="Hosts" subtitle="Machines that report CPU, memory and disk - and the services found running on them.">
+      <UiButton icon="add" to="/connect/computer">Add a host</UiButton>
     </UiPageHeader>
     <div class="grid grid--3">
       <router-link v-for="h in cat.hosts" :key="h.name" :to="`/computers/${h.name}`" class="card">
@@ -19,7 +19,7 @@ usePolling(() => cat.loadHosts(), 10000);
         <div class="mt-2"><UiMeter label="CPU" :value="h.cpu" /><UiMeter label="Memory" :value="h.mem" :warn="80" /><UiMeter label="Disk" :value="h.disk" :warn="80" /></div>
         <div class="small dim mt-2">{{ h.services.length }} services · {{ h.agent === "aiops-agent" ? "AIOps agent" : "node_exporter" }}</div>
       </router-link>
-      <router-link to="/connect/computer" class="card add"><UiIcon name="add_circle" :size="30" /><b>Connect a computer</b></router-link>
+      <router-link to="/connect/computer" class="card add"><UiIcon name="add_circle" :size="30" /><b>Add a host</b></router-link>
     </div>
   </div>
 </template>

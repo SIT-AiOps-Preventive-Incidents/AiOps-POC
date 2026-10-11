@@ -24,9 +24,10 @@ onBeforeUnmount(() => removeEventListener("keydown", onKey));
 </template>
 <style scoped>
 .ui-sheet { position: fixed; inset: 0; background: var(--c-overlay); overscroll-behavior: contain; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
-.ui-sheet__box { position: relative; background: var(--c-surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-2); padding: 24px; max-height: 88vh; overflow: auto; }
-.ui-sheet__title { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 6px; padding-right: 36px; }
-.ui-sheet__x { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--c-fill-2); color: var(--c-text-2); display: grid; place-items: center; cursor: pointer; }
+.ui-sheet__box { position: relative; background: var(--c-surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-2); padding: 22px 24px; max-height: 88vh; overflow: auto; }
+.ui-sheet__title { font-size: var(--fs-xl); font-weight: var(--fw-semibold); margin-bottom: 6px; padding-right: 36px; }
+.ui-sheet__x { position: absolute; right: 12px; top: 12px; width: 30px; height: 30px; border-radius: var(--radius-md); border: 0; background: none; color: var(--c-text-2); display: grid; place-items: center; cursor: pointer; }
+.ui-sheet__x:hover { background: var(--c-fill); }
 .ui-sheet__foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 .sheet-enter-active, .sheet-leave-active { transition: opacity var(--dur) var(--ease); }
 .sheet-enter-from, .sheet-leave-to { opacity: 0; }

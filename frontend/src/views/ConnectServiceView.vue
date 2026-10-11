@@ -65,7 +65,7 @@ const ok = (b) => (b ? "ok" : "neutral");
 </script>
 <template>
   <div class="page page--narrow">
-    <UiPageHeader title="Connect a service" :back="{ to: '/connect', label: 'Connect' }" subtitle="For request-level detail. Connecting the computer already shows the app as a box; this adds requests, errors and latency." />
+    <UiPageHeader title="Add a service" :back="{ to: '/connect', label: 'Add a host or service' }" subtitle="For request-level detail. Connecting the computer already shows the app as a box; this adds requests, errors and latency." />
     <ol class="steps">
       <li :class="['step', { done: step > 1 }]"><span class="n">1</span><div class="body"><h2>Name your service</h2>
         <template v-if="step === 1">

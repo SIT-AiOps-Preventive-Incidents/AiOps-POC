@@ -5,14 +5,14 @@ import { useIncidentStore } from "@/stores/incidents";
 const store = useIncidentStore();
 usePolling(() => store.loadList(), 6000);
 const sections = [
-  { key: "needsApproval", title: "Needs your approval", empty: "Nothing is waiting for approval" },
-  { key: "inProgress", title: "In progress", empty: "No problems are being worked on" },
-  { key: "recentlyClosed", title: "Recently closed", empty: "No history yet. Try a demo problem." },
+  { key: "needsApproval", title: "Waiting for your approval", empty: "Nothing is waiting for you" },
+  { key: "inProgress", title: "In progress", empty: "No incidents are being worked on" },
+  { key: "recentlyClosed", title: "Recently closed", empty: "No history yet. Run a demo scenario to see one." },
 ];
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Problems" subtitle="The AI investigates every problem. Fixes are dry-run first and only applied after the owner approves." />
+    <UiPageHeader title="Incidents" subtitle="The AI investigates each incident and tests a fix in a dry run. A fix is applied only after its owner approves it." />
     <template v-for="s in sections" :key="s.key">
       <div class="section-label">{{ s.title }} ({{ store[s.key].length }})</div>
       <UiList>

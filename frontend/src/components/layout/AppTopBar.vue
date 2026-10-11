@@ -12,27 +12,32 @@ const nextTheme = () => ui.setTheme(THEMES[(THEMES.indexOf(mode.value) + 1) % TH
 </script>
 <template>
   <header class="topbar">
-    <button class="topbar__menu" aria-label="Open menu" @click="ui.navOpen = !ui.navOpen"><UiIcon name="list" :size="24" /></button>
-    <div class="chips">
-      <span class="chip"><UiStatusDot :tone="app.detectorLive ? 'ok' : 'neutral'" />{{ app.detectorLive ? "Monitoring live" : "Detector starting" }}</span>
-      <span class="chip"><UiLogo name="ollama" :size="14" alt="Ollama" /><UiStatusDot :tone="app.llm.up ? 'ok' : 'bad'" />{{ app.llm.up ? app.llm.active : "AI offline" }}</span>
+    <button class="topbar__menu" aria-label="Open menu" @click="ui.navOpen = !ui.navOpen"><UiIcon name="list" :size="22" /></button>
+    <div class="status">
+      <span class="status__item" :title="app.detectorLive ? 'The detector checked every service in the last minute' : 'The detector has not reported yet'">
+        <span :class="['beat', { live: app.detectorLive }]" />{{ app.detectorLive ? "Monitoring" : "Detector starting" }}</span>
+      <span class="status__item"><UiStatusDot :tone="app.llm.up ? 'ok' : 'bad'" :size="7" />AI {{ app.llm.up ? app.llm.active : "offline" }}</span>
     </div>
-    <div class="chips">
-      <UiButton variant="plain" size="sm" :href="app.grafanaUrl"><UiLogo name="grafana" :size="16" />Grafana</UiButton>
+    <div class="tools">
+      <UiButton variant="plain" size="sm" :href="app.grafanaUrl"><UiLogo name="grafana" :size="14" />Grafana</UiButton>
       <UiButton variant="plain" size="sm" href="/docs" icon="code">API</UiButton>
       <button class="theme" type="button" :aria-label="`Appearance: ${THEME[mode].label}. Switch appearance`" :title="`Appearance: ${THEME[mode].label}`"
-              @click="nextTheme"><UiIcon :name="THEME[mode].icon" :size="20" /></button>
+              @click="nextTheme"><UiIcon :name="THEME[mode].icon" :size="18" /></button>
     </div>
   </header>
 </template>
 <style scoped>
-.topbar { height: var(--topbar-h); flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 28px;
-  background: var(--c-chrome-top); backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid var(--c-separator); z-index: 5; }
-.topbar__menu { display: none; background: none; border: 0; color: var(--c-primary); padding: 6px; cursor: pointer; }
-.theme { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--c-surface);
-  color: var(--c-primary); box-shadow: var(--shadow-1); cursor: pointer; touch-action: manipulation; }
-.theme:hover { background: var(--c-primary-tint); }
-.chips { display: flex; gap: 8px; align-items: center; }
-.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--c-text-2); background: var(--c-surface); border-radius: 999px; padding: 4px 10px; box-shadow: var(--shadow-1); white-space: nowrap; }
-@media (max-width: 760px) { .topbar { padding: 0 16px; } .topbar__menu { display: block; } .chips:first-of-type .chip:first-child { display: none; } }
+.topbar { height: var(--topbar-h); flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 24px;
+  background: var(--c-chrome-top); border-bottom: 1px solid var(--c-border); z-index: 5; }
+.topbar__menu { display: none; background: none; border: 0; color: var(--c-text); padding: 6px; cursor: pointer; }
+.status { display: flex; gap: 18px; align-items: center; font-size: var(--fs-sm); color: var(--c-text-2); }
+.status__item { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.beat { width: 7px; height: 7px; border-radius: 50%; background: var(--c-neutral); }
+.beat.live { background: var(--c-ok); box-shadow: 0 0 0 0 var(--c-ok); animation: beat 2.4s var(--ease) infinite; }
+@keyframes beat { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-ok) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
+.tools { display: flex; gap: 4px; align-items: center; }
+.theme { display: grid; place-items: center; width: 30px; height: 30px; margin-left: 6px; border: 1px solid var(--c-border); border-radius: var(--radius-md);
+  background: var(--c-surface); color: var(--c-text-2); cursor: pointer; touch-action: manipulation; }
+.theme:hover { background: var(--c-fill); color: var(--c-text); }
+@media (max-width: 760px) { .topbar { padding: 0 12px; } .topbar__menu { display: block; } .status__item:last-child { display: none; } }
 </style>

@@ -2,15 +2,16 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #app { margin: 0; height: 100%; }
 body {
-  background: var(--c-bg); color: var(--c-text); font: var(--fs-md)/1.47 var(--font);
-  -webkit-font-smoothing: antialiased; letter-spacing: -0.005em;
+  background: var(--c-bg); color: var(--c-text); font: var(--fs-md)/1.5 var(--font);
+  -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 0;
 }
 a { color: var(--c-primary); text-decoration: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
+:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
 p { margin: 0; }
-code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+:lang(th), .th { font-family: var(--font-th); }
 
 /* layout primitives */
 .page { max-width: var(--page-max); margin: 0 auto; }
@@ -25,9 +26,9 @@ code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
 .grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .split { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: var(--sp-4); align-items: start; }
-.section-title { font-size: var(--fs-xl); font-weight: var(--fw-bold); letter-spacing: -0.015em; margin: var(--sp-6) 0 var(--sp-3); display: flex; justify-content: space-between; align-items: baseline; }
-.section-title a { font-size: var(--fs-md); font-weight: var(--fw-regular); }
-.section-label { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--c-text); letter-spacing: -0.01em; text-wrap: balance; margin: var(--sp-6) var(--sp-4) var(--sp-2); }
+.section-title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); margin: var(--sp-8) 0 var(--sp-3); display: flex; justify-content: space-between; align-items: baseline; }
+.section-title a { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+.section-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); text-wrap: balance; margin: var(--sp-6) 0 var(--sp-2); }
 .muted { color: var(--c-text-2); }
 .dim { color: var(--c-text-3); }
 .small { font-size: var(--fs-sm); }

@@ -17,14 +17,14 @@ async function run(id) {
   busy.value = id;
   try {
     await api.scenarios.run(id);
-    ui.toast(id === "reset" ? "Everything reset" : "Started. Opening Problems…");
+    ui.toast(id === "reset" ? "Everything reset" : "Started. Opening Incidents…");
     if (id !== "reset") setTimeout(() => router.push("/problems"), 900);
   } catch (e) { ui.toast(e.message); } finally { busy.value = ""; }
 }
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Demo Scenarios" subtitle="Break something on purpose and watch the AI find and fix it. Detection takes about 40 s, the AI another 1-3 minutes." />
+    <UiPageHeader title="Demo scenarios" subtitle="Break something on purpose and watch the AI find and fix it. Detection takes about 40 s, the AI another 1-3 minutes." />
     <UiList>
       <UiListRow v-for="s in SCEN" :key="s.id" :title="s.title" :detail="`${s.what} The AI ${s.ai}`">
         <template #leading><UiAppTile :icon="s.icon" color="var(--c-warn)" /></template>
