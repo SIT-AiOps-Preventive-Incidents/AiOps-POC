@@ -50,6 +50,15 @@ def test_past_incidents_are_not_learned_as_normal():
     assert b["high"] == 0.0 and judge("error_rate", 0.25, b)["state"] == "high"   # ...unless they are left out
 
 
+def test_more_memory_than_usual_but_plenty_left_is_not_raised():
+    # seen on cp26pt1: memory 27% -> 46% when the AI model was loaded; unusual, but nothing to wake anyone for
+    b = learn(history(27, spread=2), now=NOW)
+    assert judge("mem", 46, b)["state"] == "ok"
+    assert judge("mem", 85, b)["state"] == "high"
+    assert judge("cpu", 45, learn(history(4, spread=1), now=NOW))["state"] == "ok"
+    assert judge("disk", 60, learn(history(38, spread=0.2), now=NOW))["state"] == "ok"
+
+
 def test_busy_machine_at_90_percent_is_normal():
     b = learn(history(88), now=NOW)
     assert judge("cpu", 91, b)["state"] == "ok"
