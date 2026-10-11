@@ -19,7 +19,7 @@ from . import telemetry as tm
 
 SKILLS = {
     "service-error-analysis": {
-        "category": "Service", "name": "Service error analysis", "kinds": ["error_rate"],
+        "category": "Service", "name": "Service error analysis", "kinds": ["error_rate", "traffic_drop"],
         "description": "Failure-rate spikes in a service: trace error origin, error logs, version/commit correlation.",
         "tools": ["getMetric", "searchTraces", "searchLoadBalancerLogs", "getErrorRateByVersion", "getDeployHistory",
                   "searchLogs"]},
@@ -40,7 +40,8 @@ SKILLS = {
 
 KIND_LABEL = {"error_rate": "Failure rate increase", "latency": "Response time degradation",
               "host_cpu": "CPU saturation", "host_mem": "Memory saturation", "host_disk": "Low disk space",
-              "host_down": "Host unavailable", "auth_bruteforce": "Suspicious login activity"}
+              "host_down": "Host unavailable", "auth_bruteforce": "Suspicious login activity",
+              "traffic_drop": "Traffic dropped"}
 
 APP_CONTAINERS_EXCLUDE = {"ollama", "aiops-api", "prometheus", "loki", "tempo", "grafana", "otel-collector",
                           "node-exporter", "edge-fw", "edge-lb", "loadgen"}

@@ -4,7 +4,7 @@ import time
 import httpx
 from fastapi import APIRouter, Response
 
-from .. import health, repo
+from .. import detector, health, repo
 from .. import telemetry as tm
 from .errors import ApiError, not_found
 from .schemas import ServiceIn, ServicePatch
@@ -67,6 +67,7 @@ async def get_service(name: str):
                   "error_rate": round(emap.get(e["metric"].get("span_name"), 0) / float(e["value"][1]), 4)
                   if float(e["value"][1]) else 0} for e in eps]
     return {"service": s, "health": await health.service_health(s), "series": series, "endpoints": endpoints,
+            "normal": await detector.normal_ranges("service", name),
             "versions": await tm.error_rate_by_version(name, "5m"), "deployments": repo.deployments(name, limit=15),
             "logs": await tm.loki_logs(f'{{service_name="{name}"}}', minutes=15, limit=40),
             "traces": await tm.tempo_search(f'{{ resource.service.name = "{name}" }}', minutes=15, limit=15),

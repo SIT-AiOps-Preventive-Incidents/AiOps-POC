@@ -4,6 +4,7 @@ from fastapi import APIRouter, Response
 
 from .. import agent, health, inventory, repo
 from .. import telemetry as tm
+from .. import detector
 from ..detector import PLATFORM_HOST
 from .errors import ApiError, not_found
 from .schemas import HostIn, HostRegistration, Inventory
@@ -66,13 +67,14 @@ async def get_host(name: str):
     async def nothing():
         return None
     # everything below is independent - fetch it concurrently (container stats alone take ~2 s)
-    *ranges, procs, services, host_h, containers = await asyncio.gather(
+    *ranges, procs, services, host_h, containers, normal = await asyncio.gather(
         *(tm.prom_range(tm.host_expr(name, m), minutes=60, step=30) for m in metrics),
         agent.t_getTopProcesses(name) if h["agent"] == "aiops-agent" else nothing(),
         health.services_health(), health.host_health(h),
-        tm.containers(with_stats=True) if name == PLATFORM_HOST else nothing())
+        tm.containers(with_stats=True) if name == PLATFORM_HOST else nothing(),
+        detector.normal_ranges("host", name))
     series = {m: r[0]["points"] if r else [] for m, r in zip(metrics, ranges)}
-    return {"host": host_h, "series": series, "processes": (procs or {}).get("processes", []),
+    return {"host": host_h, "series": series, "normal": normal, "processes": (procs or {}).get("processes", []),
             "services": [s for s in services if name in s["hosts"]], "containers": containers or [],
             "incidents": [i for i in repo.list_incidents(limit=200) if i["entity"] == name][:10]}
 

@@ -20,16 +20,16 @@ async function remove() { await cat.removeHost(props.name); router.push("/comput
 </script>
 <template>
   <div v-if="d" class="page">
-    <UiPageHeader :title="d.host.name" :back="{ to: '/computers', label: 'Computers' }"
+    <UiPageHeader :title="d.host.name" :back="{ to: '/computers', label: 'Hosts' }"
                   :subtitle="`${d.host.os} · ${d.host.agent === 'aiops-agent' ? 'AIOps agent' : d.host.address} · owner ${d.host.owner || '-'}`">
       <UiButton v-if="d.host.problem_id" :to="`/problems/${d.host.problem_id}`">Open problem P-{{ d.host.problem_id }}</UiButton>
       <UiPill v-else :tone="d.host.status === 'healthy' ? 'ok' : 'neutral'">{{ d.host.status === "healthy" ? "Online" : d.host.status }}</UiPill>
       <UiButton variant="tint" icon="flowchart" :to="{ path: '/map' }">On the map</UiButton>
     </UiPageHeader>
     <div class="grid grid--4">
-      <UiAreaChart title="CPU" :points="d.series.cpu" :format="pct0" />
-      <UiAreaChart title="Memory" :points="d.series.mem" color="var(--c-chart-4)" :format="pct0" />
-      <UiAreaChart title="Disk" :points="d.series.disk" color="var(--c-chart-5)" :format="pct0" />
+      <UiAreaChart title="CPU" :points="d.series.cpu" :format="pct0" :normal="d.normal?.cpu" />
+      <UiAreaChart title="Memory" :points="d.series.mem" color="var(--c-chart-4)" :format="pct0" :normal="d.normal?.mem" />
+      <UiAreaChart title="Disk" :points="d.series.disk" color="var(--c-chart-5)" :format="pct0" :normal="d.normal?.disk" />
       <UiAreaChart title="Load (1 min)" :points="d.series.load" color="var(--c-chart-3)" />
     </div>
     <div class="section-label">Services on this computer ({{ d.services.length }})</div>
@@ -53,5 +53,5 @@ async function remove() { await cat.removeHost(props.name); router.push("/comput
       <template #footer><UiButton variant="plain" @click="confirmRemove = false">Cancel</UiButton><UiButton variant="danger" @click="remove">Remove</UiButton></template>
     </UiSheet>
   </div>
-  <div v-else class="page"><UiPageHeader :title="name" subtitle="Loading…" :back="{ to: '/computers', label: 'Computers' }" /></div>
+  <div v-else class="page"><UiPageHeader :title="name" subtitle="Loading…" :back="{ to: '/computers', label: 'Hosts' }" /></div>
 </template>

@@ -34,6 +34,24 @@ const steps = computed(() => {
   const failed = ["remediation_failed", "rejected"].includes(i.status);
   return s.map((x, k) => ({ label: x.label, time: clock(x.ts), state: x.done ? "done" : k === now ? (failed ? "failed" : x.you ? "you" : "current") : "todo" }));
 });
+// what tripped the detector, said against this entity's own normal range
+const METRIC = { error_rate: "Error rate", latency: "Response time (p95)", traffic_drop: "Traffic", host_cpu: "CPU", host_mem: "Memory",
+  host_disk: "Disk", auth_bruteforce: "Failed logins", host_down: "Heartbeat" };
+const fmtUnit = (v, u) => (v == null ? "-" : u === "ratio" ? `${(v * 100).toFixed(1)}%` : u === "%" ? `${Math.round(v)}%`
+  : u === "ms" ? `${Math.round(v)} ms` : u === "req/s" ? `${Number(v).toFixed(2)} req/s` : `${v} ${u || ""}`.trim());
+const trigger = computed(() => {
+  const s = inc.value?.signal;
+  if (!s || s.value == null) return null;
+  const name = METRIC[s.kind] || s.kind;
+  const now = fmtUnit(s.value, s.unit);
+  if (s.normal_low != null) {
+    const where = s.learned_from === "same_hour" ? `at this time of day over the last ${s.learned_days} days` : "over the last 24 hours";
+    const lo = fmtUnit(s.normal_low, s.unit), hi = fmtUnit(s.normal_high, s.unit);
+    return `${name} was ${now}. Normal for ${inc.value.entity} ${where} is ${lo === hi ? `about ${lo}` : `${lo} to ${hi}`}.`;
+  }
+  if (s.reason === "safety") return `${name} was ${now}, over the safety limit of ${fmtUnit(s.threshold, s.unit)}.`;
+  return s.threshold ? `${name} was ${now}; the limit is ${fmtUnit(s.threshold, s.unit)}.` : `${name} was ${now}.`;
+});
 const samples = computed(() => (inc.value?.steps || []).filter((s) => s.kind === "tool" && s.data?.output?.samples?.length)
   .flatMap((s) => s.data.output.samples).slice(0, 4));
 const trace = ref(null);
@@ -56,6 +74,7 @@ async function openTrace(id) {
         <UiCard title="What happened">
           <template v-if="inc.root_cause">
             <p class="rc">{{ inc.root_cause }}</p>
+            <p v-if="trigger" class="trig">{{ trigger }}</p>
             <p class="muted summary">{{ inc.summary }}</p>
             <div class="row small"><span class="muted">AI confidence</span><div class="conf"><div :style="{ width: `${(inc.confidence || 0) * 100}%` }" /></div><b>{{ Math.round((inc.confidence || 0) * 100) }}%</b></div>
             <p class="small dim mt-2">{{ inc.path === "known" ? "Matched a known problem from runbook memory" : `Written by ${inc.llm_model || "AI"}${inc.llm_ok ? "" : " (from evidence)"}` }}, analysis took {{ dur((inc.analysis_ms || 0) / 1000) }}</p>
@@ -89,6 +108,7 @@ async function openTrace(id) {
 </template>
 <style scoped>
 .rc { font-size: var(--fs-xl); font-weight: var(--fw-semibold); line-height: 1.4; }
+.trig { margin-top: 10px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--c-fill); font-size: var(--fs-sm); color: var(--c-text-2); }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 20px; }
 .facts b { font-weight: var(--fw-medium); color: var(--c-text); }
 .summary { margin: 10px 0 12px; }
