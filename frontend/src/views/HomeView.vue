@@ -1,70 +1,167 @@
 <script setup>
+// Overview answers three questions, top to bottom:
+//   1. Is everything OK?               -> one status line (orange when a person is needed)
+//   2. Does anything need me?          -> the incident queue, each with its lifecycle
+//   3. How is each system doing?       -> services and hosts as tables, with 7 days of incident history
 import { computed } from "vue";
-import HostRow from "@/components/domain/HostRow.vue";
-import ProblemRow from "@/components/domain/ProblemRow.vue";
-import ServiceRow from "@/components/domain/ServiceRow.vue";
-import { ago, dur } from "@/lib/format";
+import HistoryStrip from "@/components/domain/HistoryStrip.vue";
+import IncidentCard from "@/components/domain/IncidentCard.vue";
+import { usePolling } from "@/composables/usePolling";
+import { ago, dur, ms, num, pct } from "@/lib/format";
+import { HEALTH_TONE, kindIcon, languageLogo, osLogo } from "@/lib/vocab";
 import { useAppStore } from "@/stores/app";
+import { useIncidentStore } from "@/stores/incidents";
 
 const app = useAppStore();
-const others = computed(() => app.openProblems.filter((p) => p.status !== "awaiting_approval"));
-const hero = computed(() => {
-  const n = app.awaiting.length, m = others.value.length;
-  if (n) return { tone: "ai", icon: "wand", title: `${n} fix${n > 1 ? "es are" : " is"} waiting for your approval` };
-  if (m) return { tone: "bad", icon: "warning", title: `${m} problem${m > 1 ? "s are" : " is"} being investigated` };
-  return { tone: "ok", icon: "checkmark", title: "Everything is running normally" };
+const incidents = useIncidentStore();
+usePolling(() => incidents.loadList(), 15000);
+
+const queue = computed(() => [...app.awaiting, ...app.openProblems.filter((p) => p.status !== "awaiting_approval")]);
+const lastResolved = computed(() => incidents.list.find((i) => i.status === "resolved"));
+const status = computed(() => {
+  const n = app.awaiting.length, m = queue.value.length - n;
+  if (n) return { tone: "action", title: n > 1 ? `${n} fixes are waiting for your approval` : "A fix is waiting for your approval",
+    sub: "The AI has found the cause and tested each fix in a dry run. Nothing changes until you approve." };
+  if (m) return { tone: "info", title: m > 1 ? `The AI is investigating ${m} incidents` : "The AI is investigating an incident",
+    sub: "You will be asked to approve a fix as soon as one is ready." };
+  return { tone: "ok", title: "Everything is working normally",
+    sub: lastResolved.value ? `The last incident was resolved ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}.` : "No incidents so far." };
 });
-const QUICK = [
-  { to: "/connect/computer", icon: "laptop", color: "var(--c-chart-4)", title: "Connect a computer", sub: "One command; its services appear on the map" },
-  { to: "/connect/service", icon: "cube", color: "var(--c-primary)", title: "Connect a service", sub: "Turn on OpenTelemetry for request-level detail" },
-  { to: "/map", icon: "flowchart", color: "var(--c-chart-5)", title: "Send a test request", sub: "Watch one request travel every hop" },
-  { to: "/scenarios", icon: "flash", color: "var(--c-warn)", title: "Try a demo problem", sub: "Break something and watch the AI fix it" },
-];
+const historyFor = (name) => incidents.list.filter((i) => (i.entity_name || i.entity) === name);
+const healthLabel = { healthy: "Healthy", problem: "Problem", down: "Down", offline: "Offline", "no-data": "No data" };
+
+// How the platform handles an incident, with the real averages from this installation
+const FLOW = computed(() => [
+  { title: "Detect", value: dur(app.kpi.mttd_s), hint: "from the first bad signal" },
+  { title: "Investigate", value: "AI", hint: "reads metrics, traces and logs" },
+  { title: "Approve", value: "You", hint: "nothing changes without you", you: true },
+  { title: "Fix and verify", value: dur(app.kpi.mttr_s), hint: "from detection to verified" },
+]);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Home" />
-    <div v-if="app.overview" class="stack">
-      <section :class="['hero', hero.tone]">
-        <span class="hero__ic"><UiIcon :name="hero.icon" filled :size="30" /></span>
-        <div class="hero__t"><h2>{{ hero.title }}</h2>
-          <p class="muted">{{ app.services.length }} services, {{ app.discovered.length }} discovered processes and {{ app.hosts.length }} computers are monitored. Last check {{ ago(app.overview.detector?.ts) }}.</p></div>
-        <UiButton v-if="app.openProblems.length" to="/problems">Review</UiButton>
-        <UiButton v-else variant="tint" to="/connect">Connect more</UiButton>
+    <template v-if="app.overview">
+      <section :class="['status', `status--${status.tone}`]" aria-live="polite">
+        <span class="status__mark" aria-hidden="true">
+          <UiIcon :name="status.tone === 'ok' ? 'checkmark' : status.tone === 'action' ? 'person' : 'sparkle'" :size="20" />
+        </span>
+        <div class="status__text">
+          <h1>{{ status.title }}</h1>
+          <p>{{ status.sub }}</p>
+        </div>
+        <span class="status__checked">Checked {{ ago(app.overview.detector?.ts) }}</span>
       </section>
-      <div class="grid grid--4">
-        <UiTile label="Open problems" :value="app.kpi.open ?? 0" :hint="`${app.kpi.total ?? 0} in total`" :tone="app.kpi.open ? 'bad' : ''" />
-        <UiTile label="Waiting for approval" :value="app.kpi.awaiting_approval ?? 0" hint="fixes already dry-run" />
-        <UiTile label="Time to detect" :value="dur(app.kpi.mttd_s)" hint="average" />
-        <UiTile label="Time to fix" :value="dur(app.kpi.mttr_s)" hint="detected to verified" />
+
+      <ol class="flow" aria-label="How an incident is handled">
+        <li v-for="f in FLOW" :key="f.title" :class="{ you: f.you }">
+          <span class="flow__t">{{ f.title }}</span>
+          <b class="flow__v">{{ f.value }}</b>
+          <span class="flow__h">{{ f.hint }}</span>
+        </li>
+      </ol>
+
+      <section v-if="queue.length">
+        <h2 class="section-title">Open incidents <router-link to="/problems">All incidents</router-link></h2>
+        <div class="queue"><IncidentCard v-for="p in queue" :key="p.id" :incident="p" /></div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Services <router-link to="/map">Service map</router-link></h2>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Service</th><th>Status</th><th class="r">Requests/s</th><th class="r">Errors</th><th class="r">p95</th><th>Last 7 days</th></tr></thead>
+            <tbody>
+              <tr v-for="s in app.services" :key="s.service" @click="$router.push(`/services/${s.service}`)">
+                <td><div class="who"><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" />
+                  <router-link :to="`/services/${s.service}`" @click.stop>{{ s.name }}</router-link><span v-if="s.version" class="ver">v{{ s.version }}</span></div></td>
+                <td><span class="health"><UiStatusDot :tone="HEALTH_TONE[s.status]" :size="7" />{{ healthLabel[s.status] || s.status }}</span></td>
+                <td class="r num">{{ num(s.rps) }}</td>
+                <td :class="['r', 'num', { bad: s.error_rate > 0.05 }]">{{ pct(s.error_rate) }}</td>
+                <td class="r num">{{ ms(s.p95_ms) }}</td>
+                <td><HistoryStrip :incidents="historyFor(s.service)" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="cols">
+        <section>
+          <h2 class="section-title">Hosts <router-link to="/computers">All hosts</router-link></h2>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead><tr><th>Host</th><th>CPU</th><th>Memory</th><th>Disk</th><th>Last 7 days</th></tr></thead>
+              <tbody>
+                <tr v-for="h in app.hosts" :key="h.name" @click="$router.push(`/computers/${h.name}`)">
+                  <td><div class="who"><UiAppTile :logo="osLogo(h.os)" :icon="h.kind === 'workstation' ? 'laptop' : 'server'" :status="HEALTH_TONE[h.status]" :size="24" />
+                    <router-link :to="`/computers/${h.name}`" @click.stop>{{ h.name }}</router-link></div></td>
+                  <td v-for="m in ['cpu', 'mem', 'disk']" :key="m" class="num">
+                    <span :class="['use', { warn: h[m] >= 70, bad: h[m] >= 90 }]"><i><b :style="{ width: `${Math.min(h[m] || 0, 100)}%` }" /></i>{{ h[m] == null ? "-" : `${Math.round(h[m])}%` }}</span>
+                  </td>
+                  <td><HistoryStrip :incidents="historyFor(h.name)" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section v-if="app.discovered.length">
+          <h2 class="section-title">Found running on your hosts</h2>
+          <UiList>
+            <UiListRow v-for="s in app.discovered.slice(0, 5)" :key="s.service" :to="`/services/${s.service}`" :title="s.name"
+                       :subtitle="`On ${s.hosts.join(', ')}, seen ${ago(s.last_seen)}`">
+              <template #leading><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" /></template>
+            </UiListRow>
+          </UiList>
+        </section>
       </div>
-    </div>
-    <template v-if="app.openProblems.length">
-      <h2 class="section-title">Open problems <router-link to="/problems">See all</router-link></h2>
-      <UiList><ProblemRow v-for="p in app.openProblems" :key="p.id" :incident="p" /></UiList>
     </template>
-    <div class="grid grid--2">
-      <div>
-        <h2 class="section-title">Services <router-link to="/services">See all</router-link></h2>
-        <UiList><ServiceRow v-for="s in app.services" :key="s.service" :service="s" /></UiList>
-        <template v-if="app.discovered.length">
-          <h2 class="section-title">Found on your computers</h2>
-          <UiList><ServiceRow v-for="s in app.discovered.slice(0, 6)" :key="s.service" :service="s" /></UiList>
-        </template>
-      </div>
-      <div>
-        <h2 class="section-title">Computers & servers <router-link to="/computers">See all</router-link></h2>
-        <UiList><HostRow v-for="h in app.hosts" :key="h.name" :host="h" /></UiList>
-        <h2 class="section-title">Quick actions</h2>
-        <UiList><UiListRow v-for="q in QUICK" :key="q.to" :to="q.to" :title="q.title" :subtitle="q.sub">
-          <template #leading><UiAppTile :icon="q.icon" :color="q.color" /></template></UiListRow></UiList>
-      </div>
-    </div>
+    <UiWait v-else title="Loading the overview" />
   </div>
 </template>
 <style scoped>
-.hero { display: flex; align-items: center; gap: 16px; padding: 20px 22px; border-radius: var(--radius-lg); box-shadow: var(--shadow-1); background: var(--c-surface); }
-.hero__ic { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; color: #fff; flex: none; }
-.hero.ok .hero__ic { background: var(--c-ok); } .hero.bad .hero__ic { background: var(--c-bad); } .hero.ai .hero__ic { background: var(--c-ai); }
-.hero__t { flex: 1; min-width: 0; } .hero h2 { font-size: 22px; }
+.status { display: flex; align-items: center; gap: 14px; padding: 24px 0 18px; }
+.status__mark { width: 36px; height: 36px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
+.status--ok .status__mark { background: var(--c-ok); }
+.status--info .status__mark { background: var(--c-primary); }
+.status--action .status__mark { background: var(--c-action); color: var(--c-on-action); }
+.status__text { flex: 1; min-width: 0; }
+.status h1 { font-size: var(--fs-3xl); line-height: 1.2; font-weight: var(--fw-semibold); }
+.status p { color: var(--c-text-2); margin-top: 4px; }
+.status__checked { font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; align-self: flex-start; padding-top: 8px; }
+
+.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0;
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; background: var(--c-surface); }
+.flow li { position: relative; padding: 12px 16px 12px 18px; display: flex; flex-direction: column; min-width: 0; }
+.flow li + li { border-left: 1px solid var(--c-border); }
+.flow li + li::before { content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; transform: translateY(-50%) rotate(45deg);
+  background: var(--c-surface); border-top: 1px solid var(--c-border); border-right: 1px solid var(--c-border); }
+.flow__t { font-size: var(--fs-sm); color: var(--c-text-2); }
+.flow__v { font-size: var(--fs-xl); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; color: var(--c-primary); }
+.flow li.you .flow__v { color: var(--c-action-text); }
+.flow__h { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+.queue { display: flex; flex-direction: column; gap: 10px; }
+
+.table-wrap { border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow-x: auto; background: var(--c-surface); }
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
+.tbl th { text-align: left; font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--c-text-3); padding: 8px 14px; background: var(--c-raised);
+  border-bottom: 1px solid var(--c-border); white-space: nowrap; }
+.tbl td { padding: 9px 14px; border-top: 1px solid var(--c-separator); white-space: nowrap; }
+.tbl tbody tr:first-child td { border-top: 0; }
+.tbl tbody tr { cursor: pointer; }
+.tbl tbody tr:hover td { background: var(--c-hover); }
+.tbl .r { text-align: right; }
+.tbl .bad { color: var(--c-bad-text); font-weight: var(--fw-semibold); }
+.who { display: flex; align-items: center; gap: 10px; }
+.who a { color: var(--c-text); font-weight: var(--fw-medium); }
+.ver { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--c-text-3); }
+.health { display: inline-flex; align-items: center; gap: 7px; color: var(--c-text-2); }
+.use { display: inline-flex; align-items: center; gap: 8px; min-width: 84px; color: var(--c-text-2); }
+.use i { display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--c-fill-2); overflow: hidden; }
+.use b { display: block; height: 100%; background: var(--bar); }
+.use { --bar: var(--c-ok); }
+.use.warn { --bar: var(--c-warn); } .use.bad { --bar: var(--c-bad); color: var(--c-bad-text); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 1080px) { .cols { grid-template-columns: 1fr; } .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .flow li:nth-child(3) { border-left: 0; } .flow li:nth-child(n + 3) { border-top: 1px solid var(--c-border); } .flow li:nth-child(3)::before { display: none; } }
+@media (max-width: 760px) { .status h1 { font-size: 22px; } .status__checked { display: none; } }
 </style>

@@ -25,14 +25,14 @@ const steps = computed(() => {
   const ex = i.approval?.execution;
   const s = [
     { label: "Detected", ts: i.detected_at, done: true },
-    { label: "Analyzed", ts: i.analyzed_at, done: !!i.analyzed_at },
-    { label: "Approved", ts: i.approval?.decision === "approved" ? i.approval.decided_at : null, done: i.approval?.decision === "approved" },
-    { label: "Fixed", ts: ex?.ok ? ex.executed_at : null, done: !!ex?.ok },
+    { label: "AI investigated", ts: i.analyzed_at, done: !!i.analyzed_at },
+    { label: "Your approval", ts: i.approval?.decision === "approved" ? i.approval.decided_at : null, done: i.approval?.decision === "approved", you: true },
+    { label: "Fix applied", ts: ex?.ok ? ex.executed_at : null, done: !!ex?.ok },
     { label: "Verified", ts: i.status === "resolved" ? i.resolved_at : null, done: i.status === "resolved" },
   ];
   const now = s.findIndex((x) => !x.done);
   const failed = ["remediation_failed", "rejected"].includes(i.status);
-  return s.map((x, k) => ({ label: x.label, time: clock(x.ts), state: x.done ? "done" : k === now ? (failed ? "failed" : "current") : "todo" }));
+  return s.map((x, k) => ({ label: x.label, time: clock(x.ts), state: x.done ? "done" : k === now ? (failed ? "failed" : x.you ? "you" : "current") : "todo" }));
 });
 const samples = computed(() => (inc.value?.steps || []).filter((s) => s.kind === "tool" && s.data?.output?.samples?.length)
   .flatMap((s) => s.data.output.samples).slice(0, 4));
@@ -44,9 +44,10 @@ async function openTrace(id) {
 </script>
 <template>
   <div v-if="inc" class="page">
-    <UiPageHeader :title="inc.title" :back="{ to: '/problems', label: 'Problems' }">
-      <template #subtitle>{{ inc.entity_type === "host" ? "Computer" : "Service" }} <b>{{ inc.entity }}</b>
-        <span v-if="inc.affected.length"> · also affected {{ inc.affected.join(", ") }}</span> · detected {{ clockSec(inc.detected_at) }} · owner {{ inc.owner || "-" }}</template>
+    <UiPageHeader :title="inc.title" :back="{ to: '/problems', label: 'Incidents' }">
+      <template #subtitle><span class="facts"><span>{{ inc.entity_type === "host" ? "Host" : "Service" }} <b>{{ inc.entity }}</b></span>
+        <span v-if="inc.affected.length">Also affected <b>{{ inc.affected.join(", ") }}</b></span><span>Detected <b>{{ clockSec(inc.detected_at) }}</b></span>
+        <span>Owner <b>{{ inc.owner || "unassigned" }}</b></span><span class="mono dim">P-{{ inc.id }}</span></span></template>
       <SeverityPill :severity="inc.severity" /><StatusPill :status="inc.status" />
     </UiPageHeader>
     <UiStepper :steps="steps" />
@@ -57,7 +58,7 @@ async function openTrace(id) {
             <p class="rc">{{ inc.root_cause }}</p>
             <p class="muted summary">{{ inc.summary }}</p>
             <div class="row small"><span class="muted">AI confidence</span><div class="conf"><div :style="{ width: `${(inc.confidence || 0) * 100}%` }" /></div><b>{{ Math.round((inc.confidence || 0) * 100) }}%</b></div>
-            <p class="small dim mt-2">{{ inc.path === "known" ? "Matched a known problem from runbook memory" : `Written by ${inc.llm_model || "AI"}${inc.llm_ok ? "" : " (from evidence)"}` }} · analysis took {{ dur((inc.analysis_ms || 0) / 1000) }}</p>
+            <p class="small dim mt-2">{{ inc.path === "known" ? "Matched a known problem from runbook memory" : `Written by ${inc.llm_model || "AI"}${inc.llm_ok ? "" : " (from evidence)"}` }}, analysis took {{ dur((inc.analysis_ms || 0) / 1000) }}</p>
           </template>
           <UiWait v-else title="The AI is reading metrics, traces and logs…" />
         </UiCard>
@@ -77,24 +78,26 @@ async function openTrace(id) {
           <p v-if="!inc.notifications.length" class="small muted">None sent</p>
           <div v-if="inc.status !== 'analyzing'" class="row row--wrap mt-2">
             <UiButton variant="plain" size="sm" @click="store.reanalyze(inc.id).catch((e) => ui.toast(e.message))">Run analysis again</UiButton>
-            <UiButton v-if="!['resolved', 'closed', 'rejected'].includes(inc.status)" variant="plain" size="sm" @click="store.close(inc.id)">Close problem</UiButton>
+            <UiButton v-if="!['resolved', 'closed', 'rejected'].includes(inc.status)" variant="plain" size="sm" @click="store.close(inc.id)">Close incident</UiButton>
           </div>
         </UiCard>
       </div>
     </div>
     <UiSheet v-model="traceOpen" title="Request trace" :width="980"><TraceWaterfall :spans="trace || []" /></UiSheet>
   </div>
-  <div v-else class="page"><UiPageHeader title="Loading…" :back="{ to: '/problems', label: 'Problems' }" /></div>
+  <div v-else class="page"><UiPageHeader title="Loading…" :back="{ to: '/problems', label: 'Incidents' }" /></div>
 </template>
 <style scoped>
-.rc { font-size: 19px; font-weight: var(--fw-semibold); line-height: 1.35; letter-spacing: -0.01em; }
+.rc { font-size: var(--fs-xl); font-weight: var(--fw-semibold); line-height: 1.4; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.facts b { font-weight: var(--fw-medium); color: var(--c-text); }
 .summary { margin: 10px 0 12px; }
-.conf { flex: 1; height: 6px; background: var(--c-fill-2); border-radius: 3px; overflow: hidden; }
+.conf { flex: 1; height: 4px; background: var(--c-fill-2); border-radius: 2px; overflow: hidden; }
 .conf div { height: 100%; background: var(--c-primary); border-radius: 3px; }
 .ev { list-style: none; padding: 0; margin: 0; }
-.ev li { padding: 9px 0 9px 16px; position: relative; border-top: 0.5px solid var(--c-separator); font-size: 14.5px; }
+.ev li { padding: 8px 0 8px 16px; position: relative; border-top: 1px solid var(--c-separator); }
 .ev li:first-child { border-top: 0; }
-.ev li::before { content: ""; position: absolute; left: 0; top: 17px; width: 6px; height: 6px; border-radius: 50%; background: var(--c-primary); }
+.ev li::before { content: ""; position: absolute; left: 0; top: 16px; width: 6px; height: 6px; border-radius: 1px; background: var(--c-primary); }
 .rb { margin: 0; padding-left: 20px; } .rb li { margin: 4px 0; }
 .sticky { position: sticky; top: 12px; }
 @media (max-width: 1080px) { .sticky { position: static; } }

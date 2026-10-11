@@ -166,7 +166,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
         <marker v-for="[id, c] in [['a', 'var(--c-edge)'], ['ab', 'var(--c-bad)'], ['as', 'var(--c-primary)']]" :id="`m-${id}`" :key="id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 9 5 0 9z" :style="{ fill: c }" /></marker>
         <filter id="glow"><feGaussianBlur stdDeviation="3" /></filter>
       </defs>
-      <text v-for="l in graph.mainLayers" :key="l" :x="24 + (l - 1) * CW" y="22" class="lane-label">{{ ["CLIENTS", "PERIMETER", "LOAD BALANCING", "WEB", "APPLICATION", "BACKEND", "DATA"][l - 1] || `TIER ${l}` }}</text>
+      <text v-for="l in graph.mainLayers" :key="l" :x="24 + (l - 1) * CW" y="22" class="lane-label">{{ ["Clients", "Perimeter", "Load balancing", "Web", "Application", "Backend", "Data"][l - 1] || `Tier ${l}` }}</text>
 
       <!-- host lanes -->
       <g v-for="lane in graph.laneBoxes" :key="lane.host">
@@ -217,7 +217,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 <style scoped>
 .canvas { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: auto; padding: 8px; }
 svg { display: block; width: 100%; height: auto; }
-.lane-label { font: 600 11px var(--font); fill: var(--c-text-3); letter-spacing: 0.06em; }
+.lane-label { font: 500 12px var(--font); fill: var(--c-text-3); }
 .lane { fill: var(--c-fill); stroke: var(--c-separator); stroke-dasharray: 5 5; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); }
 .lane-sub { font-weight: 400; fill: var(--c-text-2); }

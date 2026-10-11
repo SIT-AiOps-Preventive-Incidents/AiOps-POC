@@ -20,13 +20,13 @@ const showChevron = computed(() => props.chevron ?? !!props.to);
   </component>
 </template>
 <style scoped>
-.ui-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 52px; position: relative; color: var(--c-text); }
+.ui-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; min-height: 48px; position: relative; color: var(--c-text); }
 .ui-row--tap { cursor: pointer; }
-.ui-row--tap:hover { background: var(--c-fill); }
+.ui-row--tap:hover { background: var(--c-hover); }
 .ui-row__text { flex: 1; min-width: 0; }
 .ui-row__title { font-weight: var(--fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-row__sub { font-size: var(--fs-sm); color: var(--c-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-row__detail { font-size: var(--fs-sm); color: var(--c-text-2); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ui-row__acc { font-size: 14px; color: var(--c-text-2); white-space: nowrap; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-.ui-row__chev { color: var(--c-neutral); }
+.ui-row__acc { font-size: var(--fs-sm); color: var(--c-text-2); white-space: nowrap; display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.ui-row__chev { color: var(--c-text-3); }
 </style>

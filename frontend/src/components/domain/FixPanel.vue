@@ -40,7 +40,7 @@ async function decide(decision) {
 </script>
 <template>
   <UiCard :title="waiting || investigating ? 'Recommended fix' : 'Fix'">
-    <UiWait v-if="investigating" title="The AI is investigating" :subtitle="`${inc.steps.length} steps so far · usually 1-3 minutes`" />
+    <UiWait v-if="investigating" title="The AI is investigating" :subtitle="`${inc.steps.length} steps so far, usually 1 to 3 minutes`" />
 
     <template v-else-if="waiting && chosen">
       <div class="fix"><div class="small muted">{{ pick === 0 ? "AI recommends" : "You picked" }}</div><div class="fix__a">{{ chosen.label }}</div></div>
@@ -50,7 +50,7 @@ async function decide(decision) {
         <UiSwitch v-model="ownerOk" label="I am the owner" />
       </div>
       <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
-      <UiButton class="mt" size="lg" block :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
+      <UiButton class="mt" variant="action" size="lg" block :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
         {{ chosen.type === "manual" ? "Acknowledge - I'll handle it" : "Approve fix" }}</UiButton>
       <div class="row row--between mt-2">
         <UiButton variant="danger" :loading="busy === 'reject'" @click="decide('reject')">Reject</UiButton>
@@ -59,7 +59,7 @@ async function decide(decision) {
       <UiDisclosure v-if="cands.length > 1" :card="false" :title="`Other options (${cands.length - 1})`" class="mt-2">
         <label v-for="(c, i) in cands" :key="c.id" :class="['alt', { sel: i === pick, blocked: !c.dry_run?.ok }]">
           <input type="radio" name="cand" :checked="i === pick" :disabled="!c.dry_run?.ok" @change="pick = i">
-          <span><b>{{ c.label }}</b><span v-if="i === 0" class="small muted"> · recommended</span>
+          <span><b>{{ c.label }}</b><span v-if="i === 0" class="small muted"> (recommended)</span>
             <span :class="['small', 'block', c.dry_run?.ok ? 'ok' : 'bad']">{{ c.dry_run?.ok ? "Dry run passed" : "Dry run failed: " + (c.dry_run?.checks || []).filter((x) => !x.ok).map((x) => x.name).join(", ") }}</span></span>
         </label>
       </UiDisclosure>
@@ -79,12 +79,12 @@ async function decide(decision) {
   </UiCard>
 </template>
 <style scoped>
-.fix { border-radius: 12px; background: var(--c-primary-tint); padding: 14px 16px; }
+.fix { border-radius: var(--radius-md); background: var(--c-primary-tint); padding: 12px 14px; }
 .fix__a { font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
-.owner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 0.5px solid var(--c-separator); border-bottom: 0.5px solid var(--c-separator); margin: 14px 0 4px; }
+.owner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--c-separator); border-bottom: 1px solid var(--c-separator); margin: 14px 0 4px; }
 .b { font-weight: var(--fw-semibold); }
-.alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-top: 6px; background: var(--c-fill); }
-.alt.sel { background: var(--c-primary-tint); box-shadow: inset 0 0 0 1.5px var(--c-primary); }
+.alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; margin-top: 6px; background: var(--c-fill); }
+.alt.sel { background: var(--c-primary-tint); box-shadow: inset 0 0 0 1px var(--c-primary); }
 .alt.blocked { opacity: 0.6; cursor: not-allowed; }
 .alt input { margin-top: 4px; }
 .block { display: block; }

@@ -1,9 +1,9 @@
 // Domain vocabulary: how backend states map to words, tones and icons. One place to change wording.
 
 export const INCIDENT_STATUS = {
-  open: { label: "New", tone: "warn" },
+  open: { label: "Detected", tone: "bad" },
   analyzing: { label: "AI investigating", tone: "ai" },
-  awaiting_approval: { label: "Needs approval", tone: "ai" },
+  awaiting_approval: { label: "Waiting for you", tone: "action" },
   remediating: { label: "Applying fix", tone: "info" },
   verifying: { label: "Checking fix", tone: "info" },
   resolved: { label: "Resolved", tone: "ok" },
@@ -27,7 +27,7 @@ export const INCIDENT_KIND = {
 export const STEP_KIND = {
   tool: { icon: "search", color: "var(--c-primary)" },
   llm: { icon: "sparkle", color: "var(--c-ai)" },
-  skill: { icon: "wand", color: "var(--c-warn)" },
+  skill: { icon: "wand", color: "var(--c-chart-4)" },
   analysis: { icon: "list", color: "var(--c-chart-5)" },
   memory: { icon: "book", color: "var(--c-chart-5)" },
   dryrun: { icon: "wrench", color: "var(--c-chart-5)" },

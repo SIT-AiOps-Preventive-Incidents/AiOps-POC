@@ -65,7 +65,7 @@ async function remove() { await cat.removeService(props.name); router.push("/ser
       <UiCard><div v-for="(l, i) in d.logs" :key="i" class="log"><span class="dim">{{ clockSec(l.ts) }}</span><span :class="['lv', l.level]">{{ l.level }}</span><span>{{ l.line }}</span></div>
         <UiEmpty v-if="!d.logs.length">No logs in the last 15 minutes</UiEmpty></UiCard>
     </template>
-    <template v-if="d.incidents.length"><div class="section-label">Problems</div><UiList><ProblemRow v-for="p in d.incidents" :key="p.id" :incident="p" /></UiList></template>
+    <template v-if="d.incidents.length"><div class="section-label">Incidents</div><UiList><ProblemRow v-for="p in d.incidents" :key="p.id" :incident="p" /></UiList></template>
     <UiButton class="mt" variant="danger" size="sm" @click="confirmRemove = true">Remove this service</UiButton>
     <UiSheet :model-value="!!trace" title="Request trace" :width="980" @update:model-value="trace = null"><TraceWaterfall :spans="trace || []" /></UiSheet>
     <UiSheet v-model="confirmRemove" :title="`Remove ${d.service.service_name}?`">

@@ -98,4 +98,6 @@ if os.path.isdir(WEB_DIST):
 
     @app.get("/", include_in_schema=False)
     async def index():
-        return FileResponse(os.path.join(WEB_DIST, "index.html"))
+        # assets are content-hashed and cache forever; the page that names them must be re-checked
+        # on every load, or browsers keep showing the previous release after a deploy
+        return FileResponse(os.path.join(WEB_DIST, "index.html"), headers={"Cache-Control": "no-cache"})

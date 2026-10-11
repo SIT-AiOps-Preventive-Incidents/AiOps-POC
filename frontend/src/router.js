@@ -2,14 +2,14 @@ import { createRouter, createWebHashHistory } from "vue-router";
 
 // Views are lazy-loaded so the first paint only ships the shell + the page you open.
 const routes = [
-  { path: "/", component: () => import("@/views/HomeView.vue"), meta: { title: "Home" } },
-  { path: "/problems", component: () => import("@/views/ProblemsView.vue"), meta: { title: "Problems" } },
-  { path: "/problems/:id", component: () => import("@/views/ProblemDetailView.vue"), props: true, meta: { title: "Problem" } },
+  { path: "/", component: () => import("@/views/HomeView.vue"), meta: { title: "Overview" } },
+  { path: "/problems", component: () => import("@/views/ProblemsView.vue"), meta: { title: "Incidents" } },
+  { path: "/problems/:id", component: () => import("@/views/ProblemDetailView.vue"), props: true, meta: { title: "Incident" } },
   { path: "/map", component: () => import("@/views/ServiceMapView.vue"), meta: { title: "Service Map" } },
   { path: "/services", component: () => import("@/views/ServicesView.vue"), meta: { title: "Services" } },
   { path: "/services/:name", component: () => import("@/views/ServiceDetailView.vue"), props: true, meta: { title: "Service" } },
-  { path: "/computers", component: () => import("@/views/HostsView.vue"), meta: { title: "Computers" } },
-  { path: "/computers/:name", component: () => import("@/views/HostDetailView.vue"), props: true, meta: { title: "Computer" } },
+  { path: "/computers", component: () => import("@/views/HostsView.vue"), meta: { title: "Hosts" } },
+  { path: "/computers/:name", component: () => import("@/views/HostDetailView.vue"), props: true, meta: { title: "Host" } },
   { path: "/connect", component: () => import("@/views/ConnectView.vue"), meta: { title: "Connect" } },
   { path: "/connect/computer", component: () => import("@/views/ConnectComputerView.vue"), meta: { title: "Connect a computer" } },
   { path: "/connect/service", component: () => import("@/views/ConnectServiceView.vue"), meta: { title: "Connect a service" } },

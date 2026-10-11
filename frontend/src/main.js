@@ -4,6 +4,14 @@ import App from "./App.vue";
 import router from "./router";
 import { applyTheme } from "./stores/ui";
 import * as ui from "./components/ui";
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-sans-thai/400.css";
+import "@fontsource/ibm-plex-sans-thai/500.css";
+import "@fontsource/ibm-plex-sans-thai/600.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 
