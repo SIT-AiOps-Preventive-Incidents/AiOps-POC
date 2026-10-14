@@ -17,6 +17,8 @@ def task_of(pid: str) -> str:
 def outcome(rec: dict) -> str:
     if rec.get("error"):
         return "error"
+    if any(t.get("kind") == "analysis" and t.get("evidence_ok") is False for t in rec.get("trace") or []):
+        return "no-evidence"   # the agent could not see the cluster; never counted as a pass
     r = rec.get("results") or {}
     if "success" in r:
         return "pass" if r["success"] else "fail"

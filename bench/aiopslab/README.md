@@ -31,12 +31,18 @@ make report          # results/REPORT.md
 make down            # remove the cluster, the model alias and ~/aiops-bench (results are kept)
 ```
 
+No `make` on the host? `./bench.sh up|test|run|report|down` does the same.
+
 `make up` needs Docker and network access. It uses the `ollama` container of the AIOps One stack for the LLM; set
 `BENCH_LLM_URL` / `BENCH_LLM_MODEL` to use another endpoint or model.
 
 ## Fairness rules
 
-- Both agents use the same model and the same context window (16k), at temperature 0.
+- Both agents use the same model and the same 16k context window. The baseline keeps AIOpsLab's prompt and sampling
+  (temperature 0.5); only its per-call timeout (60 s -> 900 s) and output cap (16,000 -> 1,024 tokens) are changed,
+  because CPU-only inference cannot meet them (`baseline.py`). The AIOps One agent asks the LLM at temperature 0.
+- One rule was changed after a trial run: weak log signs (connection retries) from pods that are otherwise healthy
+  are ignored, after the agent raised a false alarm on the no-fault problem. Read the no-fault result with that in mind.
 - The agent's rules are general SRE reasoning about symptoms. They never use knowledge of which service or fault a
   problem injects. Where the benchmark's expected label differs from what the evidence suggests (e.g. a database
   user removed is labelled "Network/Storage Issue"), the agent is not tuned to match.

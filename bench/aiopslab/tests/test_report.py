@@ -23,5 +23,11 @@ def test_counts_passes_per_task_and_agent(tmp_path):
     assert "error (10 s)" in text and (tmp_path / "REPORT.md").exists()
 
 
+def test_a_right_answer_without_evidence_is_not_a_pass(tmp_path):
+    write(tmp_path, "aiopsone", "x-detection-1", results={"Detection Accuracy": "Correct"},
+          trace=[{"kind": "analysis", "evidence_ok": False}])
+    assert "| aiopsone | 0/1 |" in report.main(str(tmp_path))
+
+
 def test_noop_problem_counts_as_detection():
     assert report.task_of("noop_detection_hotel_reservation-1") == "detection"

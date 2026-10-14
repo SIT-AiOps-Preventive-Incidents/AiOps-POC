@@ -79,8 +79,9 @@ class AIOpsOneAgent:
     def _decide(self) -> str:
         ev = evi.collect(self.ns, self.outputs)
         v = skills.judge(ev)
-        self.trace.append({"kind": "analysis", "pods": len(ev.pods), "findings": [f.__dict__ for f in ev.findings[:12]],
-                           "verdict": v.__dict__})
+        # no pods parsed means the agent saw nothing (shell broken, wrong namespace): a right answer would be luck
+        self.trace.append({"kind": "analysis", "evidence_ok": bool(ev.pods), "pods": len(ev.pods),
+                           "findings": [f.__dict__ for f in ev.findings[:12]], "verdict": v.__dict__})
         if self.task == "detection":
             return _code(f'submit("{"Yes" if v.anomaly else "No"}")')
         if self.task == "localization":
