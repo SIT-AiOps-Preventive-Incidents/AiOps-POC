@@ -73,5 +73,10 @@ export const api = {
   skills: { list: () => get("/skills") },
   notifications: { list: () => get("/notifications"), test: () => post("/notifications/test") },
   settings: { get: () => get("/settings"), update: (body) => patch("/settings", body) },
-  scenarios: { run: (id) => post(`/scenarios/${id}/runs`) },
+  scenarios: { list: () => get("/scenarios"), run: (id) => post(`/scenarios/${id}/runs`) },
+  network: {
+    get: () => get("/network"),
+    scan: () => post("/network/scans"),
+    events: () => get("/network/events"),
+  },
 };

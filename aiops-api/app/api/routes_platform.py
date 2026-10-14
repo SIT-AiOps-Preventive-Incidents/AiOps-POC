@@ -1,5 +1,6 @@
 """Everything else under /api/v1: overview, deployments, runbooks, skills, teams, notifications, settings,
 demo scenarios and the platform's own health."""
+import asyncio
 import os
 import random
 
@@ -8,6 +9,7 @@ from fastapi import APIRouter, Response
 
 from .. import db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
+from ..netdisco import scenarios as net_scenarios
 from .errors import ApiError, not_found
 from .schemas import DeploymentIn, RunbookPatch
 
@@ -138,6 +140,11 @@ async def patch_settings(body: dict):
 SCENARIOS = ["bad_deploy", "instance_fault", "slow_db", "cpu_hog", "brute_force", "reset"]
 
 
+def _scenarios() -> list[str]:
+    """The network faults are offered only while the network lab runs."""
+    return SCENARIOS[:-1] + (net_scenarios.NAMES if net_scenarios.available() else []) + SCENARIOS[-1:]
+
+
 async def _post(url: str, body: dict):
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.post(url, json=body)
@@ -147,13 +154,16 @@ async def _post(url: str, body: dict):
 
 @router.get("/scenarios", tags=["demo"])
 async def list_scenarios():
-    return SCENARIOS
+    return await asyncio.to_thread(_scenarios)
 
 
 @router.post("/scenarios/{scenario}/runs", status_code=202, tags=["demo"], summary="Inject a fault (or reset)")
 async def run_scenario(scenario: str):
-    if scenario not in SCENARIOS:
+    if scenario not in SCENARIOS and scenario not in net_scenarios.NAMES:
         raise not_found("scenario", scenario)
+    if scenario in net_scenarios.NAMES:
+        await net_scenarios.run(scenario)
+        return {"scenario": scenario, "status": "started"}
     if scenario == "bad_deploy":
         return await create_deployment(DeploymentIn(service="payment", version="1.3.0", commit="%07x" % random.randrange(16**7),
                                                     author="dev-somchai", message="feat(payment): apply member discount at charge time",
@@ -185,4 +195,5 @@ async def run_scenario(scenario: str):
             await _post("http://loadgen:8000/admin/attack", {"seconds": 0})
         except Exception:
             pass
+        await net_scenarios.reset()
     return {"scenario": scenario, "status": "started" if scenario != "reset" else "reset"}
