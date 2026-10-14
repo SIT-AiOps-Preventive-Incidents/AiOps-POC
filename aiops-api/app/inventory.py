@@ -40,6 +40,10 @@ def _ignored(proc: str, port: int) -> bool:
             or port >= 49152 or port in (22, 53, 631))
 
 
+# switches/routers of the demo network lab run as containers too; they are network assets (see netdisco), not services
+NETWORK_DEVICE_IMAGES = ("aiops-netnode",)
+
+
 def platform_ignores() -> set[str]:
     raw = db.setting("discovery_ignore_containers") or ""
     return {x.strip() for x in raw.split(",") if x.strip()}
@@ -61,7 +65,7 @@ def ingest(host: str, inv: dict) -> dict:
     ignore = platform_ignores() | {"aiops-ebpf"}  # the agent's own eBPF tracer
     for c in inv.get("containers") or []:
         name = c.get("name", "")
-        if not name or name in ignore:
+        if not name or name in ignore or (c.get("image") or "").startswith(NETWORK_DEVICE_IMAGES):
             continue
         svc = traced_by_container.get(name)
         if svc:  # already traced: just record that it runs on this host

@@ -1,0 +1,60 @@
+# AIOps One demo network lab: a core router and two access switches (FRR + SNMP + LLDP) between the demo services.
+#   core-rtr --- sw-app  --- seg-app : frontend-a, frontend-b, checkout
+#           \--- sw-data --- seg-data: payment, inventory, postgres
+# Every node also has a management port on the "aiops" network (eth0), where the AIOps collector polls SNMP.
+# Started and removed by up.sh / down.sh; the main stack runs the same with or without it.
+name: netlab
+x-node: &node
+  build: ./node
+  image: aiops-netnode:latest
+  restart: unless-stopped
+  mem_limit: 96m
+  cap_add: [NET_ADMIN, NET_RAW, SYS_ADMIN]
+  sysctls: {net.ipv4.ip_forward: 1}
+  labels: {aiops.netdevice: "true"}   # AIOps One polls every container with this label over SNMP
+services:
+  core-rtr:
+    <<: *node
+    container_name: core-rtr
+    hostname: core-rtr
+    volumes: ["./frr/core-rtr/frr.conf:/etc/frr/frr.conf"]
+    networks:
+      aiops: {}
+      nl-core-app: {ipv4_address: 10.20.255.2}
+      nl-core-data: {ipv4_address: 10.20.255.10}
+  sw-app:
+    <<: *node
+    container_name: sw-app
+    hostname: sw-app
+    volumes: ["./frr/sw-app/frr.conf:/etc/frr/frr.conf"]
+    networks:
+      aiops: {}
+      nl-core-app: {ipv4_address: 10.20.255.3}
+      nl-seg-app: {ipv4_address: 10.20.1.1}
+  sw-data:
+    <<: *node
+    container_name: sw-data
+    hostname: sw-data
+    volumes: ["./frr/sw-data/frr.conf:/etc/frr/frr.conf"]
+    networks:
+      aiops: {}
+      nl-core-data: {ipv4_address: 10.20.255.11}
+      nl-seg-data: {ipv4_address: 10.20.2.1}
+networks:
+  aiops: {external: true}
+  nl-core-app:
+    name: nl-core-app
+    internal: true
+    ipam: {config: [{subnet: 10.20.255.0/29, gateway: 10.20.255.6}]}
+  nl-core-data:
+    name: nl-core-data
+    internal: true
+    ipam: {config: [{subnet: 10.20.255.8/29, gateway: 10.20.255.14}]}
+  nl-seg-app:
+    name: nl-seg-app
+    internal: true
+    ipam: {config: [{subnet: 10.20.1.0/24, gateway: 10.20.1.254}]}
+  nl-seg-data:
+    name: nl-seg-data
+    internal: true
+    ipam: {config: [{subnet: 10.20.2.0/24, gateway: 10.20.2.254}]}

@@ -34,6 +34,9 @@ DEFAULT_SETTINGS = {
     "sensitivity": "normal",
     "verify_after_s": "60",
     # the platform's own containers are not part of the monitored application
+    # network discovery: addresses of real switches/routers to poll over SNMP (lab nodes are found by label)
+    "net_devices": "",
+    "net_snmp_community": "public",
     "discovery_ignore_containers": "aiops-api,ollama,prometheus,loki,tempo,grafana,otel-collector,node-exporter,postgres,loadgen",
 }
 
