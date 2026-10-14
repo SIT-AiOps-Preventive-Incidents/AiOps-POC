@@ -69,6 +69,25 @@ def test_data_store_problems_are_left_to_a_person():
     assert skills.mitigation_plan(e, skills.judge(e)) == []
 
 
+LOGS_STARTUP_NOISE = """== pod/frontend-6b9d8c7f5-x2k4p
+2026/10/14 06:44:52 grpc/lb/consul: error retrieving instances from Consul: dial tcp 10.96.229.58:8500: connect: connection refused
+== pod/jaeger-67445b6dd6-qxk2r
+last error: connection error: desc = "transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported"
+"""
+
+
+def test_retry_noise_from_healthy_pods_is_not_an_incident():
+    # seen on AIOpsLab's no-fault problem: startup and IPv6 retries in pods that are Running, Ready, 0 restarts
+    assert not skills.judge(ev(PODS_HEALTHY, LOGS_STARTUP_NOISE)).anomaly
+
+
+def test_the_same_errors_count_when_the_pod_is_in_trouble():
+    crash_frontend = PODS_HEALTHY.replace("frontend-6b9d8c7f5-x2k4p                  1/1     Running   0",
+                                          "frontend-6b9d8c7f5-x2k4p                  0/1     CrashLoopBackOff   3")
+    v = skills.judge(ev(crash_frontend, LOGS_STARTUP_NOISE))
+    assert v.anomaly and v.fault_kind == "network" and v.culprits == ["frontend"]
+
+
 def test_unhealthy_without_a_cause_is_flagged_but_not_confident():
     v = skills.judge(ev(PODS_GEO_CRASH))
     assert v.anomaly and not v.confident and v.culprits == ["geo"]
@@ -104,6 +123,14 @@ def test_agent_reads_evidence_then_submits_one_answer():
     assert [x.split("(")[0].strip("`\n") for x in actions] == ["exec_shell", "exec_shell", "exec_shell", "submit"]
     assert actions[-1] == '```\nsubmit(["mongodb-geo"])\n```'
     assert a.trace[0]["task"] == "localization"
+    assert next(t for t in a.trace if t["kind"] == "analysis")["evidence_ok"] is True
+
+
+def test_agent_records_when_it_could_not_see_the_cluster():
+    a = AIOpsOneAgent()
+    a.init_context("Namespace: test-hotel-reservation", "", {"submit(has_anomaly)": "has_anomaly"})
+    _run(a, ["Error response from daemon: No such container", "", ""])
+    assert next(t for t in a.trace if t["kind"] == "analysis")["evidence_ok"] is False
 
 
 def test_mitigation_runs_dry_run_then_apply_then_verify():

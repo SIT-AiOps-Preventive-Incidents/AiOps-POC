@@ -25,7 +25,19 @@ class Verdict:
     reason: str
 
 
+WEAK = {"network", "crash"}   # common in healthy apps (startup races, retries); need corroboration
+
+
+def relevant(ev: Evidence) -> list:
+    """Drop weak log signs from components that are otherwise fine: a pod that is Running, Ready, never restarted and
+    has no warning event, yet logs connection errors, is retrying - not an incident on its own. Strong signs
+    (auth, storage, config) and anything from an unhealthy component always count."""
+    troubled = {f.component for f in ev.findings if f.source in ("pods", "events")}
+    return [f for f in ev.findings if not (f.source == "logs" and f.kind in WEAK and f.component not in troubled)]
+
+
 def judge(ev: Evidence) -> Verdict:
+    ev = Evidence(ev.namespace, ev.pods, relevant(ev), ev.raw)
     if not ev.findings:
         return Verdict(False, [], None, True, "every pod healthy, no warning events, no error lines in logs")
     # the strongest specific sign wins; "unhealthy" alone only says something is wrong, not what

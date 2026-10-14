@@ -30,9 +30,8 @@ def make_agent(name: str):
     if name == "aiopsone-rules":
         return AIOpsOneAgent(NoLLM())
     if name == "baseline":
-        from clients.generic_openai import GenericOpenAIAgent
-        return GenericOpenAIAgent(base_url=os.environ["BENCH_LLM_URL"], model=os.environ["BENCH_LLM_MODEL"],
-                                  api_key=os.environ.get("BENCH_LLM_KEY", "none"))
+        from baseline import make_baseline
+        return make_baseline()
     raise SystemExit(f"unknown agent {name}")
 
 

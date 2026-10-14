@@ -23,8 +23,11 @@ if [ ! -d "$AIOPSLAB_DIR/.git" ]; then
 fi
 git -C "$AIOPSLAB_DIR" checkout -q "$AIOPSLAB_REF"
 git -C "$AIOPSLAB_DIR" submodule update -q --init --recursive
+# localhost, not "kind": with "kind" AIOpsLab runs every agent command inside a container literally named
+# kind-control-plane, which only exists for a cluster named "kind". On localhost the commands use this host's kubectl,
+# whose context points at our cluster (AIOPSLAB_CLUSTER picks the same context for AIOpsLab's own API calls).
 cat > "$AIOPSLAB_DIR/aiopslab/config.yml" <<CFG
-k8s_host: kind
+k8s_host: localhost
 k8s_user: $(whoami)
 ssh_key_path: ~/.ssh/id_rsa
 data_dir: data
@@ -36,10 +39,13 @@ if [ ! -x "$BENCH_HOME/venv/bin/python" ]; then
   "$BENCH_HOME/bin/uv" venv -q --python 3.12 "$BENCH_HOME/venv"
 fi
 VIRTUAL_ENV="$BENCH_HOME/venv" "$BENCH_HOME/bin/uv" pip install -q -e "$AIOPSLAB_DIR" pytest
+# AIOpsLab's baseline clients import these, but its package does not declare them
+VIRTUAL_ENV="$BENCH_HOME/venv" "$BENCH_HOME/bin/uv" pip install -q groq openai azure-identity python-dotenv wandb
 
 if ! kind get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
   kind create cluster --name "$CLUSTER" --config "$HERE/kind-1node.yaml"
 fi
+kubectl config use-context "kind-$CLUSTER" >/dev/null
 
 if [ -n "${BENCH_LLM_URL:-}" ] && ! docker exec "$OLLAMA_CONTAINER" ollama list 2>/dev/null | grep -q "^$BENCH_LLM_MODEL"; then
   printf 'FROM %s\nPARAMETER num_ctx 16384\n' "$BENCH_BASE_MODEL" | docker exec -i "$OLLAMA_CONTAINER" sh -c "cat > /tmp/Modelfile.bench && ollama create $BENCH_LLM_MODEL -f /tmp/Modelfile.bench"
