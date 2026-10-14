@@ -1,0 +1,135 @@
+# dc_clos, small (1 super-spine, 2 spines, 2 leaves, DNS, web server, client: ~7 containers), rows copied from
+# NIKA's pool (benchmark/working/pool/dc_clos/*.yaml at the pinned commit), ground truth included.
+# The playbook was written for the nine faults after healthy. The last two (mtu_mismatch, bgp_asn_misconfig) are
+# held out: the agent has no rule that names them, so they show how it behaves on a fault it does not know.
+cases:
+- scenario: dc_clos
+  problem: healthy
+  topo_size: s
+  inject: {}
+  root_causes: []
+- scenario: dc_clos
+  problem: host_incorrect_dns
+  topo_size: s
+  inject:
+    host_name: client_0
+  root_causes:
+  - resource:
+      kind: node
+      node: client_0
+    fault_type: host_incorrect_dns
+- scenario: dc_clos
+  problem: host_incorrect_gateway
+  topo_size: s
+  inject:
+    host_name: client_0
+  root_causes:
+  - resource:
+      kind: node
+      node: client_0
+    fault_type: host_incorrect_gateway
+- scenario: dc_clos
+  problem: dns_service_down
+  topo_size: s
+  inject:
+    host_name: dns_pod0
+  root_causes:
+  - resource:
+      kind: node
+      node: dns_pod0
+    fault_type: dns_service_down
+- scenario: dc_clos
+  problem: dns_lookup_latency
+  topo_size: s
+  inject:
+    delay_ms: '1000'
+    host_name: dns_pod0
+    intf_name: eth0
+  root_causes:
+  - resource:
+      kind: node
+      node: dns_pod0
+    fault_type: dns_lookup_latency
+- scenario: dc_clos
+  problem: receiver_resource_contention
+  topo_size: s
+  inject:
+    duration: '3600'
+    host_name: client_0
+    large_url: http://web0.pod0/large.bin
+    peer_host: webserver0_pod0
+    stress_cpus: '4'
+  root_causes:
+  - resource:
+      kind: node
+      node: client_0
+    fault_type: receiver_resource_contention
+- scenario: dc_clos
+  problem: link_down
+  topo_size: s
+  inject:
+    host_name: client_0
+    intf_name: eth0
+  root_causes:
+  - resource:
+      kind: link
+      name: client_0:eth0--super_spine_router_0:eth2
+    fault_type: link_down
+- scenario: dc_clos
+  problem: icmp_acl_block
+  topo_size: s
+  inject:
+    host_name: client_0
+  root_causes:
+  - resource:
+      kind: node
+      node: client_0
+    fault_type: icmp_acl_block
+- scenario: dc_clos
+  problem: http_acl_block
+  topo_size: s
+  inject:
+    host_name: client_0
+  root_causes:
+  - resource:
+      kind: node
+      node: client_0
+    fault_type: http_acl_block
+- scenario: dc_clos
+  problem: host_static_blackhole
+  topo_size: s
+  inject:
+    host_name: leaf_router_0_0
+  root_causes:
+  - resource:
+      kind: node
+      node: leaf_router_0_0
+    fault_type: host_static_blackhole
+- scenario: dc_clos
+  problem: mtu_mismatch
+  topo_size: s
+  inject:
+    host_name: leaf_router_0_1
+    intf_name: eth2
+    mtu: '500'
+  root_causes:
+  - resource:
+      kind: interface
+      node: leaf_router_0_1
+      name: eth2
+    fault_type: mtu_mismatch
+  - resource:
+      kind: interface
+      node: webserver0_pod0
+      name: eth0
+    fault_type: mtu_mismatch
+- scenario: dc_clos
+  problem: bgp_asn_misconfig
+  topo_size: s
+  inject:
+    host_name: spine_router_0_0
+  root_causes:
+  - resource:
+      kind: node
+      node: spine_router_0_0
+    fault_type: bgp_asn_misconfig
