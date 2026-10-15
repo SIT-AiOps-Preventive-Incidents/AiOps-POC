@@ -44,7 +44,7 @@ const waiting = computed(() => i.value.status === "awaiting_approval");
   </article>
 </template>
 <style scoped>
-.inc { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 14px 16px; }
+.inc { background: var(--c-surface); box-shadow: var(--shadow-card); border-radius: var(--radius-lg); padding: 15px 17px; }
 .inc--you { box-shadow: inset 3px 0 0 var(--c-action); }
 .inc__head { display: flex; align-items: center; gap: 10px; }
 .inc__head .ui-button { flex: none; }

@@ -8,41 +8,41 @@
    Themes: light (default) and dark, chosen by the OS ("Auto") or forced with <html data-theme>.
    ========================================================================= */
 :root {
-  /* ---- neutrals ---- */
-  --c-bg: #f4f5f7;            /* page canvas - a subtle tint so white cards lift off it (depth, not flat) */
+  /* ---- neutrals: a cool slate ramp with a faint blue cast, so greys read as chosen, not default-grey ---- */
+  --c-bg: #eef1f6;            /* page canvas - a cool slate tint so white cards lift off it (depth, not flat) */
   --c-surface: #ffffff;       /* cards, tables, sheets */
-  --c-raised: #eef0f3;        /* sidebar, table headers, wells */
-  --c-fill: #f2f4f7;          /* inputs, hover */
-  --c-fill-2: #e6e9ee;        /* tracks, pressed */
-  --c-border: #e2e5ea;        /* card and table borders */
-  --c-separator: #eceef2;     /* row dividers inside a card */
-  --c-text: #0f1218;
-  --c-text-2: #545d6b;
-  --c-text-3: #8a93a1;
+  --c-raised: #e7ebf2;        /* sidebar, table headers, wells */
+  --c-fill: #f1f4f9;          /* inputs, hover */
+  --c-fill-2: #e2e7f0;        /* tracks, pressed */
+  --c-border: #dde3ec;        /* card and table borders */
+  --c-separator: #eef1f6;     /* row dividers inside a card */
+  --c-text: #14181f;
+  --c-text-2: #5a6474;
+  --c-text-3: #8b94a4;
 
-  /* ---- brand: blue = the system at work ---- */
-  --c-primary: #1463ff;
-  --c-primary-hover: #0d54e0;
-  --c-primary-press: #0a46bd;
-  --c-primary-tint: #edf3ff;
-  --c-primary-tint-2: #dbe7ff;
+  /* ---- brand: indigo = the system at work (distinctive, "intelligence", not generic SaaS blue) ---- */
+  --c-primary: #4f46e5;
+  --c-primary-hover: #4038cf;
+  --c-primary-press: #342cb0;
+  --c-primary-tint: #eef0fe;
+  --c-primary-tint-2: #dfe1fc;
   --c-on-primary: #ffffff;
 
-  /* ---- action: orange = your turn ---- */
-  --c-action: #f26a1b;
-  --c-action-hover: #dc5a0f;
-  --c-action-text: #b3480a;
-  --c-action-bg: #fff2e9;
+  /* ---- action: warm coral = your turn (complement to indigo, reads as chosen) ---- */
+  --c-action: #ef5f3c;
+  --c-action-hover: #dc4f2d;
+  --c-action-text: #c0411f;
+  --c-action-bg: #fdefe9;
   --c-on-action: #ffffff;
 
   /* ---- semantic status: solid (dots, bars) / text / background ---- */
   --c-ok: #16a34a;      --c-ok-text: #0f7a37;    --c-ok-bg: #e8f6ee;
   --c-bad: #e5383b;     --c-bad-text: #c0262a;   --c-bad-bg: #fdecec;
   --c-warn: #d99a00;    --c-warn-text: #8a6100;  --c-warn-bg: #fdf5df;
-  --c-ai: #1463ff;      --c-ai-text: #0d54e0;    --c-ai-bg: #edf3ff;   /* the AI is part of "the system": blue */
-  --c-info: #1463ff;    --c-info-text: #0d54e0;  --c-info-bg: #edf3ff;
-  --c-neutral: #c3c9d2;
-  --c-star: #f26a1b;
+  --c-ai: #4f46e5;      --c-ai-text: #4038cf;    --c-ai-bg: #eef0fe;   /* the AI is part of "the system": indigo */
+  --c-info: #4f46e5;    --c-info-text: #4038cf;  --c-info-bg: #eef0fe;
+  --c-neutral: #c3c9d4;
+  --c-star: #ef5f3c;
 
   /* ---- chrome & special surfaces ---- */
   --c-chrome-top: #ffffff;
@@ -54,13 +54,13 @@
   --c-logo-bg: #ffffff;
   --c-edge: #c3c9d2;  --c-edge-disc: #b0b7c2;
   --c-bad-surface: #fff7f7;
-  --c-halo: rgba(20, 99, 255, 0.4);  --c-halo-bad: rgba(229, 56, 59, 0.45);
+  --c-halo: rgba(79, 70, 229, 0.38);  --c-halo-bad: rgba(229, 56, 59, 0.45);
   --shadow-seg: none;
 
   /* ---- data visualisation (categorical) ---- */
-  --c-chart-1: #1463ff;  /* throughput, default */
+  --c-chart-1: #4f46e5;  /* throughput, default */
   --c-chart-2: #e5383b;  /* errors */
-  --c-chart-3: #f26a1b;  /* latency, load */
+  --c-chart-3: #ef5f3c;  /* latency, load */
   --c-chart-4: #6b7a90;  /* memory */
   --c-chart-5: #0e8f8f;  /* disk */
 
@@ -78,10 +78,11 @@
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 28px;
   --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
 
-  /* ---- shape & depth: borders do the work, shadows only for things that float ---- */
-  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 10px; --radius-pill: 999px;
-  --shadow-1: 0 0 0 1px var(--c-border);
-  --shadow-2: 0 16px 48px rgba(15, 18, 24, 0.18), 0 0 0 1px var(--c-border);
+  /* ---- shape & depth: cards lift off the slate canvas with a soft shadow, not a hard border ---- */
+  --radius-sm: 5px; --radius-md: 7px; --radius-lg: 10px; --radius-xl: 14px; --radius-pill: 999px;
+  --shadow-1: 0 1px 2px rgba(20, 24, 40, 0.05), 0 5px 14px -4px rgba(20, 24, 40, 0.09), 0 0 0 1px rgba(20, 24, 40, 0.035);
+  --shadow-card: var(--shadow-1);
+  --shadow-2: 0 18px 50px -8px rgba(20, 24, 40, 0.22), 0 0 0 1px rgba(20, 24, 40, 0.05);
   --focus-ring: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
 
   /* ---- motion ---- */
@@ -106,17 +107,17 @@
   --c-text: #f2f4f7;
   --c-text-2: #a2aab7;
   --c-text-3: #6c7584;
-  --c-primary: #4d8dff;  --c-primary-hover: #6a9fff;  --c-primary-press: #3a7bf0;
-  --c-primary-tint: #0e1a33;  --c-primary-tint-2: #15264a;
-  --c-action: #ff8a3d;  --c-action-hover: #ff9c59;  --c-action-text: #ffa468;  --c-action-bg: #2b1607;  --c-on-action: #120700;
+  --c-primary: #8188f6;  --c-primary-hover: #9aa0fa;  --c-primary-press: #6f78ea;
+  --c-primary-tint: #191a33;  --c-primary-tint-2: #23264d;
+  --c-action: #ff7a52;  --c-action-hover: #ff8e6b;  --c-action-text: #ff9878;  --c-action-bg: #2b1109;  --c-on-action: #120400;
   --c-ok: #22c55e;   --c-ok-text: #4ade80;   --c-ok-bg: #0b2416;
   --c-bad: #f0484b;  --c-bad-text: #ff7b7d;  --c-bad-bg: #2d0f10;
   --c-warn: #f2b320; --c-warn-text: #f8c95a; --c-warn-bg: #2a2007;
-  --c-ai: #4d8dff;   --c-ai-text: #8fb6ff;   --c-ai-bg: #0e1a33;
-  --c-info: #4d8dff; --c-info-text: #8fb6ff; --c-info-bg: #0e1a33;
+  --c-ai: #8188f6;   --c-ai-text: #aab0fb;   --c-ai-bg: #191a33;
+  --c-info: #8188f6; --c-info-text: #aab0fb; --c-info-bg: #191a33;
   --c-neutral: #4a5160;
-  --c-star: #ff8a3d;
-  --c-chart-1: #4d8dff; --c-chart-2: #ff6b6d; --c-chart-3: #ff8a3d; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
+  --c-star: #ff7a52;
+  --c-chart-1: #8188f6; --c-chart-2: #ff6b6d; --c-chart-3: #ff7a52; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
   --c-chrome-top: #000000;
   --c-chrome-side: #090a0d;
   --c-hover: #16191f;
@@ -126,8 +127,8 @@
   --c-logo-bg: #f2f4f7;
   --c-edge: #3a404c;  --c-edge-disc: #4a5160;
   --c-bad-surface: #1c0b0c;
-  --c-halo: rgba(77, 141, 255, 0.45);  --c-halo-bad: rgba(240, 72, 75, 0.5);
-  --shadow-2: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--c-border);
+  --c-halo: rgba(129, 136, 246, 0.5);  --c-halo-bad: rgba(240, 72, 75, 0.5);
+  --shadow-2: 0 18px 50px -8px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -142,17 +143,17 @@
     --c-text: #f2f4f7;
     --c-text-2: #a2aab7;
     --c-text-3: #6c7584;
-    --c-primary: #4d8dff;  --c-primary-hover: #6a9fff;  --c-primary-press: #3a7bf0;
-    --c-primary-tint: #0e1a33;  --c-primary-tint-2: #15264a;
-    --c-action: #ff8a3d;  --c-action-hover: #ff9c59;  --c-action-text: #ffa468;  --c-action-bg: #2b1607;  --c-on-action: #120700;
+    --c-primary: #8188f6;  --c-primary-hover: #9aa0fa;  --c-primary-press: #6f78ea;
+    --c-primary-tint: #191a33;  --c-primary-tint-2: #23264d;
+    --c-action: #ff7a52;  --c-action-hover: #ff8e6b;  --c-action-text: #ff9878;  --c-action-bg: #2b1109;  --c-on-action: #120400;
     --c-ok: #22c55e;   --c-ok-text: #4ade80;   --c-ok-bg: #0b2416;
     --c-bad: #f0484b;  --c-bad-text: #ff7b7d;  --c-bad-bg: #2d0f10;
     --c-warn: #f2b320; --c-warn-text: #f8c95a; --c-warn-bg: #2a2007;
-    --c-ai: #4d8dff;   --c-ai-text: #8fb6ff;   --c-ai-bg: #0e1a33;
-    --c-info: #4d8dff; --c-info-text: #8fb6ff; --c-info-bg: #0e1a33;
+    --c-ai: #8188f6;   --c-ai-text: #aab0fb;   --c-ai-bg: #191a33;
+    --c-info: #8188f6; --c-info-text: #aab0fb; --c-info-bg: #191a33;
     --c-neutral: #4a5160;
-    --c-star: #ff8a3d;
-    --c-chart-1: #4d8dff; --c-chart-2: #ff6b6d; --c-chart-3: #ff8a3d; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
+    --c-star: #ff7a52;
+    --c-chart-1: #8188f6; --c-chart-2: #ff6b6d; --c-chart-3: #ff7a52; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
     --c-chrome-top: #000000;
     --c-chrome-side: #090a0d;
     --c-hover: #16191f;
@@ -162,8 +163,8 @@
     --c-logo-bg: #f2f4f7;
     --c-edge: #3a404c;  --c-edge-disc: #4a5160;
     --c-bad-surface: #1c0b0c;
-    --c-halo: rgba(77, 141, 255, 0.45);  --c-halo-bad: rgba(240, 72, 75, 0.5);
-    --shadow-2: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--c-border);
+    --c-halo: rgba(129, 136, 246, 0.5);  --c-halo-bad: rgba(240, 72, 75, 0.5);
+    --shadow-2: 0 18px 50px -8px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
     color-scheme: dark;
   }
 }
