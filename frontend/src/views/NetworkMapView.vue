@@ -132,12 +132,12 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <UiButton variant="tint" icon="list" to="/network/list">List</UiButton>
     </UiPageHeader>
 
-    <div v-if="g" class="stats">
-      <div class="stat"><b>{{ summary.total }}</b><span>machines</span></div>
-      <div class="stat ok"><b>{{ summary.monitored }}</b><span>monitored</span></div>
-      <div class="stat"><b>{{ summary.unmonitored }}</b><span>not monitored</span></div>
-      <div :class="['stat', { bad: summary.problems }]"><b>{{ summary.problems }}</b><span>need attention</span></div>
-      <div class="stat"><b>{{ summary.networks }}</b><span>networks</span></div>
+    <div v-if="g" class="stats" aria-label="Fleet summary">
+      <button class="stat" @click="group = 'network'"><b>{{ summary.total }}</b><span>machines</span></button>
+      <button :class="['stat', { ok: summary.monitored }]" @click="group = 'coverage'"><b>{{ summary.monitored }}</b><span>monitored</span></button>
+      <button class="stat" @click="group = 'coverage'"><b>{{ summary.unmonitored }}</b><span>not monitored</span></button>
+      <button :class="['stat', { bad: summary.problems }]" @click="group = 'status'"><b>{{ summary.problems }}</b><span>need attention</span></button>
+      <button class="stat" @click="group = 'network'"><b>{{ summary.networks }}</b><span>networks</span></button>
     </div>
     <section v-if="recs && recs.recommendations.length" class="recs">
       <div class="recs-head">
@@ -208,10 +208,17 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
   </div>
 </template>
 <style scoped>
-.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.stat { background: var(--c-surface); box-shadow: var(--shadow-1); border-radius: var(--radius-lg); padding: 10px 16px; min-width: 96px; }
-.stat b { font-size: 24px; display: block; line-height: 1.1; } .stat span { font-size: var(--fs-sm); color: var(--c-text-2); }
-.stat.ok b { color: var(--c-ok-text); } .stat.bad b { color: var(--c-bad-text); }
+/* same vital-signs tiles as the Overview, so the two pages read as one product; each re-groups the map */
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.stat { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 12px 16px; background: var(--c-surface);
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg); cursor: pointer; }
+.stat:hover { border-color: var(--c-primary); }
+.stat b { font-size: var(--fs-2xl); font-weight: var(--fw-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: var(--fs-sm); color: var(--c-text-2); }
+.stat.ok b { color: var(--c-ok-text); }
+.stat.bad { border-color: color-mix(in srgb, var(--c-bad) 45%, var(--c-border)); } .stat.bad b { color: var(--c-bad-text); }
+@media (max-width: 1080px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
 .recs { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
 .recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
 .bulk-btn { margin-left: auto; align-self: center; }
