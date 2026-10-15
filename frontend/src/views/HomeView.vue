@@ -61,19 +61,29 @@ const SRANK = { problem: 0, down: 0, error: 0, offline: 1, "no-data": 2, healthy
 const srank = (x) => SRANK[x] ?? 1;
 const sortedServices = computed(() => [...app.services].sort((a, b) => srank(a.status) - srank(b.status) || (a.name || "").localeCompare(b.name || "")));
 const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status) - srank(b.status) || (a.name || "").localeCompare(b.name || "")));
+
+// the single most important next action, spelled out as the hero's button
+const primary = computed(() => {
+  if (app.awaiting.length) return { to: `/problems/${app.awaiting[0].id}`, label: t("Review the first fix", "ดูการแก้ไขแรก"), icon: "checkmark", variant: "action" };
+  if (queue.value.length) return { to: `/problems/${queue.value[0].id}`, label: t("Open the incident", "เปิดเหตุการณ์"), icon: "chevron_right", variant: "primary" };
+  return { to: "/network", label: t("Open the Fleet", "เปิดฟลีต"), icon: "server", variant: "tint" };
+});
 </script>
 <template>
   <div class="page">
     <template v-if="app.overview">
-      <section :class="['status', `status--${status.tone}`]" aria-live="polite">
-        <span class="status__mark" aria-hidden="true">
-          <UiIcon :name="status.tone === 'ok' ? 'checkmark' : status.tone === 'action' ? 'person' : 'sparkle'" :size="20" />
+      <section :class="['hero', `hero--${status.tone}`]" aria-live="polite">
+        <span class="hero__mark" aria-hidden="true">
+          <UiIcon :name="status.tone === 'ok' ? 'checkmark' : status.tone === 'action' ? 'person' : 'sparkle'" :size="22" />
         </span>
-        <div class="status__text">
+        <div class="hero__text">
           <h1>{{ status.title }}</h1>
           <p>{{ status.sub }}</p>
         </div>
-        <span class="status__checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
+        <div class="hero__side">
+          <UiButton :variant="primary.variant" size="lg" :to="primary.to" :icon="primary.icon">{{ primary.label }}</UiButton>
+          <span class="hero__checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
+        </div>
       </section>
 
       <div class="kpis" aria-label="Vital signs">
@@ -102,7 +112,7 @@ const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status)
           <table class="tbl">
             <thead><tr><th>{{ t("Service", "บริการ") }}</th><th>{{ t("Status", "สถานะ") }}</th><th class="r">{{ t("Requests", "คำขอ") }}</th><th class="r">{{ t("Errors", "ข้อผิดพลาด") }}</th><th class="r">p95</th><th>{{ t("Last 7 days", "7 วันล่าสุด") }}</th></tr></thead>
             <tbody>
-              <tr v-for="s in sortedServices" :key="s.service" @click="$router.push(`/services/${s.service}`)">
+              <tr v-for="s in sortedServices.slice(0, 8)" :key="s.service" @click="$router.push(`/services/${s.service}`)">
                 <td><div class="who"><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" />
                   <router-link :to="`/services/${s.service}`" @click.stop>{{ s.name }}</router-link><span v-if="s.version" class="ver">v{{ s.version }}</span></div></td>
                 <td><span class="health"><UiStatusDot :tone="HEALTH_TONE[s.status]" :size="7" />{{ healthLabel[s.status] || s.status }}</span></td>
@@ -110,6 +120,9 @@ const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status)
                 <td :class="['r', 'num', { bad: s.error_rate > 0.05 }]">{{ pct(s.error_rate) }}</td>
                 <td class="r num">{{ ms(s.p95_ms) }}</td>
                 <td><HistoryStrip :incidents="historyFor(s.service)" /></td>
+              </tr>
+              <tr v-if="sortedServices.length > 8" class="more-row" @click="$router.push('/services')">
+                <td colspan="6">{{ t(`View all ${sortedServices.length} services`, `ดูบริการทั้งหมด ${sortedServices.length} รายการ`) }} →</td>
               </tr>
             </tbody>
           </table>
@@ -150,22 +163,27 @@ const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status)
   </div>
 </template>
 <style scoped>
-.status { display: flex; align-items: center; gap: 14px; padding: 24px 0 18px; }
-.status__mark { width: 32px; height: 32px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
-.status--ok .status__mark { background: var(--c-ok); }
-.status--info .status__mark { background: var(--c-primary); position: relative; }
-/* AI at work: a soft blue ring breathing out of the mark */
-.status--info .status__mark::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
-  box-shadow: 0 0 0 0 var(--c-halo); animation: think 2s var(--ease, ease-out) infinite; }
-@keyframes think { 0% { box-shadow: 0 0 0 0 var(--c-halo); } 70%, 100% { box-shadow: 0 0 0 10px transparent; } }
-.status--info .status__mark .ui-icon { animation: think-spin 3s var(--ease, ease-in-out) infinite; transform-origin: center; }
-@keyframes think-spin { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(8deg); } }
-.status--action .status__mark { background: var(--c-action); color: var(--c-on-action); }
-@media (prefers-reduced-motion: reduce) { .status--info .status__mark::after, .status--info .status__mark .ui-icon { animation: none; } }
-.status__text { flex: 1; min-width: 0; }
-.status h1 { font-size: var(--fs-2xl); line-height: 1.2; font-weight: var(--fw-semibold); }
-.status p { color: var(--c-text-2); margin-top: 4px; }
-.status__checked { font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; align-self: flex-start; padding-top: 8px; }
+/* Hero: the one focal banner. Colour by state, a left accent bar, and the single next action as a button on
+   the right - so the eye lands here first and knows what to do. */
+.hero { display: flex; align-items: center; gap: 16px; padding: 18px 22px 18px 24px; margin: 8px 0 16px; position: relative; overflow: hidden;
+  border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
+.hero::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c-neutral); }
+.hero--action { background: var(--c-action-bg); border-color: color-mix(in srgb, var(--c-action) 35%, var(--c-border)); }
+.hero--action::before { background: var(--c-action); }
+.hero--info { background: var(--c-primary-tint); border-color: color-mix(in srgb, var(--c-primary) 30%, var(--c-border)); }
+.hero--info::before { background: var(--c-primary); }
+.hero--ok { background: var(--c-ok-bg); border-color: color-mix(in srgb, var(--c-ok) 30%, var(--c-border)); }
+.hero--ok::before { background: var(--c-ok); }
+.hero__mark { width: 40px; height: 40px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
+.hero--action .hero__mark { background: var(--c-action); color: var(--c-on-action); }
+.hero--info .hero__mark { background: var(--c-primary); }
+.hero--ok .hero__mark { background: var(--c-ok); }
+.hero__text { flex: 1; min-width: 0; }
+.hero__text h1 { font-size: var(--fs-2xl); line-height: 1.2; font-weight: var(--fw-semibold); }
+.hero__text p { color: var(--c-text-2); margin-top: 3px; }
+.hero__side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.hero__checked { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+@media (max-width: 760px) { .hero { flex-wrap: wrap; } .hero__text { flex-basis: 100%; } .hero__side { width: 100%; align-items: stretch; } }
 
 /* vital-signs KPI tiles: the five numbers an on-call engineer scans first */
 .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
@@ -188,6 +206,8 @@ const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status)
 .coverage__text span { color: var(--c-text-2); font-size: var(--fs-sm); }
 .coverage__cta { display: inline-flex; align-items: center; gap: 2px; color: var(--c-primary); font-weight: var(--fw-semibold); font-size: var(--fs-sm); white-space: nowrap; }
 
+.more-row td { text-align: center; color: var(--c-primary); font-weight: var(--fw-medium); font-size: var(--fs-sm); }
+.more-row:hover td { background: var(--c-hover); }
 .st-l { display: inline-flex; align-items: center; gap: 8px; }
 .st-l .ui-icon { color: var(--c-text-3); }
 .queue { display: flex; flex-direction: column; gap: 10px; }
@@ -213,5 +233,5 @@ const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status)
 .use.warn { --bar: var(--c-warn); } .use.bad { --bar: var(--c-bad); color: var(--c-bad-text); }
 .cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 @media (max-width: 1080px) { .cols { grid-template-columns: 1fr; } }
-@media (max-width: 760px) { .status h1 { font-size: 22px; } .status__checked { display: none; } }
+@media (max-width: 760px) { .hero__text h1 { font-size: 20px; } }
 </style>
