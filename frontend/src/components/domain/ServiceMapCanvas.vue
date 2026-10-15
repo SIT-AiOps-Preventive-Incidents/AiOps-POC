@@ -168,7 +168,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 
 <template>
   <div class="canvas">
-    <svg v-if="graph" :viewBox="`0 0 ${graph.W} ${graph.H}`" :style="{ minWidth: `${Math.min(graph.W, 860)}px` }" role="img" aria-label="Service map">
+    <svg v-if="graph" :viewBox="`0 0 ${graph.W} ${graph.H}`" :width="graph.W" :height="graph.H" role="img" aria-label="Service map">
       <defs>
         <marker v-for="[id, c] in [['a', 'var(--c-edge)'], ['ab', 'var(--c-bad)'], ['as', 'var(--c-primary)']]" :id="`m-${id}`" :key="id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 9 5 0 9z" :style="{ fill: c }" /></marker>
         <filter id="glow"><feGaussianBlur stdDeviation="3" /></filter>
@@ -227,7 +227,9 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 
 <style scoped>
 .canvas { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: auto; padding: 8px; }
-svg { display: block; width: 100%; height: auto; }
+/* render at natural pixel size so a node is always the same size; scroll if the graph is wider than the card
+   (never stretch a small graph to fill the width, which blew the boxes up) */
+svg { display: block; max-width: 100%; height: auto; }
 .lane-label { font: 500 12px var(--font); fill: var(--c-text-3); }
 .lane { fill: var(--c-fill); stroke: var(--c-separator); stroke-dasharray: 5 5; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); }
