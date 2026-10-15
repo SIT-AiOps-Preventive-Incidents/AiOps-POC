@@ -33,7 +33,7 @@ const css = (name, fb) => getComputedStyle(document.documentElement).getProperty
 function colors() {
   return { primary: css("--c-primary", "#2563eb"), ok: css("--c-ok", "#16a34a"), bad: css("--c-bad", "#e5383b"),
     text: css("--c-text", "#111827"), muted: css("--c-text-3", "#9aa3b2"), line: css("--c-separator", "#d5dae3"),
-    hub: "#f59e0b", navy: "#0d1b4c" };
+    hub: "#2f8fc7", navy: "#15598c" };
 }
 const statusColor = (s, c) => (["problem", "down", "error"].includes(s) ? c.bad : ["healthy", "ok", "online"].includes(s) ? c.ok : c.muted);
 
@@ -298,7 +298,7 @@ const open = () => selected.value?.link && router.push(selected.value.link);
 .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c-text-3); }
-.legend .k-hub { background: #f59e0b; } .legend .k-gateway { background: #0d1b4c; } .legend .k-connected { background: var(--c-ok); }
+.legend .k-hub { background: #2f8fc7; } .legend .k-gateway { background: #15598c; } .legend .k-connected { background: var(--c-ok); }
 .legend .k-service { background: var(--c-primary); border-radius: 50%; } .legend .k-internet { background: var(--c-primary); }
 .stage { position: relative; height: calc(100vh - 230px); min-height: 460px; border-radius: var(--radius-lg); background: var(--c-surface);
   box-shadow: var(--shadow-1); overflow: hidden; }
@@ -308,7 +308,7 @@ const open = () => selected.value?.link && router.push(selected.value.link);
 .canvas :deep(.t3-label) { font: 600 12px/1.2 var(--font, inherit); color: var(--c-text); background: var(--c-surface); padding: 2px 6px;
   border-radius: 6px; box-shadow: var(--shadow-1); white-space: nowrap; }
 .canvas :deep(.t3-label.service) { font-weight: 500; font-size: 11px; color: var(--c-text-2); }
-.canvas :deep(.t3-label.hub) { background: #f59e0b; color: #1b1300; }
+.canvas :deep(.t3-label.hub) { background: #2f8fc7; color: #fff; }
 .canvas :deep(.t3-label.t3-hover) { background: var(--c-text, #111827); color: #fff; font-weight: 600; }
 .bar .search { display: flex; align-items: center; gap: 8px; min-width: 260px; }
 .bar .search :deep(.ui-field) { margin: 0; flex: 1; } .bar .search :deep(label) { display: none; }

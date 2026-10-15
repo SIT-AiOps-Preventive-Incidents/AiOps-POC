@@ -247,7 +247,8 @@ svg { display: block; width: 100%; height: auto; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); } .lane-sub { font-weight: 400; fill: var(--c-text-2); }
 .node { cursor: pointer; } .node .box { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1.4; }
 .node .box.internet { fill: var(--c-primary-tint); stroke: var(--c-primary); }
-.node .box.hub { fill: #fff7e6; stroke: #f59e0b; } .node .box.gateway { stroke: #0d1b4c; }
+.node .box.hub { fill: var(--c-primary-tint); stroke: color-mix(in srgb, var(--c-primary) 55%, var(--c-border)); }
+.node .box.gateway { stroke: color-mix(in srgb, var(--c-primary) 45%, var(--c-border)); }
 .node:hover .box { stroke: var(--c-primary); }
 .nm { font: 600 14px var(--font); fill: var(--c-text); } .kd { font: 11.5px var(--font); fill: var(--c-text-2); }
 .chip { cursor: pointer; } .chip .cbox { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1; }
