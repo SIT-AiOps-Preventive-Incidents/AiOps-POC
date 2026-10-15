@@ -57,7 +57,7 @@ async function run(id) {
     <UiPageHeader title="Demo scenarios" subtitle="Break something on purpose and watch the AI find and fix it. Detection takes about 40 s, the AI another 1-3 minutes." />
     <template v-if="anomod.length">
       <h3 class="sec sec--first">SocialNetwork (AnoMod, recorded on a real deployment)</h3>
-      <p class="small muted note">Each run replays the logs and traces AnoMod recorded while the fault was injected, re-timed to now. Detection and root cause come from AIOps One, not from the recording.</p>
+      <p class="small muted note">Each run replays the logs and traces AnoMod recorded while the fault was injected, re-timed to now. Detection and root cause come from RadarOps, not from the recording.</p>
       <UiList>
         <UiListRow v-for="s in anomod" :key="s.id" :title="s.title" :detail="s.what">
           <template #leading><UiAppTile :icon="s.icon" color="var(--c-warn)" /></template>
@@ -74,7 +74,7 @@ async function run(id) {
     <template v-if="netAvailable.length">
       <h3 class="sec">Network</h3>
       <UiList>
-        <UiListRow v-for="s in NET.filter((n) => netAvailable.includes(n.id))" :key="s.id" :title="s.title" :detail="`${s.what} AIOps One ${s.ai}`">
+        <UiListRow v-for="s in NET.filter((n) => netAvailable.includes(n.id))" :key="s.id" :title="s.title" :detail="`${s.what} RadarOps ${s.ai}`">
           <template #leading><UiAppTile :icon="s.icon" color="var(--c-warn)" /></template>
           <template #accessory><UiButton size="sm" :loading="busy === s.id" @click="run(s.id)">Start</UiButton></template>
         </UiListRow>

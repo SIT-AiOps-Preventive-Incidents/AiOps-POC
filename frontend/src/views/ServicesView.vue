@@ -21,7 +21,7 @@ async function add() {
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Services" subtitle="Applications and network devices AIOps watches, plus processes agents found on your computers.">
+    <UiPageHeader title="Services" subtitle="Applications and network devices RadarOps watches, plus processes agents found on your computers.">
       <UiButton icon="add" to="/connect">Connect</UiButton>
     </UiPageHeader>
     <template v-if="cat.unregistered.length">

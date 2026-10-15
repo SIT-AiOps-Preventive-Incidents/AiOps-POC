@@ -30,7 +30,7 @@ async function remove() { await cat.removeService(props.name); router.push("/ser
     <div v-if="d.service.kind === 'process' || d.service.kind === 'external'" class="stack">
       <UiCard title="Discovered by the host agent">
         <p>This {{ d.service.kind === "external" ? "external dependency" : "process" }} was found on <b>{{ d.service.hosts.join(", ") || "-" }}</b>.
-          AIOps knows it is running and who it talks to, but not its requests or errors.</p>
+          RadarOps knows it is running and who it talks to, but not its requests or errors.</p>
         <UiList plain class="mt"><UiListRow v-for="i in d.service.instances" :key="i.name" :title="i.name" :subtitle="`${i.pid ? `PID ${i.pid} · ` : ''}${i.port ? `port ${i.port} · ` : ''}seen ${ago(i.last_seen)}`" /></UiList>
         <UiButton class="mt" variant="tint" :to="{ path: '/connect/service', query: { name: d.service.service_name } }">Turn on tracing for this app</UiButton>
       </UiCard>
@@ -69,7 +69,7 @@ async function remove() { await cat.removeService(props.name); router.push("/ser
     <UiButton class="mt" variant="danger" size="sm" @click="confirmRemove = true">Remove this service</UiButton>
     <UiSheet :model-value="!!trace" title="Request trace" :width="980" @update:model-value="trace = null"><TraceWaterfall :spans="trace || []" /></UiSheet>
     <UiSheet v-model="confirmRemove" :title="`Remove ${d.service.service_name}?`">
-      <p class="muted">AIOps stops raising problems for it. Its history stays.</p>
+      <p class="muted">RadarOps stops raising problems for it. Its history stays.</p>
       <template #footer><UiButton variant="plain" @click="confirmRemove = false">Cancel</UiButton><UiButton variant="tint" class="danger-btn" @click="remove">Remove</UiButton></template>
     </UiSheet>
   </div>

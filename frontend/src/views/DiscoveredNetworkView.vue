@@ -36,7 +36,7 @@ usePolling(load, 20000);
 
 const VIEWS = [{ value: "network", label: "Network" }, { value: "service", label: "Service" }, { value: "org", label: "Owner" }];
 const ICON = { gateway: "globe", connected: "server", "virtual machine": "cube", container: "apps", device: "hard_drive", "random MAC": "laptop" };
-const KIND = { gateway: "Gateway", connected: "On AIOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Random MAC" };
+const KIND = { gateway: "Gateway", connected: "On RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Random MAC" };
 const sub = (i) => [i.name && i.name !== i.ip ? i.ip : null, i.vendor || (i.kind === "connected" ? null : "vendor unknown"), i.mac,
   i.services?.length ? `runs ${i.services.slice(0, 3).join(", ")}${i.services.length > 3 ? " …" : ""}` : null,
   i.talks_with?.length ? `talks with ${i.talks_with.join(", ")}` : null, i.last_seen ? `heard ${ago(i.last_seen)}` : null].filter(Boolean).join(" · ");
@@ -51,7 +51,7 @@ const empty = computed(() => d.value && !d.value.groups.length);
       <UiButton variant="tint" icon="cube" to="/network/3d">3D</UiButton>
     </UiPageHeader>
     <UiSheet v-model="scanOpen" title="Scan a segment once">
-      <p class="muted">By default AIOps only listens. This asks each connected server ({{ hosts.join(", ") }}) to send one round of ARP requests across <b>its own network segment</b> to find machines that stay quiet. It never touches another network and never probes a service port.</p>
+      <p class="muted">By default RadarOps only listens. This asks each connected server ({{ hosts.join(", ") }}) to send one round of ARP requests across <b>its own network segment</b> to find machines that stay quiet. It never touches another network and never probes a service port.</p>
       <p class="muted mt-2">Only do this on a network you are authorised to scan. On a shared network, get the owner's permission first.</p>
       <div class="row mt"><UiSwitch v-model="authorised" label="I am authorised to scan this network" /><span>I am authorised to scan this network</span></div>
       <template #footer>

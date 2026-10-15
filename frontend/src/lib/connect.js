@@ -1,4 +1,4 @@
-// "Add a host": connect a server from AIOps (sign in once on the web page, AIOps does the rest), or the
+// "Add a host": connect a server from RadarOps (sign in once on the web page, RadarOps does the rest), or the
 // one-line install a user runs themselves on a laptop.
 import { slug } from "./format.js";
 
@@ -58,9 +58,9 @@ export function progress(job) {
 }
 
 // "Remove agent": the platform asks, the agent removes itself on its next report (about a minute), then the
-// server disappears from AIOps. Same ring as connecting; failed when the agent has not answered in 2 minutes.
+// server disappears from RadarOps. Same ring as connecting; failed when the agent has not answered in 2 minutes.
 export const REMOVAL_STEPS = [["ask", "Ask the agent to remove itself"], ["agent", "Agent removes the collector, tracer and its key"],
-  ["gone", "Removed from AIOps"]];
+  ["gone", "Removed from RadarOps"]];
 export function removal({ requestedAt, now = Date.now() / 1000, gone = false }) {
   if (!requestedAt) return null;
   const late = !gone && now - requestedAt > 120;

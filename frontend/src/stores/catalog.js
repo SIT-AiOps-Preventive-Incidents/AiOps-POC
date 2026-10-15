@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import { api } from "@/lib/api";
 import { useAppStore } from "./app";
 
-/** What AIOps watches: services (traced, network, discovered) and hosts. */
+/** What RadarOps watches: services (traced, network, discovered) and hosts. */
 export const useCatalogStore = defineStore("catalog", {
   state: () => ({ services: [], hosts: [], unregistered: [], loaded: false }),
   getters: {

@@ -51,7 +51,7 @@ async function testTeams() {
     </UiList>
     <div class="section-label">When to raise an incident</div>
     <UiCard>
-      <p>AIOps learns what is normal for each host and each service at each time of day, from its own history.
+      <p>RadarOps learns what is normal for each host and each service at each time of day, from its own history.
         An incident is raised when a metric leaves its normal range for a while, up or down.</p>
       <ul class="small muted rules">
         <li>A server that always runs at 90% CPU is fine. The same server dropping to 5% is raised: its work has stopped.</li>
@@ -68,7 +68,7 @@ async function testTeams() {
       <ul class="always"><li v-for="a in ALWAYS" :key="a">{{ a }}</li></ul>
     </UiCard>
     <UiDisclosure class="mt" title="Limits used while a new host or service is still being learned" meta="first few hours">
-      <p class="small muted">A metric needs about three hours of history before AIOps knows its normal range. Until then these fixed limits apply.</p>
+      <p class="small muted">A metric needs about three hours of history before RadarOps knows its normal range. Until then these fixed limits apply.</p>
       <div class="grid grid--2"><UiField v-for="[k, l, h] in FALLBACK" :key="k" v-model="s[k]" :label="l" :hint="h" /></div>
     </UiDisclosure>
     <div class="section-label">Security and verification</div>

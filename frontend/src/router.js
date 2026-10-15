@@ -35,5 +35,5 @@ const routes = [
 ];
 
 const router = createRouter({ history: createWebHashHistory(), routes, scrollBehavior: () => ({ top: 0 }) });
-router.afterEach((to) => { document.title = `${to.meta.title || "AIOps"} · AIOps One`; });
+router.afterEach((to) => { document.title = to.meta.title ? `${to.meta.title} · RadarOps` : "RadarOps"; });
 export default router;

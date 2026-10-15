@@ -38,7 +38,7 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
 </script>
 <template>
   <aside :class="['sidebar', { open: ui.navOpen }]">
-    <router-link to="/" class="brand" aria-label="AIOps One overview">
+    <router-link to="/" class="brand" aria-label="RadarOps overview">
       <svg class="brand__mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
         <defs>
           <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1">
@@ -48,12 +48,15 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
         </defs>
         <rect width="28" height="28" rx="8" fill="url(#bm)" />
         <rect width="28" height="28" rx="8" fill="url(#bmg)" />
-        <path d="M8 19.5 14 13 20 8" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.95" />
-        <circle cx="8" cy="19.5" r="2.4" fill="#fff" />
-        <circle cx="14" cy="13" r="2.4" fill="#fff" />
-        <circle cx="20" cy="8" r="3" fill="var(--c-action)" stroke="#0f4162" stroke-width="1.2" />
+        <!-- radar scope: concentric rings, a sweep wedge, and a detected blip -->
+        <circle cx="14" cy="14" r="8.5" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.26" />
+        <circle cx="14" cy="14" r="4.6" fill="none" stroke="#fff" stroke-width="1.2" opacity="0.3" />
+        <path d="M14 14 L14 5.5 A8.5 8.5 0 0 1 19.9 7.9 Z" fill="#fff" opacity="0.2" />
+        <path d="M14 14 L19.9 7.9" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.95" />
+        <circle cx="14" cy="14" r="1.5" fill="#fff" />
+        <circle cx="19.9" cy="7.9" r="2.2" fill="#fff" />
       </svg>
-      <b>AIOps One</b>
+      <b>RadarOps</b>
     </router-link>
     <nav @click="ui.navOpen = false">
       <template v-for="(g, i) in NAV" :key="i">

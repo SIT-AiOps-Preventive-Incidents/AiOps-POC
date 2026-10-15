@@ -46,7 +46,7 @@ const ok = (b) => (b ? "ok" : "neutral");
 <template>
   <div class="page page--narrow">
     <UiPageHeader title="Watch a website or system" :back="{ to: '/connect', label: 'Add a host or service' }"
-                  subtitle="For systems you cannot install anything on. AIOps calls the address like a browser would and learns its normal response time." />
+                  subtitle="For systems you cannot install anything on. RadarOps calls the address like a browser would and learns its normal response time." />
     <ol class="steps">
       <li :class="['step', { done: step > 1 }]"><span class="n">1</span><div class="body"><h2>Which system?</h2>
         <template v-if="step === 1">
