@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app import datasets  # noqa: E402
 from app.api import errors, routes_platform  # noqa: E402
+from app.netdisco import nika  # noqa: E402
 from app.netdisco import scenarios as net  # noqa: E402
 
 
@@ -21,7 +22,17 @@ def client():
     return TestClient(app)
 
 
+async def _no_cases():
+    return []
+
+
+async def _no_reset():
+    return None
+
+
 def anomod_mode(monkeypatch, calls):
+    monkeypatch.setattr(nika, "cases", _no_cases)
+    monkeypatch.setattr(nika, "reset", _no_reset)
     monkeypatch.setattr(datasets, "DATASET", "anomod")
     monkeypatch.setattr(net, "available", lambda: False)
 
@@ -59,6 +70,7 @@ def test_play_and_reset_go_to_the_replayer(monkeypatch):
 
 
 def test_shop_mode_has_no_replays(monkeypatch):
+    monkeypatch.setattr(nika, "cases", _no_cases)
     monkeypatch.setattr(datasets, "DATASET", "shop")
     monkeypatch.setattr(net, "available", lambda: False)
     listed = client().get("/api/v1/scenarios").json()

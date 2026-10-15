@@ -45,7 +45,8 @@ def build(devices: list[Device], endpoints: dict[str, dict], known: dict | None 
     for d in devices:
         nodes[f"dev:{d.name}"] = {
             "id": f"dev:{d.name}", "kind": "device", "name": d.name, "role": "core", "layer": 0,
-            "status": "up" if d.reachable else "unreachable", "ip": d.address, "descr": d.descr.split("\n")[0][:120],
+            "status": ("up" if d.routing_ok else "routing down") if d.reachable else "unreachable",
+            "ip": "" if d.address.startswith("kathara:") else d.address, "bgp_peers": d.bgp_peers, "descr": d.descr.split("\n")[0][:120],
             "uptime_s": d.uptime_s, "error": d.error,
             "ports": [{"name": p.name, "up": p.up, "mac": p.mac, "speed_mbps": p.speed_mbps,
                        "ips": [str(i) for i in p.ips], "mgmt": p.name == d.mgmt_port}
@@ -85,9 +86,10 @@ def build(devices: list[Device], endpoints: dict[str, dict], known: dict | None 
             ep = endpoints.get(e.ip) or {}
             port = d.port_by_name(e.port)
             seen_hosts.add(hid)
+            up = (port is None or port.up) and ep.get("link_up", True)   # either end of the cable can be down
             nodes[hid] = {"id": hid, "kind": "host", "name": ep.get("name") or f"unknown {e.ip}", "layer": 2,
                           "ip": e.ip, "mac": e.mac, "known": bool(ep), "host_kind": ep.get("kind", ""),
-                          "attached": f"{d.name}:{e.port}", "status": "up" if (port is None or port.up) else "down"}
+                          "attached": f"{d.name}:{e.port}", "status": "up" if up else "down"}
             links[f"{hid}--dev:{d.name}"] = {"id": f"{hid}--dev:{d.name}", "kind": "access", "a": f"dev:{d.name}",
                                             "a_port": e.port, "b": hid, "b_port": "", "status": nodes[hid]["status"]}
             for s in ep.get("services") or []:
@@ -129,17 +131,22 @@ def _mark_cut_off(nodes: dict, links: dict) -> None:
         if lk["status"] == "up":
             adj.setdefault(lk["a"], []).append(lk["b"])
             adj.setdefault(lk["b"], []).append(lk["a"])
-    start = [n["id"] for n in nodes.values() if n["kind"] == "device" and n["role"] == "core" and n["status"] == "up"]
-    if not start:
+    cores = [n for n in nodes.values() if n["kind"] == "device" and n["role"] == "core"]
+    start = [n["id"] for n in cores if n["status"] == "up"]
+    if not cores:   # no core at all (a flat network): every working device is a starting point
         start = [n["id"] for n in nodes.values() if n["kind"] == "device" and n["status"] == "up"]
     reached, q = set(start), deque(start)
+    blocked = {n["id"] for n in nodes.values() if n["status"] in ("routing down", "unreachable", "down")}
     while q:
-        for nb in adj.get(q.popleft(), []):
+        cur = q.popleft()
+        if cur in blocked:      # reached, but it does not pass traffic on
+            continue
+        for nb in adj.get(cur, []):
             if nb not in reached:
                 reached.add(nb)
                 q.append(nb)
     for n in nodes.values():
-        n["reachable"] = n["id"] in reached
+        n["reachable"] = n["id"] in reached and n["id"] not in blocked
         if not n["reachable"] and n["status"] == "up":
             n["status"] = "cut off"
 
@@ -171,6 +178,10 @@ def diff(known: dict, nodes: dict, links: dict, now: float) -> list[dict]:
         if n["kind"] == "device":
             if was == "up" and n["status"] == "unreachable":
                 add("device_down", "critical", nid, f"{n['name']} stopped answering SNMP")
+            elif was == "up" and n["status"] == "routing down":
+                add("routing_down", "critical", nid, f"{n['name']} lost its routing (no BGP session established)")
+            elif was == "routing down" and n["status"] == "up":
+                add("routing_up", "info", nid, f"{n['name']} is routing again")
             elif was == "unreachable" and n["status"] == "up":
                 add("device_up", "info", nid, f"{n['name']} answers again")
         elif n["kind"] == "host":

@@ -45,6 +45,27 @@ const sevTone = { critical: "bad", warning: "action", info: "info" };
 const tabs = [{ value: "map", label: "Topology" }, { value: "assets", label: "Assets" }, { value: "events", label: "Changes" }];
 const short = (s, n = 24) => (s && s.length > n ? `${s.slice(0, n - 1)}…` : s || "");
 
+// NIKA research lab: what it injected (ground truth) and whether the map shows it
+const lab = computed(() => topo.value?.lab || null);
+function located(gt) {
+  const id = gt.resource_id || "";
+  const links = topo.value?.links || [];
+  if (id.startsWith("link/")) {
+    const want = id.slice(5).split("--").sort().join("--");
+    const l = links.find((x) => x.id === want);
+    return l ? l.status === "down" : hosts.value.some((h) => want.includes(`${h.name}:`) && h.status !== "up");
+  }
+  const [, node, port] = id.split("/");
+  const dev = devices.value.find((d) => d.name === node);
+  if (dev) return port ? (dev.ports || []).some((p) => p.name === port && !p.up) || dev.status !== "up" : dev.status !== "up";
+  const h = hosts.value.find((x) => x.name === node);
+  return !!h && h.status !== "up";
+}
+const verdict = computed(() => {
+  const gts = lab.value?.case?.ground_truth || [];
+  return gts.map((g) => ({ ...g, seen: located(g) }));
+});
+
 function subtitle(n) {
   if (n.kind === "device") {
     const ports = (n.ports || []).filter((p) => !p.mgmt);
@@ -75,6 +96,24 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
     </UiCard>
 
     <template v-else-if="topo">
+      <UiCard v-if="lab" class="lab">
+        <div class="row row--between row--wrap">
+          <div>
+            <b>Research network: NIKA {{ lab.scenario }}</b>
+            <div class="small muted">Topology, hosts, services and faults are NIKA's (sands-lab, SIGCOMM NGNO 2025). AIOps One only reads it.</div>
+          </div>
+          <UiPill :tone="lab.state === 'ready' ? 'ok' : lab.state === 'error' ? 'bad' : 'info'">{{ lab.state === "ready" ? (lab.case ? "fault injected" : "healthy") : lab.state }}</UiPill>
+        </div>
+        <div v-if="lab.case" class="gt mt-2">
+          <div class="small"><b>NIKA injected</b> <span class="mono">{{ lab.case.fault }}</span> ({{ lab.case.source }})</div>
+          <div v-for="g in verdict" :key="g.resource_id" class="row small mt-2">
+            <UiStatusDot :tone="g.seen ? 'ok' : 'warn'" :size="8" />
+            <span>ground truth <span class="mono">{{ g.resource_id }}</span> · {{ g.fault_type }} —
+              <b>{{ g.seen ? "located on the map" : "not visible in topology or port state" }}</b></span>
+          </div>
+        </div>
+        <div v-if="lab.error" class="small bad-text mt-2">{{ lab.error }}</div>
+      </UiCard>
       <div class="grid grid--4 tiles">
         <UiTile label="Network devices" :value="`${answering.length} / ${devices.length}`" hint="answering SNMP"
                 :tone="devices.some((d) => d.status === 'unreachable') ? 'bad' : undefined" />
@@ -200,6 +239,8 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
 
 <style scoped>
 .tiles { margin-bottom: 16px; }
+.lab { margin-bottom: 16px; border-left: 3px solid var(--c-primary); }
+.gt { padding-top: 10px; border-top: 1px solid var(--c-separator); }
 .mb { margin-bottom: 16px; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; }
 .layout > * { min-width: 0; }

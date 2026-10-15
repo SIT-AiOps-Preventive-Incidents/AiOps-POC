@@ -16,6 +16,8 @@ fi
 git -C "$NIKA_DIR" checkout -q "$NIKA_REF"
 cd "$NIKA_DIR"
 uv sync -q --python 3.12
+# hosts booted with ipv6.disable=1 (the capstone VM): let Kathara start nodes without net.ipv6.* sysctls
+python3 "$HERE/patch_kathara_noipv6.py" "$(ls -d "$NIKA_DIR"/.venv/lib/python3*/site-packages/Kathara/manager/docker/DockerMachine.py)"
 [ -f .env ] || : > .env
 mkdir -p config
 cat > config/nika.yaml <<CFG

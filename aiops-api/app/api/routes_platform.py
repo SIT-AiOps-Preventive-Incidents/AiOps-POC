@@ -9,6 +9,7 @@ from fastapi import APIRouter, Response
 
 from .. import datasets, db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
+from ..netdisco import nika
 from ..netdisco import scenarios as net_scenarios
 from .errors import ApiError, not_found
 from .schemas import DeploymentIn, RunbookPatch
@@ -156,11 +157,16 @@ async def _post(url: str, body: dict):
 @router.get("/scenarios", tags=["demo"])
 async def list_scenarios():
     names = await asyncio.to_thread(_scenarios)
-    return await datasets.replay_cases() + names
+    return await datasets.replay_cases() + await nika.cases() + names
 
 
 @router.post("/scenarios/{scenario}/runs", status_code=202, tags=["demo"], summary="Inject a fault (or reset)")
 async def run_scenario(scenario: str):
+    if scenario.startswith(nika.PREFIX):
+        if scenario not in await nika.cases():
+            raise not_found("scenario", scenario)
+        await nika.play(scenario)
+        return {"scenario": scenario, "status": "started"}
     if scenario.startswith(datasets.PREFIX):
         if scenario not in await datasets.replay_cases():
             raise not_found("scenario", scenario)
@@ -190,6 +196,7 @@ async def run_scenario(scenario: str):
     elif scenario == "reset":
         await net_scenarios.reset()   # first: the network lab must recover even if a demo part below is missing
         await datasets.reset()        # AnoMod replay back to the normal run
+        await nika.reset()            # NIKA lab redeployed clean, if a NIKA fault is active
         if datasets.DATASET != "shop":
             return {"scenario": scenario, "status": "reset"}
         with open(remediation.BLOCKLIST, "w") as f:

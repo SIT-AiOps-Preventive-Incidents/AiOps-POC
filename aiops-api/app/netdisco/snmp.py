@@ -75,6 +75,8 @@ class Device:
     neighbors: list[Neighbor] = field(default_factory=list)
     reachable: bool = True
     error: str = ""
+    routing_ok: bool = True                      # e.g. FRR/BGP running (sources that can tell; SNMP leaves it True)
+    bgp_peers: dict = field(default_factory=dict)
 
     def port_by_name(self, name: str) -> Port | None:
         return next((p for p in self.ports.values() if p.name == name), None)

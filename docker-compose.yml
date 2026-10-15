@@ -131,6 +131,8 @@ services:
       PLATFORM_HOST: cp26pt1
       DEMO_DATASET: ${DEMO_DATASET:-shop}          # shop | anomod (replay/anomod/switch.sh sets it in .env)
       ANOMOD_REPLAY_URL: http://anomod-replay:8000
+      NIKA_BRIDGE_URL: http://host.docker.internal:18900   # bench/nika/bridge.py, when a NIKA lab runs on this host
+    extra_hosts: ["host.docker.internal:host-gateway"]
     volumes:
       - api-data:/data
       - ./prometheus/targets:/targets
