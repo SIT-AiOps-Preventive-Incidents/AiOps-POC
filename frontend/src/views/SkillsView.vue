@@ -10,7 +10,7 @@ usePolling(async () => { skills.value = await api.skills.list(); }, 30000);
     <UiPageHeader title="AI skills" subtitle="The AI picks one skill per problem. Skills can only read data; your ratings tune them." />
     <div class="grid grid--2">
       <UiCard v-for="s in skills" :key="s.id">
-        <div class="row row--between"><h2 class="t">{{ s.name }}</h2><UiPill tone="info">{{ s.category }}</UiPill></div>
+        <div class="row row--between"><h2 class="t">{{ s.name }}</h2><UiPill tone="info" :mark="false">{{ s.category }}</UiPill></div>
         <p class="small muted">{{ s.description }}</p>
         <div class="grid grid--4 mt-2 stats">
           <div><span>Used</span><b>{{ s.runs }}</b></div><div><span>Rating</span><b>{{ s.avg_score ?? "-" }}</b></div>

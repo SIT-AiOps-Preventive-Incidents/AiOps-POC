@@ -8,6 +8,7 @@ import HistoryStrip from "@/components/domain/HistoryStrip.vue";
 import IncidentCard from "@/components/domain/IncidentCard.vue";
 import { usePolling } from "@/composables/usePolling";
 import { ago, dur, ms, num, pct, rate } from "@/lib/format";
+import { rollup } from "@/lib/insight";
 import { HEALTH_TONE, kindIcon, languageLogo, osLogo } from "@/lib/vocab";
 import { useAppStore } from "@/stores/app";
 import { useIncidentStore } from "@/stores/incidents";
@@ -27,6 +28,11 @@ const status = computed(() => {
   return { tone: "ok", title: "Everything is working normally",
     sub: lastResolved.value ? `The last incident was resolved ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}.` : "No incidents so far." };
 });
+// "affected out of total", worst state first (Dynatrace / Carbon pattern); silence is counted, not hidden
+const health = computed(() => [
+  { label: "Services", ...rollup(app.services), to: "/services" },
+  { label: "Hosts", ...rollup(app.hosts), to: "/hosts" },
+]);
 const historyFor = (name) => incidents.list.filter((i) => (i.entity_name || i.entity) === name);
 const healthLabel = { healthy: "Healthy", problem: "Problem", down: "Down", offline: "Offline", "no-data": "No data" };
 
@@ -48,6 +54,12 @@ const FLOW = computed(() => [
         <div class="status__text">
           <h1>{{ status.title }}</h1>
           <p>{{ status.sub }}</p>
+          <ul class="roll" aria-label="Health summary">
+            <li v-for="h in health" :key="h.label"><router-link :to="h.to">
+              <UiStatusDot :tone="h.affected ? 'bad' : 'ok'" :size="8" />
+              <b>{{ h.affected }} of {{ h.total }}</b> {{ h.label.toLowerCase() }} affected<span v-if="h.quiet" class="dim"> · {{ h.quiet }} sending no data</span>
+            </router-link></li>
+          </ul>
         </div>
         <span class="status__checked">Checked {{ ago(app.overview.detector?.ts) }}</span>
       </section>
@@ -127,6 +139,9 @@ const FLOW = computed(() => [
 .status__text { flex: 1; min-width: 0; }
 .status h1 { font-size: var(--fs-3xl); line-height: 1.2; font-weight: var(--fw-semibold); }
 .status p { color: var(--c-text-2); margin-top: 4px; }
+.roll { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; font-size: var(--fs-sm); }
+.roll a { display: inline-flex; align-items: center; gap: 6px; color: var(--c-text-2); text-decoration: none; }
+.roll a:hover { color: var(--c-text); } .roll b { color: var(--c-text); font-variant-numeric: tabular-nums; }
 .status__checked { font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; align-self: flex-start; padding-top: 8px; }
 
 .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0;
