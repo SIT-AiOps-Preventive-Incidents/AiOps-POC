@@ -2,10 +2,11 @@
 # AIOps host agent installer (macOS / Linux). No sudo, no inbound ports.
 #   curl -fsSL __API__/install/agent.sh | AIOPS_HOST_NAME=my-laptop sh
 # On Linux with Docker the agent also traces the services it finds with eBPF (no code change).
-# Opt out with AIOPS_EBPF=0.
+# Opt out with AIOPS_EBPF=0. A machine that reaches AIOps through an SSH tunnel sets AIOPS_API / AIOPS_OTLP to its
+# own end of the tunnel (the "Add a host" page writes the command).
 set -e
-API="__API__"
-OTLP="__OTLP__"
+API="${AIOPS_API:-__API__}"
+OTLP="${AIOPS_OTLP:-__OTLP__}"
 NAME="${AIOPS_HOST_NAME:-$(hostname -s 2>/dev/null || hostname)}"
 NAME=$(printf '%s' "$NAME" | tr 'A-Z ' 'a-z-' | tr -cd 'a-z0-9._-')
 DIR="$HOME/.aiops-agent"

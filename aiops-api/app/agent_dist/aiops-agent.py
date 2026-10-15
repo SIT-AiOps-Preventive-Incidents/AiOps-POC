@@ -18,7 +18,7 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
 HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
@@ -219,6 +219,8 @@ def ebpf_apply(targets):
         f.write(cfg)
     sh(["docker", "rm", "-f", EBPF_NAME])
     r = subprocess.run(["docker", "run", "-d", "--name", EBPF_NAME, "--restart", "unless-stopped", "--label", f"aiops.cfg={digest}",
+                        # capped, so on a busy production machine only the tracer is killed if it grows, never the apps
+                        "--memory", CFG.get("ebpf_memory", "200m"), "--cpus", str(CFG.get("ebpf_cpus", "0.5")),
                         "--privileged", "--pid=host", "--network=host", "-v", f"{EBPF_CFG}:/config.yml:ro",
                         "-v", "/sys/fs/bpf:/sys/fs/bpf", "-e", "BEYLA_CONFIG_PATH=/config.yml",
                         "-e", f"OTEL_RESOURCE_ATTRIBUTES=host.name={HOST}", EBPF_IMAGE],
