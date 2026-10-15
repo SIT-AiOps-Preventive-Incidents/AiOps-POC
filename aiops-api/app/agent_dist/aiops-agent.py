@@ -301,6 +301,14 @@ def push_inventory():
     ebpf_apply(reply.get("instrument") or [])
     collector_apply(reply.get("collector"))
     netwatch_apply()
+    if reply.get("netscan"):  # operator pressed "Scan this segment": ask the watcher to do one active ARP pass
+        try:
+            net = os.path.join(DIR, "net")
+            os.makedirs(net, exist_ok=True)
+            open(os.path.join(net, "scan.request"), "w").close()
+            print(f"{time.strftime('%H:%M:%S')} active segment sweep requested", flush=True)
+        except OSError as e:
+            print(f"could not request sweep: {e}", flush=True)
 
 
 def self_uninstall():

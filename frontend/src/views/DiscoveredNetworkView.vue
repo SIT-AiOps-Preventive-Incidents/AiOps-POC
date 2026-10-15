@@ -4,9 +4,27 @@ import { useRoute, useRouter } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
+import { useUiStore } from "@/stores/ui";
 
+const ui = useUiStore();
 const route = useRoute();
 const router = useRouter();
+const scanOpen = ref(false);
+const authorised = ref(false);
+const scanning = ref(false);
+const hosts = computed(() => d.value?.summary.listening_on || []);
+async function requestScan() {
+  scanning.value = true;
+  try {
+    await Promise.all(hosts.value.map((h) => api.hosts.netscan(h)));
+    ui.toast("Scan requested. Results appear within a minute.");
+    scanOpen.value = false; authorised.value = false;
+  } catch (e) {
+    ui.toast(e.message);
+  } finally {
+    scanning.value = false;
+  }
+}
 const view = ref(["network", "service", "org"].includes(route.query.view) ? route.query.view : "network");
 watch(view, (v) => { router.replace({ query: v === "network" ? {} : { view: v } }); load(); });
 const d = ref(null);
@@ -26,11 +44,21 @@ const empty = computed(() => d.value && !d.value.groups.length);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Your network"
-                  subtitle="Every machine your connected servers hear on their own network segment, grouped for you. Nothing is scanned: the agent only listens to the announcements every machine makes anyway.">
-      <UiButton icon="cube" to="/network/3d">View in 3D</UiButton>
-      <UiButton variant="tint" icon="flowchart" to="/network">Research lab (NIKA)</UiButton>
+    <UiPageHeader title="Fleet list"
+                  subtitle="Every machine across your networks, as a list. By default the agent only listens to the announcements each machine makes; use “Scan a segment” to also find the quiet ones on a network you are authorised to scan.">
+      <UiButton v-if="hosts.length" variant="tint" icon="search" @click="scanOpen = true">Scan a segment</UiButton>
+      <UiButton icon="flowchart" to="/network">Map</UiButton>
+      <UiButton variant="tint" icon="cube" to="/network/3d">3D</UiButton>
     </UiPageHeader>
+    <UiSheet v-model="scanOpen" title="Scan a segment once">
+      <p class="muted">By default AIOps only listens. This asks each connected server ({{ hosts.join(", ") }}) to send one round of ARP requests across <b>its own network segment</b> to find machines that stay quiet. It never touches another network and never probes a service port.</p>
+      <p class="muted mt-2">Only do this on a network you are authorised to scan. On a shared network, get the owner's permission first.</p>
+      <div class="row mt"><UiSwitch v-model="authorised" label="I am authorised to scan this network" /><span>I am authorised to scan this network</span></div>
+      <template #footer>
+        <UiButton variant="plain" @click="scanOpen = false">Cancel</UiButton>
+        <UiButton :disabled="!authorised || scanning" @click="requestScan">{{ scanning ? "Requesting…" : "Scan once" }}</UiButton>
+      </template>
+    </UiSheet>
     <div class="bar">
       <UiSegmented v-model="view" :options="VIEWS" label="Group by" />
       <span v-if="d" class="muted small">{{ d.summary.machines }} machines · {{ d.summary.segments }} segment{{ d.summary.segments === 1 ? "" : "s" }} · listening on {{ d.summary.listening_on.join(", ") || "-" }}</span>

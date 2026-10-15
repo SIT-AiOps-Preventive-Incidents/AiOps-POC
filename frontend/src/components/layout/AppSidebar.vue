@@ -11,7 +11,7 @@ const NAV = [
     { to: "/", label: "Overview", icon: "home" },
     { to: "/problems", label: "Incidents", icon: "warning", badge: true },
     { to: "/map", label: "Service map", icon: "flowchart" },
-    { to: "/network", label: "Network", icon: "globe" },
+    { to: "/network", label: "Fleet", icon: "server" },
     { to: "/services", label: "Services", icon: "cube" },
     { to: "/computers", label: "Hosts", icon: "server" },
   ] },
