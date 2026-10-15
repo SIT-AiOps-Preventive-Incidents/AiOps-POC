@@ -30,3 +30,32 @@ def test_finding_and_fallback_name_the_silent_service():
     assert "text-service stopped answering" in text and "originates" not in text
     rc = agent.fallback_text("error_rate", facts, {"type": "restart_service", "params": {"service": "text-service"}})
     assert rc["root_cause"].startswith("text-service stopped answering")
+
+
+def span(i, parent, svc, name, kind=2, error=False):
+    return {"id": i, "parent": parent, "service": svc, "instance": svc, "name": name, "start": 0, "end": 1,
+            "error": error, "status_msg": "", "version": None, "kind": kind}
+
+
+def test_unanswered_calls_and_who_answers():
+    from app import telemetry as tm
+    failing = [span("1", "", "nginx-web-server", "/compose", error=True),
+               span("2", "1", "compose-post-service", "compose_post_server"),
+               span("3", "2", "compose-post-service", "compose_text_client", kind=3),           # nobody answered
+               span("4", "2", "compose-post-service", "compose_media_client", kind="SPAN_KIND_CLIENT"),
+               span("5", "4", "media-service", "compose_media_server")]
+    assert [s["name"] for s in tm.unanswered_calls(failing)] == ["compose_text_client"]
+    healthy = failing[:3] + [span("6", "3", "text-service", "compose_text_server")]
+    assert tm.answerer(healthy, "compose_text_client") == "text-service"
+    assert tm.answerer(failing, "compose_text_client") is None
+
+
+def test_unanswered_call_finding_and_fallback():
+    facts = {"alerting_service": "nginx-web-server", "error_origin_service": "text-service", "trace_origin_votes": {},
+             "unanswered_calls": [{"caller": "compose-post-service", "call": "compose_text_client", "traces": 6}],
+             "unanswered_callee": "text-service", "silent_services": [],
+             "error_rate_by_version": [], "suspect_deploy": None}
+    text = " ".join(agent.findings("error_rate", facts))
+    assert "compose-post-service called compose_text_client and got no answer" in text and "answered by text-service" in text
+    rc = agent.fallback_text("error_rate", facts, {"type": "restart_service", "params": {"service": "text-service"}})
+    assert rc["root_cause"].startswith("text-service is not answering")
