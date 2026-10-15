@@ -82,7 +82,7 @@ async function addNodeExporter() {
           <UiField v-model="form.name" label="Name in AIOps" :placeholder="suggested" />
           <UiField v-model="form.port" label="SSH port" placeholder="22" mono />
         </div>
-        <div class="row mt-2"><UiSwitch v-model="form.ebpf" label="Trace its services automatically" /><span>Trace its services automatically (eBPF, capped at 200 MB and half a CPU)</span></div>
+        <div class="row mt-2"><UiSwitch v-model="form.ebpf" label="Trace its services automatically" /><span>Logs, metrics and traces for every service (collector capped at 256 MB, eBPF tracer at 384 MB)</span></div>
       </UiDisclosure>
       <p v-if="job?.state === 'failed'" class="small bad mt-2">{{ job.error }}</p>
       <UiButton class="mt connect" @click="connectServer">{{ job?.state === "failed" ? "Try again" : "Connect" }}</UiButton>
