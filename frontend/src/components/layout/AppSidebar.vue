@@ -2,34 +2,36 @@
 import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import { useUiStore } from "@/stores/ui";
+import { useI18n } from "@/lib/i18n";
 
 const app = useAppStore();
 const ui = useUiStore();
+const { t } = useI18n();
 // Three jobs, in the order an on-call engineer meets them: watch, respond, set up. Two angles on what you run:
 // Fleet = the machines (all of them, monitored or not); Service map = the services and how they call each other.
-const NAV = [
+const NAV = computed(() => [
   { items: [
-    { to: "/", label: "Overview", icon: "home" },
-    { to: "/problems", label: "Incidents", icon: "warning", badge: true },
-    { to: "/network", label: "Fleet", icon: "server" },
-    { to: "/map", label: "Service map", icon: "flowchart" },
-    { to: "/services", label: "Services", icon: "cube" },
+    { to: "/", label: t("Overview", "ภาพรวม"), icon: "home" },
+    { to: "/problems", label: t("Incidents", "เหตุการณ์"), icon: "warning", badge: true },
+    { to: "/network", label: t("Fleet", "ฟลีต"), icon: "server" },
+    { to: "/map", label: t("Service map", "แผนผังบริการ"), icon: "flowchart" },
+    { to: "/services", label: t("Services", "บริการ"), icon: "cube" },
   ] },
-  { label: "Automation", items: [
-    { to: "/runbooks", label: "Runbooks", icon: "book" },
-    { to: "/skills", label: "AI skills", icon: "sparkle" },
+  { label: t("Automation", "ระบบอัตโนมัติ"), items: [
+    { to: "/runbooks", label: t("Runbooks", "คู่มือแก้ไข"), icon: "book" },
+    { to: "/skills", label: t("AI skills", "ทักษะ AI"), icon: "sparkle" },
   ] },
-  { label: "Setup", items: [
-    { to: "/connect", label: "Add a host or service", icon: "add_circle" },
-    { to: "/notifications", label: "Notifications", icon: "alert" },
-    { to: "/settings", label: "Settings", icon: "settings" },
+  { label: t("Setup", "ตั้งค่า"), items: [
+    { to: "/connect", label: t("Add a host or service", "เพิ่มเครื่องหรือบริการ"), icon: "add_circle" },
+    { to: "/notifications", label: t("Notifications", "การแจ้งเตือน"), icon: "alert" },
+    { to: "/settings", label: t("Settings", "การตั้งค่า"), icon: "settings" },
   ] },
-  { label: "Demo & tools", items: [
-    { to: "/scenarios", label: "Demo scenarios", icon: "flash" },
-    { to: "/pricing", label: "Pricing", icon: "tag" },
-    { to: "/design", label: "Design system", icon: "sparkle" },
+  { label: t("Demo & tools", "เดโม่และเครื่องมือ"), items: [
+    { to: "/scenarios", label: t("Demo scenarios", "สถานการณ์เดโม่"), icon: "flash" },
+    { to: "/pricing", label: t("Pricing", "ราคา"), icon: "tag" },
+    { to: "/design", label: t("Design system", "ดีไซน์ซิสเต็ม"), icon: "sparkle" },
   ] },
-];
+]);
 const badge = computed(() => app.kpi.open || 0);
 const waiting = computed(() => app.awaiting.length > 0);
 const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to));
@@ -38,10 +40,9 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
   <aside :class="['sidebar', { open: ui.navOpen }]">
     <router-link to="/" class="brand" aria-label="AIOps One overview">
       <svg class="brand__mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
-        <rect width="28" height="28" rx="6" fill="var(--c-primary)" />
-        <path class="brand__line" d="M5 16h4l2.5-6 4 11 2.5-5H23" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-        <circle class="brand__pulse" cx="23" cy="16" r="2.6" fill="none" stroke="var(--c-action)" stroke-width="1.4" />
-        <circle class="brand__node" cx="23" cy="16" r="2.6" fill="var(--c-action)" stroke="var(--c-primary)" stroke-width="1" />
+        <rect width="28" height="28" rx="7" fill="var(--c-primary)" />
+        <path d="M5 15.5h3.4l2.2-5.2 3.4 9.4 2.2-4.2H23" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle class="brand__node" cx="23" cy="15.5" r="2.4" fill="var(--c-action)" stroke="var(--c-primary)" stroke-width="1.2" />
       </svg>
       <b>AIOps One</b>
     </router-link>
@@ -54,7 +55,7 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
         </router-link>
       </template>
     </nav>
-    <footer class="foot">{{ app.services.length }} services on {{ app.hosts.length }} hosts</footer>
+    <footer class="foot">{{ t(`${app.services.length} services on ${app.hosts.length} hosts`, `${app.services.length} บริการบน ${app.hosts.length} เครื่อง`) }}</footer>
   </aside>
 </template>
 <style scoped>
@@ -63,12 +64,10 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
 .brand { display: flex; gap: 10px; align-items: center; height: var(--topbar-h); padding: 0 16px; color: var(--c-text); border-bottom: 1px solid var(--c-border); }
 .brand b { font-size: 15px; font-weight: var(--fw-semibold); }
 .brand__mark { flex: none; }
-/* the AI node quietly breathes - the system is alive and watching */
-.brand__node { animation: brand-breathe 3s var(--ease, ease-in-out) infinite; transform-origin: 23px 16px; }
-.brand__pulse { transform-origin: 23px 16px; animation: brand-ping 3s var(--ease, ease-in-out) infinite; }
-@keyframes brand-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-@keyframes brand-ping { 0% { transform: scale(1); opacity: 0.6; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .brand__node, .brand__pulse { animation: none; } .brand__pulse { display: none; } }
+/* the signal node breathes once in a while - alive, but calm enough for an enterprise console */
+.brand__node { animation: brand-breathe 3.6s var(--ease, ease-in-out) infinite; transform-origin: 23px 15.5px; }
+@keyframes brand-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+@media (prefers-reduced-motion: reduce) { .brand__node { animation: none; } }
 nav { flex: 1; overflow: auto; padding: 10px 8px; }
 .nav__sec { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--c-text-3); padding: 18px 10px 6px; }
 .nav__item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--radius-md); color: var(--c-text-2);

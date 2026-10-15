@@ -128,22 +128,26 @@ async function openTrace(id) {
       </div>
       <div class="stack sticky">
         <FixPanel :incident="inc" />
-        <FeedbackCard :incident="inc" />
         <UiCard v-if="neighbours.length" title="Blast radius" icon="flowchart">
           <p class="small muted" style="margin:-2px 0 8px">Other machines AIOps monitors on {{ inc.entity }}'s network — check these first if the cause is shared.</p>
           <router-link v-for="n in neighbours" :key="n.host" :to="`/computers/${n.host}`" class="nbr">
             <UiStatusDot tone="ok" :size="7" /><b>{{ n.host }}</b><span class="muted small">{{ n.networks.join(', ') }}{{ n.owner ? ` · ${n.owner}` : '' }}</span>
           </router-link>
         </UiCard>
-        <UiCard title="Notifications" icon="alert">
-          <div v-for="n in inc.notifications" :key="n.id" class="small">{{ n.event.replace(/_/g, " ") }} · {{ clock(n.ts) }} · <span class="muted">{{ n.status }}</span></div>
-          <p v-if="!inc.notifications.length" class="small muted">None sent</p>
-          <div v-if="inc.status !== 'analyzing'" class="row row--wrap mt-2">
-            <UiButton variant="plain" size="sm" @click="store.reanalyze(inc.id).catch((e) => ui.toast(e.message))">Run analysis again</UiButton>
-            <UiButton v-if="!['resolved', 'closed', 'rejected'].includes(inc.status)" variant="plain" size="sm" @click="store.close(inc.id)">Close incident</UiButton>
-          </div>
-        </UiCard>
       </div>
+    </div>
+
+    <!-- after-the-fact: feedback that trains the AI, and the incident's notification trail -->
+    <div class="meta-row">
+      <FeedbackCard :incident="inc" />
+      <UiCard title="Notifications" icon="alert">
+        <div v-for="n in inc.notifications" :key="n.id" class="small ntf"><UiStatusDot :tone="n.status && n.status.startsWith('sent') ? 'ok' : 'neutral'" :size="6" />{{ n.event.replace(/_/g, " ") }} · {{ clock(n.ts) }} · <span class="muted">{{ n.status }}</span></div>
+        <p v-if="!inc.notifications.length" class="small muted">None sent</p>
+        <div v-if="inc.status !== 'analyzing'" class="row row--wrap mt-2">
+          <UiButton variant="tint" size="sm" icon="arrow_sync" @click="store.reanalyze(inc.id).catch((e) => ui.toast(e.message))">Run analysis again</UiButton>
+          <UiButton v-if="!['resolved', 'closed', 'rejected'].includes(inc.status)" variant="plain" size="sm" @click="store.close(inc.id)">Close incident</UiButton>
+        </div>
+      </UiCard>
     </div>
     <UiSheet v-model="traceOpen" title="Request trace" :width="980"><TraceWaterfall :spans="trace || []" /></UiSheet>
   </div>
@@ -174,5 +178,7 @@ async function openTrace(id) {
 .nbr:first-of-type { border-top: 0; } .nbr:hover b { color: var(--c-primary); } .nbr b { font-weight: var(--fw-medium); font-size: var(--fs-sm); }
 .nbr span { margin-left: auto; }
 .sticky { position: sticky; top: 12px; }
-@media (max-width: 1080px) { .sticky { position: static; } }
+.meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-top: var(--sp-4); align-items: start; }
+.ntf { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
+@media (max-width: 1080px) { .sticky { position: static; } .meta-row { grid-template-columns: 1fr; } }
 </style>

@@ -110,3 +110,7 @@ if os.path.isdir(WEB_DIST):
         # assets are content-hashed and cache forever; the page that names them must be re-checked
         # on every load, or browsers keep showing the previous release after a deploy
         return FileResponse(os.path.join(WEB_DIST, "index.html"), headers={"Cache-Control": "no-cache"})
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def favicon():
+        return FileResponse(os.path.join(WEB_DIST, "favicon.svg"), media_type="image/svg+xml")
