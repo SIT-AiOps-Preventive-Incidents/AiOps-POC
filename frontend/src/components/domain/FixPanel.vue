@@ -61,21 +61,24 @@ async function decide(decision) {
       </section>
       <DryRunChecklist class="mt" :dry-run="chosen.dry_run" :effects="false" />
 
-      <!-- the decision: one clear "your turn" block, orange = your turn -->
+      <!-- the decision: one clear "your turn" block (orange). Fill the two fields, then the one bold action. -->
       <div class="decision">
         <div class="decision__h"><UiIcon name="person" :size="15" />Your decision</div>
-        <label class="owner">
-          <span><span class="b">I'm the owner</span><span class="small muted">{{ inc.owner || "unassigned" }} approves this fix</span></span>
-          <UiSwitch v-model="ownerOk" label="I am the owner" />
-        </label>
-        <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
-        <UiButton variant="action" size="lg" block icon="checkmark" :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
+        <div class="decision__form">
+          <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
+          <label class="owner">
+            <UiSwitch v-model="ownerOk" label="I am the owner" />
+            <span><span class="b">I'm the owner of {{ inc.owner || "this service" }}</span><span class="small muted">and take responsibility for this fix</span></span>
+          </label>
+        </div>
+        <UiButton variant="action" size="lg" block icon="checkmark" :class="{ 'is-waiting': !canApprove }"
+                  :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
           {{ approveLabel(chosen) }}</UiButton>
         <p :class="['caption', canApprove ? 'ok' : 'dim']">
           <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
-          {{ canApprove ? "AIOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Confirm you are the owner to enable approval." : "Enter your name to enable approval." }}
+          {{ canApprove ? "AIOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Turn on “I’m the owner” to enable approval." : "Enter your name to enable approval." }}
         </p>
-        <UiButton variant="plain" block icon="dismiss" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
+        <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
       </div>
 
       <UiDisclosure v-if="cands.length > 1" :card="false" :title="`Other options (${cands.length - 1})`" class="mt-2">
@@ -114,12 +117,19 @@ async function decide(decision) {
 .decision { margin-top: 16px; padding: 14px; border: 1px solid var(--c-action); border-radius: var(--radius-lg); background: var(--c-action-bg); }
 .decision__h { display: flex; align-items: center; gap: 7px; font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-action-text); margin-bottom: 10px; }
 .decision__h .ui-icon { color: var(--c-action); }
-.owner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; margin-bottom: 10px; border-radius: var(--radius-md); background: var(--c-surface); border: 1px solid var(--c-border); cursor: pointer; }
-.owner .small { display: block; }
-.decision :deep(.ui-field) { margin-bottom: 10px; }
-.caption { display: flex; align-items: center; gap: 6px; margin: 8px 0 10px; font-size: var(--fs-xs); }
+/* name + owner grouped in one clean white panel */
+.decision__form { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 12px 12px 4px; margin-bottom: 12px; }
+.decision__form :deep(.ui-field) { margin-bottom: 12px; }
+.owner { display: flex; align-items: flex-start; gap: 10px; padding-top: 10px; border-top: 1px solid var(--c-separator); cursor: pointer; }
+.owner .b { display: block; } .owner .small { display: block; }
+/* the Approve button, not yet enabled: a faded version of itself, not dead grey */
+.decision .ui-btn.is-waiting:disabled { background: color-mix(in srgb, var(--c-action) 14%, var(--c-surface)); color: var(--c-action-text); box-shadow: none; }
+.caption { display: flex; align-items: center; gap: 6px; margin: 8px 2px 12px; font-size: var(--fs-xs); }
 .caption.ok { color: var(--c-ok-text); } .caption.ok .ui-icon { color: var(--c-ok); }
 .caption.dim { color: var(--c-text-3); } .caption.dim .ui-icon { color: var(--c-text-3); }
+/* Reject: quiet, never competes with Approve */
+.reject { color: var(--c-text-2); }
+.reject:hover:not(:disabled) { background: var(--c-bad-bg); color: var(--c-bad-text); }
 /* phones: keep the decision in reach while scrolling the evidence */
 @media (max-width: 640px) { .decision { position: sticky; bottom: 0; z-index: 2; } }
 .alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; margin-top: 6px; background: var(--c-fill); }
