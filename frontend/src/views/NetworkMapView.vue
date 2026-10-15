@@ -16,10 +16,15 @@ const error = ref("");
 const selected = ref(null);
 const query = ref("");
 const group = ref("network");
+const recs = ref(null);
 async function load() {
-  try { g.value = await api.network.graph(); error.value = ""; } catch (e) { error.value = e.message; }
+  try {
+    [g.value, recs.value] = [await api.network.graph(), await api.network.recommendations()];
+    error.value = "";
+  } catch (e) { error.value = e.message; }
 }
 usePolling(load, 20000);
+const monitorIp = (ip) => router.push({ path: "/connect/computer", query: { address: ip } });
 
 const VW = 1180, PAD = 20, CHIP_W = 176, CHIP_H = 34, GAP = 10, LANE_HEAD = 34, LANE_PAD = 12, BOX_H = 46, HUB_W = 210;
 const short = (s) => (s || "").replace(/\.sit\.kmutt\.ac\.th$/i, "");
@@ -120,6 +125,16 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <div :class="['stat', { bad: summary.problems }]"><b>{{ summary.problems }}</b><span>need attention</span></div>
       <div class="stat"><b>{{ summary.networks }}</b><span>networks</span></div>
     </div>
+    <section v-if="recs && recs.recommendations.length" class="recs">
+      <div class="recs-head"><b>Suggested to monitor next</b><span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · AIOps ranked them by what it would learn</span></div>
+      <div class="rec-row">
+        <div v-for="r in recs.recommendations.slice(0, 4)" :key="r.ip" class="rec">
+          <div class="rec-name">{{ r.name }}</div>
+          <div class="rec-why muted small">{{ r.reasons[0] }}</div>
+          <UiButton size="sm" icon="add" @click="monitorIp(r.ip)">Monitor</UiButton>
+        </div>
+      </div>
+    </section>
     <div class="bar">
       <UiSegmented v-model="group" :options="GROUPS" label="Group by" />
       <div class="search"><UiField v-model="query" placeholder="Find a machine by name or IP" /></div>
@@ -172,6 +187,11 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .stat { background: var(--c-surface); box-shadow: var(--shadow-1); border-radius: var(--radius-lg); padding: 10px 16px; min-width: 96px; }
 .stat b { font-size: 24px; display: block; line-height: 1.1; } .stat span { font-size: var(--fs-sm); color: var(--c-text-2); }
 .stat.ok b { color: var(--c-ok-text, var(--c-ok)); } .stat.bad b { color: var(--c-bad-text, var(--c-bad)); }
+.recs { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
+.recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
+.rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; } .rec-why { min-height: 32px; } .rec .ui-button { align-self: start; margin-top: 2px; }
 .bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
 .search { min-width: 260px; flex: 1; max-width: 360px; } .search :deep(.ui-field) { margin: 0; } .search :deep(label) { display: none; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
