@@ -59,23 +59,30 @@ const graph = computed(() => {
   const mainIds = new Set([...main].filter((id) => by[id]));
   const mainL = layerOf(mainIds, ["clients"]);
   const mainBox = place(mainIds, mainL, TOP);
-  let y = TOP + mainBox.H + 36, width = mainBox.cols;
+  let y = TOP + mainBox.H + 36;
+  const Wd = Math.max(24 + mainBox.cols * CW, 760);
+  const perRow = Math.max(1, Math.floor((Wd - 24) / CW));   // how many chips fit across the canvas
 
-  // host lanes for discovered services that are not on the main path
+  // host lanes: services an agent discovered on a computer that are not on the main request path. They are
+  // mostly independent, so wrap them into a grid that fills the width instead of one tall column.
   const rest = all.filter((n) => !main.has(n.id) && n.kind !== "client");
   const lanes = {};
   for (const n of rest) (lanes[n.hosts?.[0] || "unknown host"] ||= []).push(n.id);
   const laneBoxes = [];
   for (const [host, ids] of Object.entries(lanes)) {
-    const set = new Set(ids);
-    const roots = ids.filter((id) => !edges.some((e) => e.to === id && set.has(e.from)));
-    const box = place(set, layerOf(set, roots), y + LANE_HEAD);
+    const list = ids.map((id) => by[id]).sort((a, b) => a.id.localeCompare(b.id));
+    const top = y + LANE_HEAD;
+    let gx = 24, gy = top, rowH = 0, col = 0, bottom = top;
+    for (const n of list) {
+      n.x = gx; n.y = gy;
+      bottom = Math.max(bottom, gy + nodeH(n));
+      rowH = Math.max(rowH, nodeH(n));
+      if (++col >= perRow) { gy += rowH + GAP; gx = 24; rowH = 0; col = 0; } else gx += CW;
+    }
     const h = d.hosts.find((x) => x.name === host);
-    laneBoxes.push({ host, os: h?.os, y, h: box.H + LANE_HEAD + 16, count: ids.length });
-    width = Math.max(width, box.cols);
-    y += box.H + LANE_HEAD + 30;
+    laneBoxes.push({ host, os: h?.os, y, h: (bottom - top) + LANE_HEAD + 16, count: ids.length });
+    y += (bottom - top) + LANE_HEAD + 30;
   }
-  const Wd = Math.max(24 + width * CW, 760);
   return { by, edges, nodes: all.map((n) => by[n.id]), mainLayers: Math.max(...Object.values(mainL)) + 1, laneBoxes, W: Wd, H: y + 10 };
 });
 
@@ -172,7 +179,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <g v-for="lane in graph.laneBoxes" :key="lane.host">
         <rect x="12" :y="lane.y" :width="graph.W - 24" :height="lane.h" rx="14" class="lane" />
         <image v-if="osLogo(lane.os)" :class="{ 'ui-logo--mono': osLogo(lane.os) === 'apple' }" :href="`/icons/b/${osLogo(lane.os)}.svg`" x="26" :y="lane.y + 11" width="16" height="16" />
-        <text :x="osLogo(lane.os) ? 48 : 26" :y="lane.y + 24" class="lane-title">{{ lane.host }} <tspan class="lane-sub">· {{ lane.count }} {{ lane.count === 1 ? "service" : "services" }} outside the shop request path</tspan></text>
+        <text :x="osLogo(lane.os) ? 48 : 26" :y="lane.y + 24" class="lane-title">{{ lane.host }} <tspan class="lane-sub">· {{ lane.count }} {{ lane.count === 1 ? "service" : "services" }} not on the traced request path</tspan></text>
       </g>
 
       <!-- edges -->
