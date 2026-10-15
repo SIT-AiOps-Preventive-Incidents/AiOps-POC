@@ -18,7 +18,7 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.2.1"
+VERSION = "1.3.0"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
 HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
@@ -155,7 +155,25 @@ def inventory():
         p = line.split("\t")
         if len(p) >= 2:
             containers.append({"name": p[0], "image": p[1], "ports": p[2] if len(p) > 2 else ""})
+    details = container_details([c["name"] for c in containers])
+    for c in containers:
+        c.update(details.get(c["name"], {}))
     return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers}
+
+
+def container_details(names):
+    """Container id (to find its log file) and the NAMES of its environment variables (official images declare their
+    runtime there: NODE_VERSION, JAVA_HOME ...). Values are dropped here and never leave this machine."""
+    if not names:
+        return {}
+    out = {}
+    fmt = "{{.Name}}\t{{.Id}}\t{{range .Config.Env}}{{.}}\x1f{{end}}"
+    for line in sh(["docker", "inspect", "--format", fmt] + names).splitlines():
+        p = line.split("\t", 2)  # an environment value may itself contain tabs
+        if len(p) == 3:
+            keys = sorted({kv.split("=", 1)[0] for kv in p[2].split("\x1f") if kv})
+            out[p[0].lstrip("/")] = {"id": p[1], "env_keys": keys}
+    return out
 
 
 def push_inventory():
@@ -163,10 +181,54 @@ def push_inventory():
         return
     inv = inventory()
     inv["ebpf"] = EBPF
+    inv["collector"] = COLLECTOR
     req = urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/inventory", data=json.dumps(inv).encode(),
                                  method="POST", headers={"Content-Type": "application/json"})
     reply = json.loads(urllib.request.urlopen(req, timeout=15).read() or b"{}")
     ebpf_apply(reply.get("instrument") or [])
+    collector_apply(reply.get("collector"))
+
+
+# ---------------- logs + container metrics (OpenTelemetry Collector) ----------------
+COLLECTOR_IMAGE = CFG.get("collector_image", "otel/opentelemetry-collector-contrib:0.120.0")
+COLLECTOR_NAME = "aiops-otelcol"
+COLLECTOR_CFG = os.path.join(DIR, "otelcol.json")
+COLLECTOR = {"state": "disabled", "error": None, "version": COLLECTOR_IMAGE.rsplit(":", 1)[-1]}
+
+
+def collector_apply(cfg):
+    """Run the collector with the config the platform wrote for this server (which containers' logs to read)."""
+    if DARWIN or not cfg:
+        COLLECTOR.update(state="disabled" if DARWIN else "idle", error=None)
+        return
+    if not shutil.which("docker") or subprocess.run(["docker", "info"], capture_output=True).returncode != 0:
+        COLLECTOR.update(state="unavailable", error="Docker is not installed or this user cannot run it")
+        return
+    api = sh(["docker", "version", "--format", "{{.Server.APIVersion}}"]).strip() or "1.44"
+    cfg = cfg.replace("__OTLP__", OTLP).replace("__DOCKER_API__", api)
+    digest = hashlib.sha1((cfg + COLLECTOR_IMAGE).encode()).hexdigest()[:12]
+    cur = sh(["docker", "inspect", "-f", '{{index .Config.Labels "aiops.cfg"}} {{.State.Running}}', COLLECTOR_NAME]).split()
+    if cur == [digest, "true"]:
+        COLLECTOR.update(state="running", error=None)
+        return
+    with open(COLLECTOR_CFG, "w") as f:
+        f.write(cfg)
+    sh(["docker", "rm", "-f", COLLECTOR_NAME])
+    # read-only: container log files and the Docker API for per-container stats. Capped, so on a busy production
+    # machine only the collector can be killed if it grows, never the apps.
+    r = subprocess.run(["docker", "run", "-d", "--name", COLLECTOR_NAME, "--restart", "unless-stopped",
+                        "--label", f"aiops.cfg={digest}", "--memory", CFG.get("collector_memory", "150m"),
+                        "--cpus", str(CFG.get("collector_cpus", "0.5")), "--network=host", "--user", "0:0",
+                        "-v", f"{COLLECTOR_CFG}:/etc/otelcol/config.json:ro",
+                        "-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
+                        "-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
+                        COLLECTOR_IMAGE, "--config=/etc/otelcol/config.json"],
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode == 0:
+        COLLECTOR.update(state="starting", error=None)
+        print(f"{time.strftime('%H:%M:%S')} collector started (logs + container metrics)", flush=True)
+    else:
+        COLLECTOR.update(state="error", error=(r.stderr or r.stdout).strip()[-300:])
 
 
 # ---------------- automatic tracing (eBPF) ----------------
@@ -194,6 +256,8 @@ def ebpf_config(targets):
              "discovery:", "  exclude_otel_instrumented_services: true", "  instrument:"]
     for t in targets:
         lines += [f"    - open_ports: {int(t['port'])}", f"      name: {json.dumps(t['service'])}"]
+        if t.get("exe"):  # two apps on the same port inside their containers: told apart by their program
+            lines += [f"      exe_path: {json.dumps(t['exe'])}"]
     lines += ["ebpf:", "  context_propagation: headers",
               "otel_traces_export:", f"  endpoint: {OTLP}", ""]
     return "\n".join(lines)

@@ -9,7 +9,7 @@ Connecting a computer is enough to see what runs on it:
 """
 import re
 
-from . import db, repo
+from . import collector, db, repo
 
 # OS / desktop noise that listens on a port but is not a "service" anyone runs on purpose.
 IGNORE_PROCESSES = {
@@ -57,7 +57,8 @@ def ingest(host: str, inv: dict) -> dict:
     ips = sorted(set(inv.get("ips") or []))
     db.ex("UPDATE hosts SET ip_addresses=%s, last_inventory_at=now() WHERE name=%s", (ips, host))
 
-    db.ex("UPDATE hosts SET auto_instrument=%s WHERE name=%s", (db.J(inv["ebpf"]) if inv.get("ebpf") else None, host))
+    status = {**(inv.get("ebpf") or {}), **({"collector": inv["collector"]} if inv.get("collector") else {})}
+    db.ex("UPDATE hosts SET auto_instrument=%s WHERE name=%s", (db.J(status) if status else None, host))
     found, listeners = [], {}  # (port) -> service_name, for matching local connections
     # ---- containers ----
     traced_by_container = {i["container"]: s["service_name"] for s in repo.list_services(("service", "network"))
@@ -73,9 +74,12 @@ def ingest(host: str, inv: dict) -> dict:
             found.append(svc)
             continue
         svc = _slug(name)
-        if not repo.service(svc):
-            repo.create_service(svc, display_name=name, kind="process", source="discovered",
-                                language=_lang(c.get("image", ""), name), owner=owner)
+        lang = collector.runtime_of(c) or _lang(c.get("image", ""), name)
+        existing = repo.service(svc)
+        if not existing:
+            repo.create_service(svc, display_name=name, kind="process", source="discovered", language=lang, owner=owner)
+        elif lang and not existing.get("language"):  # found before the agent could tell what it runs
+            repo.update_service(svc, language=lang)
         repo.ensure_instance(svc, name, host=host, container=name)
         found.append(svc)
 
@@ -114,7 +118,12 @@ def ingest(host: str, inv: dict) -> dict:
         if dst and dst != src:
             repo.upsert_connection(src, dst, host)
             edges += 1
-    return {"host": host, "services": sorted(set(found)), "edges": edges, "instrument": _targets(listeners)}
+    containers = [c for c in inv.get("containers") or [] if c.get("name") not in ignore]
+    out = {"host": host, "services": sorted(set(found)), "edges": edges,
+           "instrument": _targets(listeners) + collector.trace_targets(containers)}
+    if containers:  # logs + per-container metrics for everything running in Docker here
+        out["collector"] = collector.config(host, containers)
+    return out
 
 
 def _targets(listeners: dict) -> list[dict]:
