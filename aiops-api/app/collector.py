@@ -94,7 +94,7 @@ def config(host: str, containers: list[dict]) -> str:
             ]}
         logs.append(name)
     receivers["docker_stats"] = {"endpoint": "unix:///var/run/docker.sock", "collection_interval": "30s",
-                                 "api_version": "__DOCKER_API__",   # the agent fills in the server's own version
+                                 "api_version": "%DOCKER_API%",   # the agent fills in the server's own version
                                  "excluded_images": ["grafana/beyla*", "otel/opentelemetry-collector*"]}
     proc = ["memory_limiter", "resource/host", "batch"]
     pipelines = {"metrics": {"receivers": ["docker_stats"], "processors": proc, "exporters": ["otlphttp"]}}
@@ -105,6 +105,6 @@ def config(host: str, containers: list[dict]) -> str:
         "processors": {"memory_limiter": {"check_interval": "2s", "limit_mib": 110, "spike_limit_mib": 30},
                        "batch": {"timeout": "5s"},
                        "resource/host": {"attributes": [{"key": "host.name", "value": host, "action": "upsert"}]}},
-        "exporters": {"otlphttp": {"endpoint": "__OTLP__"}},
+        "exporters": {"otlphttp": {"endpoint": "%OTLP%"}},
         "service": {"telemetry": {"logs": {"level": "warn"}, "metrics": {"level": "none"}}, "pipelines": pipelines},
     }, indent=1, sort_keys=True)
