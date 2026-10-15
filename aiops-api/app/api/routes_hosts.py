@@ -82,8 +82,11 @@ async def get_host(name: str):
         tm.containers(with_stats=True) if name == PLATFORM_HOST else nothing(),
         detector.normal_ranges("host", name))
     series = {m: r[0]["points"] if r else [] for m, r in zip(metrics, ranges)}
+    from .. import fleet, netseg
+    segs, _, all_hosts = netseg.load()
     return {"host": host_h, "series": series, "normal": normal, "processes": (procs or {}).get("processes", []),
             "services": [s for s in services if name in s["hosts"]], "containers": containers or [],
+            "neighbours": fleet.neighbours(name, segs, all_hosts),  # other monitored machines on its network(s)
             "incidents": [i for i in repo.list_incidents(limit=200) if i["entity"] == name][:10]}
 
 

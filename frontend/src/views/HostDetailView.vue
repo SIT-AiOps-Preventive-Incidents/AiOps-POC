@@ -66,6 +66,11 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
     <UiList><ServiceRow v-for="s in d.services" :key="s.service" :service="s" />
       <UiEmpty v-if="!d.services.length">Nothing found yet. The agent reports listening ports and containers every minute.</UiEmpty></UiList>
     <AutoTraceStatus v-if="d.host.agent === 'aiops-agent'" class="mt" :host="d.host" :services="d.services" />
+    <template v-if="d.neighbours && d.neighbours.length">
+      <div class="section-label">Also on this network ({{ d.neighbours.length }})</div>
+      <p class="small muted" style="margin:-6px 0 8px">If this machine's host or network has trouble, these are the first to check — the same blast radius the AI looks at.</p>
+      <UiList plain><UiListRow v-for="n in d.neighbours" :key="n.host" :to="`/computers/${n.host}`" :title="n.host" :subtitle="`${n.networks.join(', ')}${n.owner ? ` · ${n.owner}` : ''}`" /></UiList>
+    </template>
     <template v-if="d.processes.length">
       <div class="section-label">Busiest processes</div>
       <UiList plain><UiListRow v-for="p in d.processes" :key="p.pid" :title="p.name" :subtitle="`PID ${p.pid}`">

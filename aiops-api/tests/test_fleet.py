@@ -48,3 +48,13 @@ def test_every_recommendation_has_a_plain_reason_and_the_list_is_ranked():
 
 def test_nothing_to_recommend_when_every_machine_is_already_ours():
     assert fleet.recommend(SEGS, [NEIGH[0]], HOSTS, problem_hosts=set()) == []   # only the gateway is left
+
+
+def test_neighbours_are_the_monitored_hosts_on_the_same_network():
+    segs = [{"cidr": "10.4.82.0/24", "host": "cp26pt1"}, {"cidr": "10.4.82.0/24", "host": "db-01"},
+            {"cidr": "10.9.0.0/24", "host": "esg360-prod"}]
+    hosts = [{"name": "cp26pt1", "owner": "team-platform"}, {"name": "db-01", "owner": "team-data"},
+             {"name": "esg360-prod", "owner": "team-esg"}]
+    n = fleet.neighbours("cp26pt1", segs, hosts)
+    assert n == [{"host": "db-01", "owner": "team-data", "networks": ["10.4.82.0/24"]}]   # not esg360 (other network)
+    assert fleet.neighbours("esg360-prod", segs, hosts) == []
