@@ -66,7 +66,7 @@ const FAQ = [
 <style scoped>
 .billing { display: flex; justify-content: center; margin-bottom: var(--sp-6); }
 .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
-.plan { position: relative; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-xl); padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-3); }
+.plan { position: relative; background: var(--c-surface); box-shadow: var(--shadow-card); border-radius: var(--radius-xl); padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-3); }
 .plan--primary { border-color: var(--c-primary); box-shadow: 0 0 0 1px var(--c-primary), 0 12px 32px color-mix(in srgb, var(--c-primary) 14%, transparent); }
 .plan__tag { position: absolute; top: -12px; left: var(--sp-6); background: var(--c-primary); color: var(--c-on-primary); font-size: var(--fs-xs); font-weight: var(--fw-semibold); padding: 3px 12px; border-radius: var(--radius-pill); }
 .plan__name { font-size: var(--fs-2xl); font-weight: var(--fw-semibold); line-height: var(--lh-tight); }

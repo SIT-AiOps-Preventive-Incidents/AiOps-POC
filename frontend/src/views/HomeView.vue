@@ -173,7 +173,7 @@ const eyebrow = computed(() => (status.value.tone === "action" ? t("Action requi
 .list + .grp { margin-top: 22px; }
 
 /* incident list: one clean card, rows divided by hairlines, highlighted on hover - no heavy coloured bars */
-.list { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; }
+.list { background: var(--c-surface); box-shadow: var(--shadow-card); border-radius: var(--radius-lg); overflow: hidden; }
 .item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--c-separator); cursor: pointer; }
 .item:first-child { border-top: 0; }
 .item:hover { background: var(--c-hover); }
@@ -185,13 +185,13 @@ const eyebrow = computed(() => (status.value.tone === "action" ? t("Action requi
 
 /* all-clear state */
 .clear { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 48px 24px;
-  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+  background: var(--c-surface); box-shadow: var(--shadow-card); border-radius: var(--radius-lg); }
 .clear__mark { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--c-ok-bg); color: var(--c-ok-text); margin-bottom: 4px; }
 .clear b { font-size: var(--fs-lg); } .clear .muted { max-width: 42ch; }
 
 /* right column panels */
 .cmd__aside { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 12px; }
-.panel { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 14px 16px; }
+.panel { background: var(--c-surface); box-shadow: var(--shadow-card); border-radius: var(--radius-lg); padding: 16px 18px; }
 .panel__h { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); margin-bottom: 10px; }
 .hrow { display: flex; align-items: center; gap: 11px; padding: 9px 0; text-decoration: none; color: var(--c-text); border-top: 1px solid var(--c-separator); }
 .hrow:first-of-type { border-top: 0; }

@@ -42,7 +42,7 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
       <svg class="brand__mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
         <defs>
           <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#4f7cff" /><stop offset="1" stop-color="#1b36c8" /></linearGradient>
+            <stop offset="0" stop-color="#6366f1" /><stop offset="1" stop-color="#3730a3" /></linearGradient>
           <linearGradient id="bmg" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stop-color="#ffffff" stop-opacity="0.18" /><stop offset="0.5" stop-color="#ffffff" stop-opacity="0" /></linearGradient>
         </defs>
@@ -51,7 +51,7 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
         <path d="M8 19.5 14 13 20 8" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.95" />
         <circle cx="8" cy="19.5" r="2.4" fill="#fff" />
         <circle cx="14" cy="13" r="2.4" fill="#fff" />
-        <circle cx="20" cy="8" r="3" fill="var(--c-action)" stroke="#1b36c8" stroke-width="1.2" />
+        <circle cx="20" cy="8" r="3" fill="var(--c-action)" stroke="#3730a3" stroke-width="1.2" />
       </svg>
       <b>AIOps One</b>
     </router-link>

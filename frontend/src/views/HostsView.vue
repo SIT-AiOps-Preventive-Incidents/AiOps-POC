@@ -25,7 +25,7 @@ usePolling(() => cat.loadHosts(), 10000);
 </template>
 <style scoped>
 .card { display: block; background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 18px 20px; color: var(--c-text); }
-.card:hover { box-shadow: 0 0 0 1.5px var(--c-primary); }
+.card:hover { box-shadow: 0 2px 4px rgba(20, 24, 40, 0.06), 0 10px 24px -6px rgba(20, 24, 40, 0.14), 0 0 0 1.5px var(--c-primary); }
 .grow { flex: 1; min-width: 0; } .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .add { display: grid; place-items: center; align-content: center; gap: 6px; color: var(--c-primary); min-height: 190px; border: 2px dashed var(--c-primary-tint-2); box-shadow: none; background: transparent; }
 </style>
