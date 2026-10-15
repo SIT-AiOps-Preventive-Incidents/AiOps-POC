@@ -181,6 +181,7 @@ async def run_scenario(scenario: str):
             "error_rate": 0.5, "error_msg": "RedisTimeoutError: session cache unreachable from frontend-b "
                                             "(connection pool stuck after network blip)"})
     elif scenario == "reset":
+        await net_scenarios.reset()   # first: the network lab must recover even if a demo part below is missing
         with open(remediation.BLOCKLIST, "w") as f:
             f.write("# managed by AIOps remediation (owner-approved block_ip actions)\n")
         await tm.container_exec(remediation.FW_CONTAINER, ["nginx", "-s", "reload"])
@@ -195,5 +196,4 @@ async def run_scenario(scenario: str):
             await _post("http://loadgen:8000/admin/attack", {"seconds": 0})
         except Exception:
             pass
-        await net_scenarios.reset()
     return {"scenario": scenario, "status": "started" if scenario != "reset" else "reset"}

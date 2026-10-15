@@ -40,21 +40,19 @@ services:
       aiops: {}
       nl-core-data: {ipv4_address: 10.20.255.11}
       nl-seg-data: {ipv4_address: 10.20.2.1}
+# Not `internal: true`: Docker drops traffic to addresses outside an internal network's subnet, which includes
+# OSPF's multicast hellos (224.0.0.5). Hosts keep their default route on "aiops", so nothing gains a new way out.
 networks:
   aiops: {external: true}
   nl-core-app:
     name: nl-core-app
-    internal: true
     ipam: {config: [{subnet: 10.20.255.0/29, gateway: 10.20.255.6}]}
   nl-core-data:
     name: nl-core-data
-    internal: true
     ipam: {config: [{subnet: 10.20.255.8/29, gateway: 10.20.255.14}]}
   nl-seg-app:
     name: nl-seg-app
-    internal: true
     ipam: {config: [{subnet: 10.20.1.0/24, gateway: 10.20.1.254}]}
   nl-seg-data:
     name: nl-seg-data
-    internal: true
     ipam: {config: [{subnet: 10.20.2.0/24, gateway: 10.20.2.254}]}

@@ -13,7 +13,7 @@ from __future__ import annotations
 import ipaddress
 from collections import deque
 
-from .snmp import Device
+from .snmp import Device, is_port
 
 MISSING_KEEP_S = 24 * 3600     # a host that stopped showing up stays on the map (as missing) for a day
 NEW_FOR_S = 15 * 60            # "new" badge on assets first seen in the last 15 minutes
@@ -49,7 +49,7 @@ def build(devices: list[Device], endpoints: dict[str, dict], known: dict | None 
             "uptime_s": d.uptime_s, "error": d.error,
             "ports": [{"name": p.name, "up": p.up, "mac": p.mac, "speed_mbps": p.speed_mbps,
                        "ips": [str(i) for i in p.ips], "mgmt": p.name == d.mgmt_port}
-                      for p in sorted(d.ports.values(), key=lambda p: p.index) if p.name != "lo"]}
+                      for p in sorted(d.ports.values(), key=lambda p: p.index) if is_port(p)]}
     for d in devices:
         for n in d.neighbors:
             peer = by_name.get(n.system)
@@ -61,7 +61,8 @@ def build(devices: list[Device], endpoints: dict[str, dict], known: dict | None 
             links[lid] = {"id": lid, "kind": "cable", "a": f"dev:{d.name}", "a_port": n.port,
                           "b": f"dev:{n.system}", "b_port": rport, "status": "up"}
     for lid, old in known.get("links", {}).items():    # a cable we saw before but whose LLDP entry is gone
-        if old.get("kind") == "cable" and lid not in links and old["a"] in nodes and old["b"] in nodes:
+        if (old.get("kind") == "cable" and lid not in links and old["a"] in nodes and old["b"] in nodes
+                and old["a"] != old["b"]):
             links[lid] = {**{k: old[k] for k in ("id", "kind", "a", "a_port", "b", "b_port")}, "status": "down"}
     for lk in links.values():                           # a port that is down takes its cable down
         for end, port in (("a", "a_port"), ("b", "b_port")):

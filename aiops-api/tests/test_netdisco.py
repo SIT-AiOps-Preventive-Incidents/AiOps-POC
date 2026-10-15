@@ -197,3 +197,28 @@ def test_scenario_port_command_targets_the_right_port():
     from app.netdisco import scenarios
     cmd = scenarios._port_cmd("10.20.255.", "down")[2]
     assert "/^10\\.20\\.255\\./" in cmd and cmd.endswith(" down")
+
+
+def test_own_lldp_frames_heard_back_are_not_neighbours():
+    echo = SW_APP + (".1.0.8802.1.1.2.1.4.1.1.9.0.24.2 = STRING: sw-app\n"
+                     ".1.0.8802.1.1.2.1.4.1.1.7.0.24.2 = STRING: eth2\n")
+    d = snmp.parse_device("172.18.0.9", snmp.parse_walk(echo))
+    assert [n.system for n in d.neighbors] == ["core-rtr"]
+
+
+def test_stored_self_link_is_ignored():
+    first = topology.build(devices(), ENDPOINTS, now=1000)
+    known = {"assets": {n["id"]: n for n in first["nodes"]}, "links": {l["id"]: l for l in first["links"]}}
+    known["links"]["sw-app:eth1--sw-app:eth1"] = {"id": "sw-app:eth1--sw-app:eth1", "kind": "cable", "a": "dev:sw-app",
+                                                  "a_port": "eth1", "b": "dev:sw-app", "b_port": "eth1", "status": "up"}
+    t = topology.build(devices(), ENDPOINTS, known, now=1060)
+    assert not any(l["a"] == l["b"] for l in t["links"])
+
+
+def test_tunnels_and_loopback_are_not_ports():
+    tun = SW_APP + (".1.3.6.1.2.1.2.2.1.2.30 = STRING: tunl0\n.1.3.6.1.2.1.2.2.1.3.30 = INTEGER: 131\n"
+                    ".1.3.6.1.2.1.2.2.1.8.30 = INTEGER: 2\n.1.3.6.1.2.1.2.2.1.3.1 = INTEGER: 24\n"
+                    ".1.3.6.1.2.1.2.2.1.2.31 = STRING: gretap0\n.1.3.6.1.2.1.2.2.1.3.31 = INTEGER: 6\n")
+    d = snmp.parse_device("172.18.0.9", snmp.parse_walk(tun))
+    ports = node(topology.build([d], ENDPOINTS, now=1), "dev:sw-app")["ports"]
+    assert [p["name"] for p in ports] == ["eth0", "eth1", "eth2"]
