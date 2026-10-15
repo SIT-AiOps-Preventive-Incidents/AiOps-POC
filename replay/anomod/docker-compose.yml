@@ -1,0 +1,73 @@
+# AnoMod SocialNetwork replay (see README.md). Started and removed by switch.sh.
+#   anomod-replay   plays the recorded traces and logs over OTLP to the collector
+#   sn-<service>    one small host per replayed service, so the network lab has something real behind each switch port
+name: anomod
+x-host: &host
+  image: busybox:1.36.1
+  command: ["sleep", "infinity"]
+  restart: unless-stopped
+  mem_limit: 16m
+  networks: [aiops]
+services:
+  anomod-replay:
+    build: .
+    image: aiops-anomod-replay:latest
+    container_name: anomod-replay
+    environment:
+      ANOMOD_DIR: /data
+      OTLP_HTTP: http://otel-collector:4318
+      AIOPS_API: http://aiops-api:8080
+    volumes: ["${ANOMOD_DIR:?set by switch.sh}:/data:ro"]
+    restart: unless-stopped
+    mem_limit: 512m
+    networks: [aiops]
+  sn-nginx-web-server:
+    <<: *host
+    container_name: sn-nginx-web-server
+    hostname: sn-nginx-web-server
+  sn-compose-post-service:
+    <<: *host
+    container_name: sn-compose-post-service
+    hostname: sn-compose-post-service
+  sn-home-timeline-service:
+    <<: *host
+    container_name: sn-home-timeline-service
+    hostname: sn-home-timeline-service
+  sn-user-timeline-service:
+    <<: *host
+    container_name: sn-user-timeline-service
+    hostname: sn-user-timeline-service
+  sn-text-service:
+    <<: *host
+    container_name: sn-text-service
+    hostname: sn-text-service
+  sn-media-service:
+    <<: *host
+    container_name: sn-media-service
+    hostname: sn-media-service
+  sn-url-shorten-service:
+    <<: *host
+    container_name: sn-url-shorten-service
+    hostname: sn-url-shorten-service
+  sn-user-mention-service:
+    <<: *host
+    container_name: sn-user-mention-service
+    hostname: sn-user-mention-service
+  sn-unique-id-service:
+    <<: *host
+    container_name: sn-unique-id-service
+    hostname: sn-unique-id-service
+  sn-user-service:
+    <<: *host
+    container_name: sn-user-service
+    hostname: sn-user-service
+  sn-social-graph-service:
+    <<: *host
+    container_name: sn-social-graph-service
+    hostname: sn-social-graph-service
+  sn-post-storage-service:
+    <<: *host
+    container_name: sn-post-storage-service
+    hostname: sn-post-storage-service
+networks:
+  aiops: {external: true}

@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agent, db, detector, repo, seed
+from . import agent, datasets, db, detector, repo, seed
 from .netdisco import service as netdisco
 from .api import errors, routes_hosts, routes_incidents, routes_map, routes_network, routes_platform, routes_services
 from .api.schemas import HostRegistration
@@ -44,7 +44,7 @@ async def lifespan(_):
     repo.seed_skills(agent.SKILLS)
     if seed.migrate_sqlite():
         logging.info("imported legacy SQLite data")
-    seed.ensure_demo()
+    datasets.ensure()   # the shop, or AnoMod's SocialNetwork (DEMO_DATASET)
     routes_hosts.write_targets()
     tasks = [asyncio.create_task(detector.loop()), asyncio.create_task(rotate_edge_logs()),
              asyncio.create_task(netdisco.loop())]
