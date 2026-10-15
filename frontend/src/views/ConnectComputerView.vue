@@ -4,6 +4,7 @@ import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
+import { installCommand, tunnelCommand } from "@/lib/connect";
 import { slug } from "@/lib/format";
 import { useCatalogStore } from "@/stores/catalog";
 import { useUiStore } from "@/stores/ui";
@@ -14,7 +15,11 @@ const name = ref(ui.prefs.computerName || "my-mac");
 const os = ref("mac");
 const origin = window.location.origin;
 const clean = computed(() => slug(name.value) || "my-mac");
-const command = computed(() => `curl -fsSL ${origin}/install/agent.sh | AIOPS_HOST_NAME=${clean.value} sh`);
+const reach = ref("direct");
+const login = ref("");
+const tunnel = computed(() => os.value === "linux" && reach.value === "tunnel");
+const command = computed(() => installCommand({ origin, name: clean.value, tunnel: tunnel.value }));
+const tunnelCmd = computed(() => tunnelCommand({ login: login.value.trim() }));
 watch(clean, (v) => ui.setPref("computerName", v));
 
 // live status: not seen -> registered -> metrics -> services discovered
@@ -39,11 +44,22 @@ async function addNodeExporter() {
       <li class="step done"><span class="n">1</span><div class="body"><h2>Name it</h2>
         <UiField v-model="name" label="Computer name" />
         <label class="lbl">System</label>
-        <UiSegmented v-model="os" :options="[{ value: 'mac', label: 'macOS', logo: 'apple' }, { value: 'linux', label: 'Linux', logo: 'linux' }]" label="System" /></div></li>
-      <li class="step done"><span class="n">2</span><div class="body"><h2>Paste this in Terminal {{ os === "mac" ? "on the Mac" : "on the server" }}</h2>
+        <UiSegmented v-model="os" :options="[{ value: 'mac', label: 'macOS', logo: 'apple' }, { value: 'linux', label: 'Linux', logo: 'linux' }]" label="System" />
+        <template v-if="os === 'linux'">
+          <label class="lbl">How it reaches AIOps</label>
+          <UiSegmented v-model="reach" :options="[{ value: 'direct', label: 'Directly (campus or VPN)' }, { value: 'tunnel', label: 'Through an SSH tunnel' }]" label="Reach" />
+          <template v-if="tunnel">
+            <UiField v-model="login" label="SSH login of the server" placeholder="poc@34.2.129.3" mono class="mt" />
+            <p class="small muted">For a server outside the campus network, such as a cloud VM. AIOps connects out to it; nothing is opened on the server and the tunnel only listens on its loopback.</p>
+          </template>
+        </template></div></li>
+      <li v-if="tunnel" class="step done"><span class="n">2</span><div class="body"><h2>On the AIOps server, open the tunnel</h2>
+        <UiCodeBlock :code="tunnelCmd" />
+        <p class="small muted mt-2">Keep it running (for example as a systemd service). The server then reaches AIOps on 127.0.0.1:18080 and 127.0.0.1:14318.</p></div></li>
+      <li class="step done"><span class="n">{{ tunnel ? 3 : 2 }}</span><div class="body"><h2>Paste this in Terminal {{ os === "mac" ? "on the Mac" : "on the server" }}</h2>
         <UiCodeBlock :code="command" />
         <p class="small muted mt-2">{{ os === "mac" ? "No admin password and nothing opened on your Mac. It starts again by itself when you log in." : "No sudo needed, only python3. If this user can run Docker, the services found are also traced with eBPF - no code change. Opt out with AIOPS_EBPF=0." }}</p></div></li>
-      <li :class="['step', { done: connected }]"><span class="n">3</span><div class="body"><h2>See it and its services appear</h2>
+      <li :class="['step', { done: connected }]"><span class="n">{{ tunnel ? 4 : 3 }}</span><div class="body"><h2>See it and its services appear</h2>
         <UiWait v-if="!host" :title="`Waiting for ${clean}…`" subtitle="This updates by itself." />
         <UiWait v-else-if="!connected" :title="`${clean} is registered`" subtitle="Waiting for its first measurements…" />
         <template v-else>
