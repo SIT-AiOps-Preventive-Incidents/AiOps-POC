@@ -49,10 +49,10 @@ const healthLabel = { healthy: "Healthy", problem: "Problem", down: "Down", offl
 
 // How the platform handles an incident, with the real averages from this installation
 const FLOW = computed(() => [
-  { title: "Detect", value: dur(app.kpi.mttd_s), hint: "from the first bad signal" },
-  { title: "Investigate", value: "AI", hint: "reads metrics, traces and logs" },
-  { title: "Approve", value: "You", hint: "nothing changes without you", you: true },
-  { title: "Fix and verify", value: dur(app.kpi.mttr_s), hint: "from detection to verified" },
+  { title: "Detect", icon: "search", value: dur(app.kpi.mttd_s), hint: "from the first bad signal" },
+  { title: "Investigate", icon: "sparkle", value: "AI", hint: "reads metrics, traces and logs" },
+  { title: "Approve", icon: "person", value: "You", hint: "nothing changes without you", you: true },
+  { title: "Fix and verify", icon: "checkmark_circle", value: dur(app.kpi.mttr_s), hint: "from detection to verified" },
 ]);
 </script>
 <template>
@@ -77,7 +77,7 @@ const FLOW = computed(() => [
 
       <ol class="flow" aria-label="How an incident is handled">
         <li v-for="f in FLOW" :key="f.title" :class="{ you: f.you }">
-          <span class="flow__t">{{ f.title }}</span>
+          <span class="flow__t"><UiIcon :name="f.icon" :size="14" />{{ f.title }}</span>
           <b class="flow__v">{{ f.value }}</b>
           <span class="flow__h">{{ f.hint }}</span>
         </li>
@@ -92,12 +92,12 @@ const FLOW = computed(() => [
       </router-link>
 
       <section v-if="queue.length">
-        <h2 class="section-title">Open incidents <router-link to="/problems">All incidents</router-link></h2>
+        <h2 class="section-title"><span class="st-l"><UiIcon name="warning" :size="16" />Open incidents</span><router-link to="/problems">All incidents</router-link></h2>
         <div class="queue"><IncidentCard v-for="p in queue" :key="p.id" :incident="p" /></div>
       </section>
 
       <section>
-        <h2 class="section-title">Services <router-link to="/map">Service map</router-link></h2>
+        <h2 class="section-title"><span class="st-l"><UiIcon name="cube" :size="16" />Services</span><router-link to="/map">Service map</router-link></h2>
         <div class="table-wrap">
           <table class="tbl">
             <thead><tr><th>Service</th><th>Status</th><th class="r">Requests</th><th class="r">Errors</th><th class="r">p95</th><th>Last 7 days</th></tr></thead>
@@ -118,7 +118,7 @@ const FLOW = computed(() => [
 
       <div class="cols">
         <section>
-          <h2 class="section-title">Hosts <router-link to="/computers">All hosts</router-link></h2>
+          <h2 class="section-title"><span class="st-l"><UiIcon name="server" :size="16" />Hosts</span><router-link to="/computers">All hosts</router-link></h2>
           <div class="table-wrap">
             <table class="tbl">
               <thead><tr><th>Host</th><th>CPU</th><th>Memory</th><th>Disk</th><th>Last 7 days</th></tr></thead>
@@ -136,7 +136,7 @@ const FLOW = computed(() => [
           </div>
         </section>
         <section v-if="app.discovered.length">
-          <h2 class="section-title">Found running on your hosts</h2>
+          <h2 class="section-title"><span class="st-l"><UiIcon name="search" :size="16" />Found running on your hosts</span></h2>
           <UiList>
             <UiListRow v-for="s in app.discovered.slice(0, 5)" :key="s.service" :to="`/services/${s.service}`" :title="s.name"
                        :subtitle="`On ${s.hosts.join(', ')}, seen ${ago(s.last_seen)}`">
@@ -176,7 +176,9 @@ const FLOW = computed(() => [
 .flow li + li { border-left: 1px solid var(--c-border); }
 .flow li + li::before { content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; transform: translateY(-50%) rotate(45deg);
   background: var(--c-surface); border-top: 1px solid var(--c-border); border-right: 1px solid var(--c-border); }
-.flow__t { font-size: var(--fs-sm); color: var(--c-text-2); }
+.flow__t { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--c-text-2); }
+.flow__t .ui-icon { color: var(--c-text-3); }
+.flow li.you .flow__t .ui-icon { color: var(--c-action); }
 .flow__v { font-size: var(--fs-xl); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; color: var(--c-primary); }
 .flow li.you .flow__v { color: var(--c-action-text); }
 .flow__h { font-size: var(--fs-xs); color: var(--c-text-3); }
@@ -189,6 +191,8 @@ const FLOW = computed(() => [
 .coverage__text span { color: var(--c-text-2); font-size: var(--fs-sm); }
 .coverage__cta { display: inline-flex; align-items: center; gap: 2px; color: var(--c-primary); font-weight: var(--fw-semibold); font-size: var(--fs-sm); white-space: nowrap; }
 
+.st-l { display: inline-flex; align-items: center; gap: 8px; }
+.st-l .ui-icon { color: var(--c-text-3); }
 .queue { display: flex; flex-direction: column; gap: 10px; }
 
 .table-wrap { border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow-x: auto; background: var(--c-surface); }

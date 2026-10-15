@@ -42,13 +42,16 @@ async function decide(decision) {
 }
 </script>
 <template>
-  <UiCard :title="waiting || investigating ? 'Recommended fix' : 'Fix'">
+  <UiCard :title="waiting || investigating ? 'Recommended fix' : 'Fix'" :icon="waiting || investigating ? 'wrench' : undefined">
     <UiWait v-if="investigating" title="The AI is investigating" :subtitle="`${inc.steps.length} steps so far, usually 1 to 3 minutes`" />
 
     <template v-else-if="waiting && chosen">
-      <div class="fix"><div class="small muted">{{ pick === 0 ? "AI recommends" : "You picked" }}</div><div class="fix__a">{{ chosen.label }}</div></div>
+      <div class="fix">
+        <span class="fix__tag"><UiIcon name="sparkle" :size="13" />{{ pick === 0 ? "AI recommends" : "You picked" }}</span>
+        <div class="fix__a">{{ chosen.label }}</div>
+      </div>
       <section v-if="will" class="will" aria-label="If you approve">
-        <div class="will__t">If you approve</div>
+        <div class="will__t"><UiIcon name="play" :size="13" />If you approve</div>
         <p v-if="will.manual" class="small">Nothing runs automatically. You confirm that you will follow the runbook yourself.</p>
         <template v-else>
           <p class="small">AIOps One will run:</p>
@@ -57,20 +60,24 @@ async function decide(decision) {
         </template>
       </section>
       <DryRunChecklist class="mt" :dry-run="chosen.dry_run" :effects="false" />
-      <div class="owner">
-        <div><div class="b">I'm the owner</div><div class="small muted">{{ inc.owner || "unassigned" }} approves this fix</div></div>
-        <UiSwitch v-model="ownerOk" label="I am the owner" />
-      </div>
-      <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
-      <div class="decide">
-        <UiButton variant="action" size="lg" block :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
+
+      <!-- the decision: one clear "your turn" block, orange = your turn -->
+      <div class="decision">
+        <div class="decision__h"><UiIcon name="person" :size="15" />Your decision</div>
+        <label class="owner">
+          <span><span class="b">I'm the owner</span><span class="small muted">{{ inc.owner || "unassigned" }} approves this fix</span></span>
+          <UiSwitch v-model="ownerOk" label="I am the owner" />
+        </label>
+        <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
+        <UiButton variant="action" size="lg" block icon="checkmark" :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
           {{ approveLabel(chosen) }}</UiButton>
-        <p v-if="!canApprove" class="small dim mt-2">{{ !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Confirm you are the owner to enable approval." : "Enter your name to enable approval." }}</p>
+        <p :class="['caption', canApprove ? 'ok' : 'dim']">
+          <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
+          {{ canApprove ? "AIOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Confirm you are the owner to enable approval." : "Enter your name to enable approval." }}
+        </p>
+        <UiButton variant="plain" block icon="dismiss" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
       </div>
-      <div class="row row--between mt">
-        <UiButton variant="danger" :loading="busy === 'reject'" @click="decide('reject')">Reject</UiButton>
-        <span class="small dim">Checked again right before it runs</span>
-      </div>
+
       <UiDisclosure v-if="cands.length > 1" :card="false" :title="`Other options (${cands.length - 1})`" class="mt-2">
         <label v-for="(c, i) in cands" :key="c.id" :class="['alt', { sel: i === pick, blocked: !c.dry_run?.ok }]">
           <input type="radio" name="cand" :checked="i === pick" :disabled="!c.dry_run?.ok" @change="pick = i">
@@ -95,16 +102,26 @@ async function decide(decision) {
 </template>
 <style scoped>
 .fix { border-radius: var(--radius-md); background: var(--c-primary-tint); padding: 12px 14px; }
+.fix__tag { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-primary); margin-bottom: 2px; }
 .fix__a { font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
-.owner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--c-separator); border-bottom: 1px solid var(--c-separator); margin: 14px 0 4px; }
-.b { font-weight: var(--fw-semibold); }
+.b { font-weight: var(--fw-semibold); display: block; }
 .will { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--c-border); }
-.will__t { font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--c-action-text, var(--c-action)); margin-bottom: 4px; }
+.will__t { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--c-action-text, var(--c-action)); margin-bottom: 4px; }
 .will p { margin: 4px 0; }
 .will__cmd { background: var(--c-fill); border-radius: 8px; padding: 8px 10px; font: 12px/1.5 var(--font-mono); white-space: pre-wrap; margin: 4px 0; }
-.decide { margin-top: 14px; }
+
+/* the decision: the one place that needs a person. Grouped and tinted so the action reads as "your turn". */
+.decision { margin-top: 16px; padding: 14px; border: 1px solid var(--c-action); border-radius: var(--radius-lg); background: var(--c-action-bg); }
+.decision__h { display: flex; align-items: center; gap: 7px; font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-action-text); margin-bottom: 10px; }
+.decision__h .ui-icon { color: var(--c-action); }
+.owner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; margin-bottom: 10px; border-radius: var(--radius-md); background: var(--c-surface); border: 1px solid var(--c-border); cursor: pointer; }
+.owner .small { display: block; }
+.decision :deep(.ui-field) { margin-bottom: 10px; }
+.caption { display: flex; align-items: center; gap: 6px; margin: 8px 0 10px; font-size: var(--fs-xs); }
+.caption.ok { color: var(--c-ok-text); } .caption.ok .ui-icon { color: var(--c-ok); }
+.caption.dim { color: var(--c-text-3); } .caption.dim .ui-icon { color: var(--c-text-3); }
 /* phones: keep the decision in reach while scrolling the evidence */
-@media (max-width: 640px) { .decide { position: sticky; bottom: 0; z-index: 2; padding: 10px 0; background: var(--c-surface); } }
+@media (max-width: 640px) { .decision { position: sticky; bottom: 0; z-index: 2; } }
 .alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; margin-top: 6px; background: var(--c-fill); }
 .alt.sel { background: var(--c-primary-tint); box-shadow: inset 0 0 0 1px var(--c-primary); }
 .alt.blocked { opacity: 0.6; cursor: not-allowed; }

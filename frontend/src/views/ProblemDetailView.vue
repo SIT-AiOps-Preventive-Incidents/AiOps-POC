@@ -96,7 +96,7 @@ async function openTrace(id) {
     <UiStepper :steps="steps" />
     <div class="split mt">
       <div class="stack">
-        <UiCard title="What happened">
+        <UiCard title="What happened" icon="search">
           <template v-if="inc.root_cause">
             <dl class="rca">
               <dt>Root cause</dt><dd class="rc">{{ inc.root_cause }}</dd>
@@ -118,24 +118,24 @@ async function openTrace(id) {
           </template>
           <UiWait v-else title="The AI is reading metrics, traces and logs…" />
         </UiCard>
-        <UiCard v-if="evidence.length" title="Evidence">
+        <UiCard v-if="evidence.length" title="Evidence" icon="list">
           <ul class="ev"><li v-for="(e, i) in evidence" :key="i"><span v-if="e.source" class="ev__src">{{ e.source }}</span>{{ e.text }}</li></ul>
           <div v-if="samples.length" class="row row--wrap mt-2 small"><span class="muted">Example traces</span>
             <UiButton v-for="t in samples" :key="t.trace_id" variant="tint" size="sm" @click="openTrace(t.trace_id)">{{ t.trace_id.slice(0, 8) }}</UiButton></div>
         </UiCard>
-        <UiCard v-if="inc.runbook.length" title="Runbook"><ol class="rb"><li v-for="(r, i) in inc.runbook" :key="i">{{ r }}</li></ol></UiCard>
+        <UiCard v-if="inc.runbook.length" title="Runbook" icon="book"><ol class="rb"><li v-for="(r, i) in inc.runbook" :key="i">{{ r }}</li></ol></UiCard>
         <UiDisclosure title="How the AI investigated" :meta="`${inc.steps.length} steps`"><InvestigationTimeline :steps="inc.steps" /></UiDisclosure>
       </div>
       <div class="stack sticky">
         <FixPanel :incident="inc" />
         <FeedbackCard :incident="inc" />
-        <UiCard v-if="neighbours.length" title="Blast radius">
+        <UiCard v-if="neighbours.length" title="Blast radius" icon="flowchart">
           <p class="small muted" style="margin:-2px 0 8px">Other machines AIOps monitors on {{ inc.entity }}'s network — check these first if the cause is shared.</p>
           <router-link v-for="n in neighbours" :key="n.host" :to="`/computers/${n.host}`" class="nbr">
             <UiStatusDot tone="ok" :size="7" /><b>{{ n.host }}</b><span class="muted small">{{ n.networks.join(', ') }}{{ n.owner ? ` · ${n.owner}` : '' }}</span>
           </router-link>
         </UiCard>
-        <UiCard title="Notifications">
+        <UiCard title="Notifications" icon="alert">
           <div v-for="n in inc.notifications" :key="n.id" class="small">{{ n.event.replace(/_/g, " ") }} · {{ clock(n.ts) }} · <span class="muted">{{ n.status }}</span></div>
           <p v-if="!inc.notifications.length" class="small muted">None sent</p>
           <div v-if="inc.status !== 'analyzing'" class="row row--wrap mt-2">
