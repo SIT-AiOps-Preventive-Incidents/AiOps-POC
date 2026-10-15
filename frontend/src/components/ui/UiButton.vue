@@ -16,29 +16,57 @@ const tag = computed(() => (props.to ? "router-link" : props.href ? "a" : "butto
              :class="['ui-btn', `ui-btn--${variant}`, `ui-btn--${size}`, { 'ui-btn--block': block }]"
              :disabled="tag === 'button' ? disabled || loading : undefined" :aria-busy="loading || undefined"
              :target="href ? '_blank' : undefined" :rel="href ? 'noopener' : undefined">
-    <UiSpinner v-if="loading" :size="16" />
-    <UiIcon v-else-if="icon" :name="icon" :size="size === 'sm' ? 16 : 18" />
+    <UiSpinner v-if="loading" :size="size === 'sm' ? 15 : 17" />
+    <UiIcon v-else-if="icon" :name="icon" :size="size === 'sm' ? 16 : size === 'lg' ? 19 : 17" class="ui-btn__ic" />
     <slot />
   </component>
 </template>
 <style scoped>
-.ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; cursor: pointer;
-  font-weight: var(--fw-medium); white-space: nowrap; border-radius: var(--radius-md); text-decoration: none; line-height: 1;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
-.ui-btn--sm { height: 28px; padding: 0 10px; font-size: var(--fs-sm); }
-.ui-btn--md { height: 34px; padding: 0 14px; font-size: var(--fs-md); }
-.ui-btn--lg { height: 42px; padding: 0 18px; font-size: var(--fs-lg); }
+/* Buttons: filled actions carry a soft one-pixel shadow and a top inner highlight for depth, lighten on hover,
+   and push in on press - the restrained, tactile style of a modern product (Linear / Vercel / Stripe). */
+.ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid transparent; cursor: pointer;
+  font-weight: var(--fw-semibold); white-space: nowrap; border-radius: var(--radius-md); text-decoration: none; line-height: 1;
+  letter-spacing: 0.01em; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease); }
+.ui-btn__ic { flex: none; }
+.ui-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ui-btn:active:not(:disabled) { transform: translateY(0.5px); }
+.ui-btn--sm { height: 30px; padding: 0 11px; font-size: var(--fs-sm); border-radius: var(--radius-sm); }
+.ui-btn--md { height: 36px; padding: 0 15px; font-size: var(--fs-md); }
+.ui-btn--lg { height: 44px; padding: 0 20px; font-size: var(--fs-lg); border-radius: var(--radius-lg); }
 .ui-btn--block { width: 100%; }
-.ui-btn--primary { background: var(--c-primary); color: var(--c-on-primary); }
-.ui-btn--primary:hover:not(:disabled) { background: var(--c-primary-hover); }
-.ui-btn--action { background: var(--c-action); color: var(--c-on-action); }
-.ui-btn--action:hover:not(:disabled) { background: var(--c-action-hover); }
-.ui-btn--tint, .ui-btn--ghost { background: var(--c-surface); color: var(--c-text); border-color: var(--c-border); }
-.ui-btn--tint:hover:not(:disabled), .ui-btn--ghost:hover:not(:disabled) { background: var(--c-fill); }
-.ui-btn--plain { background: none; color: var(--c-primary); padding: 0 6px; }
+
+/* filled — primary (blue = the system) */
+.ui-btn--primary { background: linear-gradient(var(--c-primary), var(--c-primary-hover)); color: var(--c-on-primary);
+  box-shadow: 0 1px 2px rgba(15, 18, 24, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+.ui-btn--primary:hover:not(:disabled) { background: linear-gradient(var(--c-primary-hover), var(--c-primary-press)); }
+.ui-btn--primary:active:not(:disabled) { background: var(--c-primary-press); box-shadow: 0 1px 1px rgba(15, 18, 24, 0.22); }
+
+/* filled — action (orange = your turn) */
+.ui-btn--action { background: linear-gradient(var(--c-action), var(--c-action-hover)); color: var(--c-on-action);
+  box-shadow: 0 1px 2px rgba(15, 18, 24, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.ui-btn--action:hover:not(:disabled) { filter: brightness(1.04); }
+.ui-btn--action:active:not(:disabled) { background: var(--c-action-hover); filter: none; box-shadow: 0 1px 1px rgba(15, 18, 24, 0.22); }
+
+/* secondary — tint (surface + hairline border) */
+.ui-btn--tint { background: var(--c-surface); color: var(--c-text); border-color: var(--c-border); box-shadow: 0 1px 1.5px rgba(15, 18, 24, 0.05); }
+.ui-btn--tint:hover:not(:disabled) { background: var(--c-fill); border-color: var(--c-text-3); }
+.ui-btn--tint:active:not(:disabled) { background: var(--c-fill-2); }
+
+/* ghost — transparent, for toolbars and icon-only buttons */
+.ui-btn--ghost { background: transparent; color: var(--c-text-2); }
+.ui-btn--ghost:hover:not(:disabled) { background: var(--c-fill); color: var(--c-text); }
+
+/* plain — text button */
+.ui-btn--plain { background: none; color: var(--c-primary); padding: 0 7px; }
 .ui-btn--plain:hover:not(:disabled) { background: var(--c-primary-tint); }
+
+/* danger — destructive */
 .ui-btn--danger { background: none; color: var(--c-bad-text); border-color: var(--c-border); }
-.ui-btn--danger:hover:not(:disabled) { background: var(--c-bad-bg); }
-.ui-btn:disabled { background: var(--c-fill); color: var(--c-text-3); border-color: transparent; cursor: default; }
-.ui-btn--plain:disabled { background: none; }
+.ui-btn--danger:hover:not(:disabled) { background: var(--c-bad-bg); border-color: var(--c-bad); }
+
+.ui-btn:disabled { background: var(--c-fill); color: var(--c-text-3); border-color: transparent; cursor: default; box-shadow: none; transform: none; filter: none; }
+.ui-btn--plain:disabled, .ui-btn--ghost:disabled { background: none; }
+@media (prefers-reduced-motion: reduce) { .ui-btn:active:not(:disabled) { transform: none; } }
 </style>

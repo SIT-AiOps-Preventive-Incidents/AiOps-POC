@@ -32,9 +32,25 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
     <div class="section-label">Spacing (4 px grid — the only gaps and paddings in use)</div>
     <UiCard><div class="spacing"><div v-for="[v, px] in SPACE" :key="v" class="sp"><span class="sp__bar" :style="{ width: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ px }}px</small></div></div></UiCard>
     <div class="section-label">Buttons</div>
-    <UiCard><div class="row row--wrap"><UiButton>Primary</UiButton><UiButton variant="tint">Tint</UiButton><UiButton variant="plain">Plain</UiButton><UiButton variant="danger">Danger</UiButton>
-      <UiButton variant="ghost" icon="play">With icon</UiButton><UiButton loading>Loading</UiButton><UiButton disabled>Disabled</UiButton><UiButton size="sm">Small</UiButton></div>
-      <UiButton size="lg" block class="mt">Large · full width (primary decision)</UiButton></UiCard>
+    <UiCard>
+      <p class="small muted" style="margin:-2px 0 10px">Each kind has one job. Icons are Microsoft Fluent SVGs, drawn in the current text colour, so one icon works on any button — and each one names the action.</p>
+      <div class="btns">
+        <UiButton variant="primary" icon="add">Add a server</UiButton>
+        <UiButton variant="action" icon="checkmark">Review fix</UiButton>
+        <UiButton variant="tint" icon="flowchart">On the map</UiButton>
+        <UiButton variant="plain">Cancel</UiButton>
+        <UiButton variant="danger" icon="dismiss">Remove agent</UiButton>
+        <UiButton variant="ghost" icon="settings" aria-label="Settings" />
+      </div>
+      <div class="btns mt">
+        <UiButton size="sm" icon="play">Small</UiButton>
+        <UiButton size="md" icon="play">Medium</UiButton>
+        <UiButton size="lg" icon="play">Large</UiButton>
+        <UiButton icon="search" loading>Working…</UiButton>
+        <UiButton icon="add" disabled>Disabled</UiButton>
+      </div>
+      <UiButton size="lg" variant="action" icon="checkmark" block class="mt">Approve and apply the fix — your turn</UiButton>
+    </UiCard>
     <div class="section-label">Status</div>
     <UiCard><div class="row row--wrap"><UiPill tone="ok">Resolved</UiPill><UiPill tone="bad">Fix didn't work</UiPill><UiPill tone="warn">New</UiPill><UiPill tone="action">Waiting for you</UiPill>
       <UiPill tone="info">Checking fix</UiPill><UiPill>Closed</UiPill><UiPill tone="solid-bad">Critical</UiPill><UiPill tone="solid-warn">Major</UiPill>
@@ -71,4 +87,5 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 .sp { display: flex; align-items: center; gap: 12px; font-size: 12px; }
 .sp__bar { height: 14px; background: var(--c-primary-tint-2); border-radius: 3px; flex: none; }
 .sp code { min-width: 64px; }
+.btns { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 </style>
