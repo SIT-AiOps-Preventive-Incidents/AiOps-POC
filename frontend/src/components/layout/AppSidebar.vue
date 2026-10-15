@@ -40,9 +40,12 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
   <aside :class="['sidebar', { open: ui.navOpen }]">
     <router-link to="/" class="brand" aria-label="AIOps One overview">
       <svg class="brand__mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
-        <rect width="28" height="28" rx="7" fill="var(--c-primary)" />
-        <path d="M5 15.5h3.4l2.2-5.2 3.4 9.4 2.2-4.2H23" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-        <circle class="brand__node" cx="23" cy="15.5" r="2.4" fill="var(--c-action)" stroke="var(--c-primary)" stroke-width="1.2" />
+        <defs><linearGradient id="bm" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2b78ff" /><stop offset="1" stop-color="#0d50d8" /></linearGradient></defs>
+        <rect width="28" height="28" rx="7.5" fill="url(#bm)" />
+        <path d="M6.6 20.8 14 7.8 21.4 20.8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M10 16.4H18" stroke="#fff" stroke-width="2.2" stroke-linecap="round" />
+        <circle cx="14" cy="7.8" r="2.4" fill="var(--c-action)" stroke="#0d50d8" stroke-width="1.1" />
       </svg>
       <b>AIOps One</b>
     </router-link>
@@ -64,10 +67,6 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
 .brand { display: flex; gap: 10px; align-items: center; height: var(--topbar-h); padding: 0 16px; color: var(--c-text); border-bottom: 1px solid var(--c-border); }
 .brand b { font-size: 15px; font-weight: var(--fw-semibold); }
 .brand__mark { flex: none; }
-/* the signal node breathes once in a while - alive, but calm enough for an enterprise console */
-.brand__node { animation: brand-breathe 3.6s var(--ease, ease-in-out) infinite; transform-origin: 23px 15.5px; }
-@keyframes brand-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-@media (prefers-reduced-motion: reduce) { .brand__node { animation: none; } }
 nav { flex: 1; overflow: auto; padding: 10px 8px; }
 .nav__sec { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--c-text-3); padding: 18px 10px 6px; }
 .nav__item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--radius-md); color: var(--c-text-2);
