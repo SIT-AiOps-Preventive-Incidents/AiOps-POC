@@ -170,3 +170,12 @@ def _remote_listeners() -> dict:
         for ip in r["ip_addresses"] or []:
             out[(ip, r["port"])] = r["service_name"]
     return out
+
+
+def with_uninstall(out: dict, host: dict) -> dict:
+    """Tell the agent to remove itself once someone pressed Remove agent - and start nothing new meanwhile."""
+    if host.get("uninstall_requested_at"):
+        out.pop("collector", None)
+        out["instrument"] = []
+        out["uninstall"] = True
+    return out

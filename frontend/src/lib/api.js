@@ -50,6 +50,7 @@ export const api = {
     get: (name) => get(`/hosts/${enc(name)}`),
     create: (body) => post("/hosts", body),
     remove: (name) => del(`/hosts/${enc(name)}`),
+    uninstall: (name) => post(`/hosts/${enc(name)}/uninstall`),
   },
 
   map: {

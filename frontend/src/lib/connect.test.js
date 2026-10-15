@@ -44,3 +44,15 @@ test("the ring fills with finished steps and is only full when everything is don
   assert.equal(bad.state, "failed");
   assert.equal(bad.value, 0.25);
 });
+
+test("removing an agent shows the same ring: asked, agent removes itself, gone", async () => {
+  const { removal } = await import("./connect.js");
+  assert.equal(removal({ requestedAt: null }), null);
+  const asked = removal({ requestedAt: 1000, now: 1010, gone: false });
+  assert.deepEqual(asked.steps.map((s) => s.state), ["done", "running", "pending"]);
+  assert.equal(asked.state, "running");
+  assert.equal(removal({ requestedAt: 1000, now: 1200, gone: false }).state, "failed");   // no answer in 2 minutes
+  const done = removal({ requestedAt: 1000, now: 1050, gone: true });
+  assert.equal(done.state, "done");
+  assert.equal(progress(done).value, 1);
+});

@@ -18,7 +18,7 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
 HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
@@ -185,8 +185,40 @@ def push_inventory():
     req = urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/inventory", data=json.dumps(inv).encode(),
                                  method="POST", headers={"Content-Type": "application/json"})
     reply = json.loads(urllib.request.urlopen(req, timeout=15).read() or b"{}")
+    if reply.get("uninstall"):  # someone pressed Remove agent on the web page
+        self_uninstall()
     ebpf_apply(reply.get("instrument") or [])
     collector_apply(reply.get("collector"))
+
+
+def self_uninstall():
+    """Remove everything AIOps put on this machine, tell the platform, then stop. Same as uninstall.sh."""
+    print(f"{time.strftime('%H:%M:%S')} removing myself (asked from the AIOps web page)", flush=True)
+    sh(["docker", "rm", "-f", EBPF_NAME, COLLECTOR_NAME])
+    cron = sh(["crontab", "-l"])
+    if "aiops-agent.py" in cron:
+        keep = "".join(l + "\n" for l in cron.splitlines() if "aiops-agent.py" not in l)
+        subprocess.run(["crontab", "-"], input=keep, text=True, capture_output=True)
+    ak = os.path.expanduser("~/.ssh/authorized_keys")
+    try:  # the key AIOps used to keep its data channel open (connected from the web page)
+        lines = open(ak).read().splitlines(keepends=True)
+        kept = [l for l in lines if not l.rstrip().endswith(" aiops-platform")]
+        if len(kept) != len(lines):
+            with open(ak, "w") as f:
+                f.writelines(kept)
+    except OSError:
+        pass
+    try:
+        urllib.request.urlopen(urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/uninstalled", data=b"", method="POST"),
+                               timeout=15).read()
+    except Exception as e:
+        print(f"could not tell the platform: {e}", flush=True)
+    plist = os.path.expanduser("~/Library/LaunchAgents/com.aiops.agent.plist")
+    shutil.rmtree(DIR, ignore_errors=True)
+    if DARWIN and os.path.exists(plist):
+        os.remove(plist)
+        subprocess.run(["launchctl", "remove", "com.aiops.agent"], capture_output=True)  # ends this process too
+    os._exit(0)
 
 
 # ---------------- logs + container metrics (OpenTelemetry Collector) ----------------
@@ -284,7 +316,7 @@ def ebpf_apply(targets):
     sh(["docker", "rm", "-f", EBPF_NAME])
     r = subprocess.run(["docker", "run", "-d", "--name", EBPF_NAME, "--restart", "unless-stopped", "--label", f"aiops.cfg={digest}",
                         # capped, so on a busy production machine only the tracer is killed if it grows, never the apps
-                        "--memory", CFG.get("ebpf_memory", "200m"), "--cpus", str(CFG.get("ebpf_cpus", "0.5")),
+                        "--memory", CFG.get("ebpf_memory", "384m"), "--cpus", str(CFG.get("ebpf_cpus", "0.5")),
                         "--privileged", "--pid=host", "--network=host", "-v", f"{EBPF_CFG}:/config.yml:ro",
                         "-v", "/sys/fs/bpf:/sys/fs/bpf", "-e", "BEYLA_CONFIG_PATH=/config.yml",
                         "-e", f"OTEL_RESOURCE_ATTRIBUTES=host.name={HOST}", EBPF_IMAGE],
