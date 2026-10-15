@@ -35,6 +35,15 @@ async def discovered(view: str = "network"):
                         "listening_on": sorted({s["host"] for s in segments})}}
 
 
+@router.get("/recommendations", summary="Which discovered-but-unmonitored machines to connect first, and why")
+async def recommendations():
+    from .. import fleet, health, netseg
+    segments, neighbors, hosts = netseg.load()
+    problem_hosts = {h["name"] for h in await health.hosts_health() if h["status"] in ("problem", "down")}
+    recs = fleet.recommend(segments, neighbors, hosts, problem_hosts)
+    return {"count": len(recs), "recommendations": recs[:20]}
+
+
 @router.get("/graph", summary="3D topology: internet, gateways, network hubs, machines and the services on them")
 async def topology_graph():
     from .. import health, repo
