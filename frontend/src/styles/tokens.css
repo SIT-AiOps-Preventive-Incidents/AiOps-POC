@@ -28,11 +28,11 @@
   --c-primary-tint-2: #cfe0ec;
   --c-on-primary: #ffffff;
 
-  /* ---- action: warm coral = your turn. Blue+orange complementary, used only for the human's move ---- */
-  --c-action: #e8552d;
-  --c-action-hover: #d5471f;
-  --c-action-text: #bb3c18;
-  --c-action-bg: #fbeae3;
+  /* ---- action = your turn. One accent only: same petrol as primary (no second brand colour) ---- */
+  --c-action: #155e8c;
+  --c-action-hover: #124f77;
+  --c-action-text: #124f77;
+  --c-action-bg: #e9f0f5;
   --c-on-action: #ffffff;
 
   /* ---- semantic status: solid (dots, bars) / text / background ---- */
@@ -42,7 +42,7 @@
   --c-ai: #155e8c;      --c-ai-text: #124f77;    --c-ai-bg: #e9f0f5;   /* the AI is part of "the system": petrol */
   --c-info: #155e8c;    --c-info-text: #124f77;  --c-info-bg: #e9f0f5;
   --c-neutral: #c6c2ba;
-  --c-star: #e8552d;
+  --c-star: #155e8c;
 
   /* ---- chrome & special surfaces ---- */
   --c-chrome-top: #ffffff;
@@ -60,7 +60,7 @@
   /* ---- data visualisation (categorical) ---- */
   --c-chart-1: #155e8c;  /* throughput, default */
   --c-chart-2: #e5383b;  /* errors */
-  --c-chart-3: #e8552d;  /* latency, load */
+  --c-chart-3: #6b93c2;  /* latency, load */
   --c-chart-4: #6b7a90;  /* memory */
   --c-chart-5: #0e8f8f;  /* disk */
 
@@ -109,15 +109,15 @@
   --c-text-3: #6c7584;
   --c-primary: #4ea3dd;  --c-primary-hover: #70b6e6;  --c-primary-press: #3c93d0;
   --c-primary-tint: #0d2535;  --c-primary-tint-2: #123749;
-  --c-action: #ff7a52;  --c-action-hover: #ff8e6b;  --c-action-text: #ff9878;  --c-action-bg: #2b1109;  --c-on-action: #120400;
+  --c-action: #4ea3dd;  --c-action-hover: #70b6e6;  --c-action-text: #86c3ea;  --c-action-bg: #0d2535;  --c-on-action: #051018;
   --c-ok: #22c55e;   --c-ok-text: #4ade80;   --c-ok-bg: #0b2416;
   --c-bad: #f0484b;  --c-bad-text: #ff7b7d;  --c-bad-bg: #2d0f10;
   --c-warn: #f2b320; --c-warn-text: #f8c95a; --c-warn-bg: #2a2007;
   --c-ai: #4ea3dd;   --c-ai-text: #86c3ea;   --c-ai-bg: #0d2535;
   --c-info: #4ea3dd; --c-info-text: #86c3ea; --c-info-bg: #0d2535;
   --c-neutral: #4a5160;
-  --c-star: #ff7a52;
-  --c-chart-1: #4ea3dd; --c-chart-2: #ff6b6d; --c-chart-3: #ff7a52; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
+  --c-star: #4ea3dd;
+  --c-chart-1: #4ea3dd; --c-chart-2: #ff6b6d; --c-chart-3: #7fa9d6; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
   --c-chrome-top: #000000;
   --c-chrome-side: #090a0d;
   --c-hover: #16191f;
@@ -145,15 +145,15 @@
     --c-text-3: #6c7584;
     --c-primary: #4ea3dd;  --c-primary-hover: #70b6e6;  --c-primary-press: #3c93d0;
     --c-primary-tint: #0d2535;  --c-primary-tint-2: #123749;
-    --c-action: #ff7a52;  --c-action-hover: #ff8e6b;  --c-action-text: #ff9878;  --c-action-bg: #2b1109;  --c-on-action: #120400;
+    --c-action: #4ea3dd;  --c-action-hover: #70b6e6;  --c-action-text: #86c3ea;  --c-action-bg: #0d2535;  --c-on-action: #051018;
     --c-ok: #22c55e;   --c-ok-text: #4ade80;   --c-ok-bg: #0b2416;
     --c-bad: #f0484b;  --c-bad-text: #ff7b7d;  --c-bad-bg: #2d0f10;
     --c-warn: #f2b320; --c-warn-text: #f8c95a; --c-warn-bg: #2a2007;
     --c-ai: #4ea3dd;   --c-ai-text: #86c3ea;   --c-ai-bg: #0d2535;
     --c-info: #4ea3dd; --c-info-text: #86c3ea; --c-info-bg: #0d2535;
     --c-neutral: #4a5160;
-    --c-star: #ff7a52;
-    --c-chart-1: #4ea3dd; --c-chart-2: #ff6b6d; --c-chart-3: #ff7a52; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
+    --c-star: #4ea3dd;
+    --c-chart-1: #4ea3dd; --c-chart-2: #ff6b6d; --c-chart-3: #7fa9d6; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
     --c-chrome-top: #000000;
     --c-chrome-side: #090a0d;
     --c-hover: #16191f;
