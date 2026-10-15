@@ -15,6 +15,15 @@ class ServiceIn(BaseModel):
     entry_method: Literal["GET", "POST"] = "GET"
 
 
+class CheckIn(BaseModel):
+    """A system watched from the outside: AIOps calls this address every few seconds."""
+    service_name: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9._-]+$")
+    url: str = Field(min_length=8, max_length=500)
+    display_name: str = ""
+    owner: str = ""
+    environment: str = "production"
+
+
 class ServicePatch(BaseModel):
     display_name: str | None = None
     owner: str | None = None

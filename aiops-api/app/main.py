@@ -12,9 +12,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agent, datasets, db, detector, repo, seed
+from . import agent, datasets, db, detector, repo, seed, synthetic
 from .netdisco import service as netdisco
-from .api import errors, routes_hosts, routes_incidents, routes_map, routes_network, routes_platform, routes_services
+from .api import errors, routes_checks, routes_hosts, routes_incidents, routes_map, routes_network, routes_platform, routes_services
 from .api.schemas import HostRegistration
 
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +47,7 @@ async def lifespan(_):
     datasets.ensure()   # the shop, or AnoMod's SocialNetwork (DEMO_DATASET)
     routes_hosts.write_targets()
     tasks = [asyncio.create_task(detector.loop()), asyncio.create_task(rotate_edge_logs()),
-             asyncio.create_task(netdisco.loop())]
+             asyncio.create_task(netdisco.loop()), asyncio.create_task(synthetic.loop())]
     yield
     for t in tasks:
         t.cancel()
@@ -56,7 +56,7 @@ async def lifespan(_):
 app = FastAPI(title="AIOps One API", version="1.0.0", lifespan=lifespan,
               description="Agentic root cause analysis: services, hosts, service map, incidents, approvals.")
 errors.install(app)
-for r in (routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network):
+for r in (routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network, routes_checks):
     app.include_router(r.router)
 
 

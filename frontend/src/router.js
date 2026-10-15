@@ -14,6 +14,7 @@ const routes = [
   { path: "/connect", component: () => import("@/views/ConnectView.vue"), meta: { title: "Connect" } },
   { path: "/connect/computer", component: () => import("@/views/ConnectComputerView.vue"), meta: { title: "Connect a computer" } },
   { path: "/connect/service", component: () => import("@/views/ConnectServiceView.vue"), meta: { title: "Connect a service" } },
+  { path: "/connect/website", component: () => import("@/views/ConnectWebsiteView.vue"), meta: { title: "Watch a website" } },
   { path: "/skills", component: () => import("@/views/SkillsView.vue"), meta: { title: "Skills" } },
   { path: "/runbooks", component: () => import("@/views/RunbooksView.vue"), meta: { title: "Runbooks" } },
   { path: "/notifications", component: () => import("@/views/NotificationsView.vue"), meta: { title: "Notifications" } },
