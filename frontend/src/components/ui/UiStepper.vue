@@ -5,8 +5,9 @@ defineProps({ steps: { type: Array, required: true } });
 </script>
 <template>
   <ol class="ui-stepper" aria-label="Progress">
-    <li v-for="(s, i) in steps" :key="s.label" :class="['ui-step', s.state]"
+    <li v-for="(s, i) in steps" :key="s.label" :class="['ui-step', s.state, { 'has-tip': s.hint }]"
         :aria-current="['current', 'you'].includes(s.state) ? 'step' : undefined">
+      <span v-if="s.hint" class="ui-step__tip" role="tooltip">{{ s.hint }}</span>
       <span class="ui-step__c">
         <svg v-if="s.state === 'done'" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
@@ -43,5 +44,14 @@ defineProps({ steps: { type: Array, required: true } });
 .you .ui-step__dot { background: var(--c-action); }
 .you .ui-step__l { color: var(--c-action-text); }
 .ui-step__t { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; min-height: 1em; }
+/* hover detail */
+.ui-step.has-tip { cursor: help; }
+.ui-step__tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(4px);
+  width: max-content; max-width: 240px; padding: 7px 10px; border-radius: var(--radius-md); background: var(--c-toast); color: var(--c-on-toast);
+  font-size: var(--fs-xs); font-weight: var(--fw-medium); line-height: var(--lh-snug); text-align: left; box-shadow: var(--shadow-2);
+  opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); z-index: 5; white-space: normal; }
+.ui-step__tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--c-toast); }
+.ui-step.has-tip:hover .ui-step__tip, .ui-step.has-tip:focus-within .ui-step__tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { .ui-step__tip { transition: none; } }
 @media (max-width: 760px) { .ui-step__t { display: none; } .ui-step__l { font-size: 11px; } .ui-stepper { --gap: 3px; } }
 </style>

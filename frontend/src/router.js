@@ -24,6 +24,7 @@ const routes = [
   { path: "/notifications", component: () => import("@/views/NotificationsView.vue"), meta: { title: "Notifications" } },
   { path: "/deployments", component: () => import("@/views/DeploymentsView.vue"), meta: { title: "Deployments" } },
   { path: "/scenarios", component: () => import("@/views/ScenariosView.vue"), meta: { title: "Demo Scenarios" } },
+  { path: "/pricing", component: () => import("@/views/PricingView.vue"), meta: { title: "Pricing" } },
   { path: "/design", component: () => import("@/views/DesignSystemView.vue"), meta: { title: "Design System" } },
   { path: "/settings", component: () => import("@/views/SettingsView.vue"), meta: { title: "Settings" } },
   // old links (v2 UI, Teams cards)

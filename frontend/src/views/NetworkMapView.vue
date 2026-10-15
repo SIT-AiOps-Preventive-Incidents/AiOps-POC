@@ -148,9 +148,12 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <div class="rec-row">
         <label v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', { checked: picked.has(r.ip) }]">
           <input type="checkbox" :checked="picked.has(r.ip)" @change="toggle(r.ip)" />
-          <div class="rec-name">{{ r.name }}</div>
+          <div class="rec-top">
+            <UiAppTile icon="server" color="var(--c-chart-4)" :size="30" />
+            <div class="rec-name">{{ short(r.name) }}</div>
+          </div>
           <div class="rec-why muted small">{{ r.reasons[0] }}</div>
-          <UiButton size="sm" variant="tint" icon="add" @click.prevent="monitorIp(r.ip)">Monitor</UiButton>
+          <UiButton size="sm" variant="tint" icon="add" block @click.prevent="monitorIp(r.ip)">Monitor</UiButton>
         </label>
       </div>
     </section>
@@ -212,11 +215,14 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .recs { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
 .recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
 .bulk-btn { margin-left: auto; align-self: center; }
-.rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 10px 12px 10px 34px; display: flex; flex-direction: column; gap: 4px; position: relative; cursor: pointer; }
+.rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; align-items: stretch; }
+/* grid rows (name / reason / button) so the Monitor button sits on the same line across every card */
+.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 12px 12px 12px 32px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; position: relative; cursor: pointer; }
 .rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint); }
-.rec > input { position: absolute; left: 12px; top: 12px; width: 15px; height: 15px; cursor: pointer; }
-.rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; } .rec-why { min-height: 32px; } .rec .ui-button { align-self: start; margin-top: 2px; }
+.rec > input { position: absolute; left: 11px; top: 14px; width: 15px; height: 15px; cursor: pointer; }
+.rec-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; line-height: var(--lh-snug); }
+.rec-why { align-self: start; }
 .bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
 .search { min-width: 260px; flex: 1; max-width: 360px; } .search :deep(.ui-field) { margin: 0; } .search :deep(label) { display: none; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }

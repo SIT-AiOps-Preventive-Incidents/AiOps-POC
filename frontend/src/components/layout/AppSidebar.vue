@@ -26,6 +26,7 @@ const NAV = [
   ] },
   { label: "Demo & tools", items: [
     { to: "/scenarios", label: "Demo scenarios", icon: "flash" },
+    { to: "/pricing", label: "Pricing", icon: "tag" },
     { to: "/design", label: "Design system", icon: "sparkle" },
   ] },
 ];
