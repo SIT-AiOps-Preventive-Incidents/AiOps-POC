@@ -41,21 +41,26 @@ const status = computed(() => {
   return { tone: "ok", title: t("Everything is working normally", "ทุกอย่างทำงานปกติ"),
     sub: lastResolved.value ? t(`The last incident was resolved ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}.`, `เหตุการณ์ล่าสุดแก้ไขเสร็จ ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}`) : t("No incidents so far.", "ยังไม่มีเหตุการณ์") };
 });
-// "affected out of total", worst state first (Dynatrace / Carbon pattern); silence is counted, not hidden
-const health = computed(() => [
-  { label: t("services", "บริการ"), ...rollup(app.services), to: "/services" },
-  { label: t("hosts", "เครื่อง"), ...rollup(app.hosts), to: "/network" },
-]);
 const historyFor = (name) => incidents.list.filter((i) => (i.entity_name || i.entity) === name);
 const healthLabel = computed(() => ({ healthy: t("Healthy", "ปกติ"), problem: t("Problem", "มีปัญหา"), down: t("Down", "ล่ม"), offline: t("Offline", "ออฟไลน์"), "no-data": t("No data", "ไม่มีข้อมูล") }));
 
-// How the platform handles an incident, with the real averages from this installation
-const FLOW = computed(() => [
-  { title: t("Detect", "ตรวจจับ"), icon: "search", value: dur(app.kpi.mttd_s), hint: t("from the first bad signal", "นับจากสัญญาณผิดปกติแรก") },
-  { title: t("Investigate", "สืบสวน"), icon: "sparkle", value: "AI", hint: t("reads metrics, traces and logs", "อ่าน metric, trace และ log") },
-  { title: t("Approve", "อนุมัติ"), icon: "person", value: t("You", "คุณ"), hint: t("nothing changes without you", "ไม่มีอะไรเปลี่ยนถ้าคุณไม่อนุมัติ"), you: true },
-  { title: t("Fix and verify", "แก้และตรวจสอบ"), icon: "checkmark_circle", value: dur(app.kpi.mttr_s), hint: t("from detection to verified", "นับจากตรวจพบจนยืนยันแก้สำเร็จ") },
-]);
+// At-a-glance vital signs: what needs me, and how much is healthy
+const kpis = computed(() => {
+  const s = rollup(app.services), h = rollup(app.hosts);
+  const inv = Math.max(queue.value.length - app.awaiting.length, 0);
+  return [
+    { label: t("Awaiting you", "รอคุณอนุมัติ"), value: app.awaiting.length, tone: app.awaiting.length ? "action" : "none", to: "/problems" },
+    { label: t("Investigating", "กำลังสืบสวน"), value: inv, tone: inv ? "info" : "none", to: "/problems" },
+    { label: t("Services healthy", "บริการปกติ"), value: `${s.total - s.affected}/${s.total}`, tone: s.affected ? "bad" : "ok", to: "/services" },
+    { label: t("Hosts healthy", "เครื่องปกติ"), value: `${h.total - h.affected}/${h.total}`, tone: h.affected ? "bad" : "ok", to: "/network" },
+    { label: t("Avg fix time", "เวลาแก้เฉลี่ย"), value: dur(app.kpi.mttr_s), tone: "none", to: "/problems" },
+  ];
+});
+// problems and silence rise to the top of the tables; healthy settles below, alphabetically
+const SRANK = { problem: 0, down: 0, error: 0, offline: 1, "no-data": 2, healthy: 3 };
+const srank = (x) => SRANK[x] ?? 1;
+const sortedServices = computed(() => [...app.services].sort((a, b) => srank(a.status) - srank(b.status) || (a.name || "").localeCompare(b.name || "")));
+const sortedHosts = computed(() => [...app.hosts].sort((a, b) => srank(a.status) - srank(b.status) || (a.name || "").localeCompare(b.name || "")));
 </script>
 <template>
   <div class="page">
@@ -67,23 +72,16 @@ const FLOW = computed(() => [
         <div class="status__text">
           <h1>{{ status.title }}</h1>
           <p>{{ status.sub }}</p>
-          <ul class="roll" aria-label="Health summary">
-            <li v-for="h in health" :key="h.label"><router-link :to="h.to">
-              <UiStatusDot :tone="h.affected ? 'bad' : 'ok'" :size="8" />
-              <b>{{ h.affected }} {{ t("of", "จาก") }} {{ h.total }}</b> {{ h.label }} {{ t("affected", "มีปัญหา") }}<span v-if="h.quiet" class="dim"> · {{ h.quiet }} {{ t("sending no data", "ไม่ส่งข้อมูล") }}</span>
-            </router-link></li>
-          </ul>
         </div>
         <span class="status__checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
       </section>
 
-      <ol class="flow" aria-label="How an incident is handled">
-        <li v-for="f in FLOW" :key="f.title" :class="{ you: f.you }">
-          <span class="flow__t"><UiIcon :name="f.icon" :size="14" />{{ f.title }}</span>
-          <b class="flow__v">{{ f.value }}</b>
-          <span class="flow__h">{{ f.hint }}</span>
-        </li>
-      </ol>
+      <div class="kpis" aria-label="Vital signs">
+        <router-link v-for="k in kpis" :key="k.label" :to="k.to" :class="['kpi', `kpi--${k.tone}`]">
+          <b class="kpi__v">{{ k.value }}</b>
+          <span class="kpi__l">{{ k.label }}</span>
+        </router-link>
+      </div>
 
       <router-link v-if="coverage && coverage.suggest" to="/network" class="coverage">
         <div class="coverage__text">
@@ -104,7 +102,7 @@ const FLOW = computed(() => [
           <table class="tbl">
             <thead><tr><th>{{ t("Service", "บริการ") }}</th><th>{{ t("Status", "สถานะ") }}</th><th class="r">{{ t("Requests", "คำขอ") }}</th><th class="r">{{ t("Errors", "ข้อผิดพลาด") }}</th><th class="r">p95</th><th>{{ t("Last 7 days", "7 วันล่าสุด") }}</th></tr></thead>
             <tbody>
-              <tr v-for="s in app.services" :key="s.service" @click="$router.push(`/services/${s.service}`)">
+              <tr v-for="s in sortedServices" :key="s.service" @click="$router.push(`/services/${s.service}`)">
                 <td><div class="who"><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" />
                   <router-link :to="`/services/${s.service}`" @click.stop>{{ s.name }}</router-link><span v-if="s.version" class="ver">v{{ s.version }}</span></div></td>
                 <td><span class="health"><UiStatusDot :tone="HEALTH_TONE[s.status]" :size="7" />{{ healthLabel[s.status] || s.status }}</span></td>
@@ -125,7 +123,7 @@ const FLOW = computed(() => [
             <table class="tbl">
               <thead><tr><th>{{ t("Host", "เครื่อง") }}</th><th>CPU</th><th>{{ t("Memory", "หน่วยความจำ") }}</th><th>{{ t("Disk", "ดิสก์") }}</th><th>{{ t("Last 7 days", "7 วันล่าสุด") }}</th></tr></thead>
               <tbody>
-                <tr v-for="h in app.hosts" :key="h.name" @click="$router.push(`/computers/${h.name}`)">
+                <tr v-for="h in sortedHosts" :key="h.name" @click="$router.push(`/computers/${h.name}`)">
                   <td><div class="who"><UiAppTile :logo="osLogo(h.os)" :icon="h.kind === 'workstation' ? 'laptop' : 'server'" :status="HEALTH_TONE[h.status]" :size="24" />
                     <router-link :to="`/computers/${h.name}`" @click.stop>{{ h.name }}</router-link></div></td>
                   <td v-for="m in ['cpu', 'mem', 'disk']" :key="m" class="num">
@@ -167,23 +165,20 @@ const FLOW = computed(() => [
 .status__text { flex: 1; min-width: 0; }
 .status h1 { font-size: var(--fs-2xl); line-height: 1.2; font-weight: var(--fw-semibold); }
 .status p { color: var(--c-text-2); margin-top: 4px; }
-.roll { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; font-size: var(--fs-sm); }
-.roll a { display: inline-flex; align-items: center; gap: 6px; color: var(--c-text-2); text-decoration: none; }
-.roll a:hover { color: var(--c-text); } .roll b { color: var(--c-text); font-variant-numeric: tabular-nums; }
 .status__checked { font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; align-self: flex-start; padding-top: 8px; }
 
-.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0;
-  border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; background: var(--c-surface); }
-.flow li { position: relative; padding: 12px 16px 12px 18px; display: flex; flex-direction: column; min-width: 0; }
-.flow li + li { border-left: 1px solid var(--c-border); }
-.flow li + li::before { content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; transform: translateY(-50%) rotate(45deg);
-  background: var(--c-surface); border-top: 1px solid var(--c-border); border-right: 1px solid var(--c-border); }
-.flow__t { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--c-text-2); }
-.flow__t .ui-icon { color: var(--c-text-3); }
-.flow li.you .flow__t .ui-icon { color: var(--c-action); }
-.flow__v { font-size: var(--fs-xl); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; color: var(--c-primary); }
-.flow li.you .flow__v { color: var(--c-action-text); }
-.flow__h { font-size: var(--fs-xs); color: var(--c-text-3); }
+/* vital-signs KPI tiles: the five numbers an on-call engineer scans first */
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.kpi { display: flex; flex-direction: column; gap: 3px; padding: 12px 16px; background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg); text-decoration: none; color: var(--c-text); }
+.kpi:hover { border-color: var(--c-primary); }
+.kpi__v { font-size: var(--fs-2xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi__l { font-size: var(--fs-sm); color: var(--c-text-2); }
+.kpi--action { border-color: color-mix(in srgb, var(--c-action) 45%, var(--c-border)); }
+.kpi--action .kpi__v { color: var(--c-action-text); } .kpi--info .kpi__v { color: var(--c-primary); }
+.kpi--ok .kpi__v { color: var(--c-ok-text); } .kpi--bad .kpi__v { color: var(--c-bad-text); }
+@media (max-width: 1080px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
 
 .coverage { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 14px 18px; background: var(--c-surface);
   border: 1px solid var(--c-border); border-radius: var(--radius-lg); color: var(--c-text); text-decoration: none; }
@@ -217,6 +212,6 @@ const FLOW = computed(() => [
 .use { --bar: var(--c-ok); }
 .use.warn { --bar: var(--c-warn); } .use.bad { --bar: var(--c-bad); color: var(--c-bad-text); }
 .cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-@media (max-width: 1080px) { .cols { grid-template-columns: 1fr; } .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .flow li:nth-child(3) { border-left: 0; } .flow li:nth-child(n + 3) { border-top: 1px solid var(--c-border); } .flow li:nth-child(3)::before { display: none; } }
+@media (max-width: 1080px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .status h1 { font-size: 22px; } .status__checked { display: none; } }
 </style>
