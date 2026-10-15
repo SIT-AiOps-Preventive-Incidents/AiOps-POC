@@ -23,8 +23,9 @@ NAME_RUNTIME = [("alloy", "go"), ("prometheus", "go"), ("grafana", "go"), ("post
                 ("redis", "redis"), ("mysql", "mysql"), ("mariadb", "mysql"), ("mongo", "mongodb"), ("node", "node"),
                 ("python", "python"), ("java", "java")]
 DATABASES = {"postgres", "mysql", "redis", "mongodb"}
-EXE = {"node": "(^|/)node$", "java": "(^|/)java$", "python": "(^|/)python[0-9.]*$", "nginx": "(^|/)nginx$",
-       "dotnet": "(^|/)dotnet$", "ruby": "(^|/)ruby[0-9.]*$", "php": "(^|/)php(-fpm)?[0-9.]*$"}
+# Beyla's discovery.instrument matches the program's path with a GLOB (not a regex)
+EXE = {"node": "*/node", "java": "*/java", "python": "*/python*", "nginx": "*/nginx", "dotnet": "*/dotnet",
+       "ruby": "*/ruby*", "php": "*/php*"}
 LOG_DIR = "/var/lib/docker/containers"
 
 
