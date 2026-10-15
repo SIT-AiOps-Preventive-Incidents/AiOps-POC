@@ -153,8 +153,15 @@ const FLOW = computed(() => [
 .status { display: flex; align-items: center; gap: 14px; padding: 24px 0 18px; }
 .status__mark { width: 36px; height: 36px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
 .status--ok .status__mark { background: var(--c-ok); }
-.status--info .status__mark { background: var(--c-primary); }
+.status--info .status__mark { background: var(--c-primary); position: relative; }
+/* AI at work: a soft blue ring breathing out of the mark */
+.status--info .status__mark::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: 0 0 0 0 var(--c-halo); animation: think 2s var(--ease, ease-out) infinite; }
+@keyframes think { 0% { box-shadow: 0 0 0 0 var(--c-halo); } 70%, 100% { box-shadow: 0 0 0 10px transparent; } }
+.status--info .status__mark .ui-icon { animation: think-spin 3s var(--ease, ease-in-out) infinite; transform-origin: center; }
+@keyframes think-spin { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(8deg); } }
 .status--action .status__mark { background: var(--c-action); color: var(--c-on-action); }
+@media (prefers-reduced-motion: reduce) { .status--info .status__mark::after, .status--info .status__mark .ui-icon { animation: none; } }
 .status__text { flex: 1; min-width: 0; }
 .status h1 { font-size: var(--fs-3xl); line-height: 1.2; font-weight: var(--fw-semibold); }
 .status p { color: var(--c-text-2); margin-top: 4px; }

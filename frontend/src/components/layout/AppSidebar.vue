@@ -38,8 +38,9 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
     <router-link to="/" class="brand" aria-label="AIOps One overview">
       <svg class="brand__mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
         <rect width="28" height="28" rx="6" fill="var(--c-primary)" />
-        <path d="M5 16h4l2.5-6 4 11 2.5-5H23" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-        <circle cx="23" cy="16" r="2.6" fill="var(--c-action)" stroke="var(--c-primary)" stroke-width="1" />
+        <path class="brand__line" d="M5 16h4l2.5-6 4 11 2.5-5H23" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle class="brand__pulse" cx="23" cy="16" r="2.6" fill="none" stroke="var(--c-action)" stroke-width="1.4" />
+        <circle class="brand__node" cx="23" cy="16" r="2.6" fill="var(--c-action)" stroke="var(--c-primary)" stroke-width="1" />
       </svg>
       <b>AIOps One</b>
     </router-link>
@@ -61,6 +62,12 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
 .brand { display: flex; gap: 10px; align-items: center; height: var(--topbar-h); padding: 0 16px; color: var(--c-text); border-bottom: 1px solid var(--c-border); }
 .brand b { font-size: 15px; font-weight: var(--fw-semibold); }
 .brand__mark { flex: none; }
+/* the AI node quietly breathes - the system is alive and watching */
+.brand__node { animation: brand-breathe 3s var(--ease, ease-in-out) infinite; transform-origin: 23px 16px; }
+.brand__pulse { transform-origin: 23px 16px; animation: brand-ping 3s var(--ease, ease-in-out) infinite; }
+@keyframes brand-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes brand-ping { 0% { transform: scale(1); opacity: 0.6; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .brand__node, .brand__pulse { animation: none; } .brand__pulse { display: none; } }
 nav { flex: 1; overflow: auto; padding: 10px 8px; }
 .nav__sec { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--c-text-3); padding: 18px 10px 6px; }
 .nav__item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--radius-md); color: var(--c-text-2);
