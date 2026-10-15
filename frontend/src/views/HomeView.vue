@@ -50,16 +50,18 @@ const primary = computed(() => {
   return { to: "/network", label: t("Open the Fleet", "เปิดฟลีต"), icon: "server", variant: "tint" };
 });
 
-// right column: a quiet health summary that links to the detail pages
-const health = computed(() => {
+// a dense vital-signs strip: tight metric cells, a deliberate contrast to the roomy hero above it
+const vitals = computed(() => {
   const s = rollup(app.services), h = rollup(app.hosts);
+  const n = awaitingList.value.length, m = investigatingList.value.length;
   return [
-    { label: t("Services", "บริการ"), icon: "cube", to: "/services", value: `${s.total - s.affected}/${s.total}`,
-      sub: s.affected ? t(`${s.affected} with problems`, `มีปัญหา ${s.affected}`) : t("all healthy", "ปกติทั้งหมด"), tone: s.affected ? "bad" : "ok" },
-    { label: t("Hosts", "เครื่อง"), icon: "server", to: "/network", value: `${h.total - h.affected}/${h.total}`,
-      sub: h.affected ? t(`${h.affected} need attention`, `ต้องดู ${h.affected}`) : t("all healthy", "ปกติทั้งหมด"), tone: h.affected ? "bad" : "ok" },
-    { label: t("Avg fix time", "เวลาแก้เฉลี่ย"), icon: "checkmark_circle", to: "/problems", value: dur(app.kpi.mttr_s),
-      sub: t("detect → verified", "ตรวจพบ → ยืนยัน"), tone: "none" },
+    { k: t("Awaiting you", "รอคุณ"), v: n, sub: n ? t("needs approval", "รออนุมัติ") : t("all clear", "เคลียร์หมด"), tone: n ? "action" : "ok", to: "/problems" },
+    { k: t("Investigating", "กำลังสืบสวน"), v: m, sub: t("AI working", "AI ทำงาน"), tone: m ? "info" : "muted", to: "/problems" },
+    { k: t("Services", "บริการ"), v: `${s.total - s.affected}/${s.total}`, sub: s.affected ? t(`${s.affected} with problems`, `มีปัญหา ${s.affected}`) : t("all healthy", "ปกติ"), tone: s.affected ? "bad" : "ok", to: "/services" },
+    { k: t("Hosts", "เครื่อง"), v: `${h.total - h.affected}/${h.total}`, sub: h.affected ? t(`${h.affected} to check`, `ต้องดู ${h.affected}`) : t("all healthy", "ปกติ"), tone: h.affected ? "bad" : "ok", to: "/network" },
+    { k: t("Avg fix", "เวลาแก้เฉลี่ย"), v: dur(app.kpi.mttr_s), sub: t("detect → verified", "ตรวจพบ → ยืนยัน"), tone: "none", to: "/problems" },
+    { k: t("Coverage", "ครอบคลุม"), v: coverage.value ? `${coverage.value.monitored}/${coverage.value.total}` : "—",
+      sub: coverage.value?.suggest ? t(`connect ${coverage.value.suggest} more`, `เชื่อมอีก ${coverage.value.suggest}`) : t("machines", "เครื่อง"), tone: "none", to: "/network" },
   ];
 });
 
@@ -83,6 +85,15 @@ const eyebrow = computed(() => (status.value.tone === "action" ? t("Action requi
           <span class="checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
         </div>
       </header>
+
+      <!-- dense vital-signs strip: tight numeric cells divided by hairlines (density contrast to the hero) -->
+      <div class="vitals">
+        <router-link v-for="v in vitals" :key="v.k" :to="v.to" class="vital">
+          <span class="vital__k">{{ v.k }}</span>
+          <b :class="['vital__v', `t-${v.tone}`]">{{ v.v }}</b>
+          <span class="vital__s">{{ v.sub }}</span>
+        </router-link>
+      </div>
 
       <div class="cmd">
         <!-- left: what needs me -->
@@ -122,24 +133,6 @@ const eyebrow = computed(() => (status.value.tone === "action" ? t("Action requi
           </div>
         </div>
 
-        <!-- right: how is everything -->
-        <aside class="cmd__aside">
-          <div class="panel">
-            <div class="panel__h">{{ t("System health", "สุขภาพระบบ") }}</div>
-            <router-link v-for="r in health" :key="r.label" :to="r.to" class="hrow">
-              <span :class="['hrow__ic', `t-${r.tone}`]"><UiIcon :name="r.icon" :size="16" /></span>
-              <span class="hrow__l">{{ r.label }}<small>{{ r.sub }}</small></span>
-              <b :class="`t-${r.tone}`">{{ r.value }}</b>
-            </router-link>
-          </div>
-
-          <router-link v-if="coverage" to="/network" class="panel cov">
-            <div class="panel__h">{{ t("Fleet coverage", "ความครอบคลุมฟลีต") }}</div>
-            <div class="cov__v"><b>{{ coverage.monitored }}</b><span class="muted">/ {{ coverage.total }} {{ t("machines monitored", "เครื่องที่เฝ้าดู") }}</span></div>
-            <div class="cov__bar"><i :style="{ width: `${Math.round((coverage.monitored / Math.max(coverage.total, 1)) * 100)}%` }" /></div>
-            <span v-if="coverage.suggest" class="cov__cta">{{ t(`Connect ${coverage.suggest} more`, `เชื่อมเพิ่มอีก ${coverage.suggest} เครื่อง`) }}<UiIcon name="chevron_right" :size="15" /></span>
-          </router-link>
-        </aside>
       </div>
     </template>
     <UiWait v-else :title="t('Loading the overview', 'กำลังโหลดภาพรวม')" />
@@ -162,8 +155,22 @@ const eyebrow = computed(() => (status.value.tone === "action" ? t("Action requi
 .top__r { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
 .checked { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 
-/* ---- command grid ---- */
-.cmd { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+/* ---- dense vital-signs strip: one tight card, cells divided by vertical hairlines ---- */
+.vitals { display: flex; background: var(--c-surface); box-shadow: var(--shadow-card); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+.vital { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 12px 16px; text-decoration: none; color: var(--c-text);
+  border-left: 1px solid var(--c-separator); }
+.vital:first-child { border-left: 0; }
+.vital:hover { background: var(--c-hover); }
+.vital__k { font-size: 11px; font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-text-3); }
+.vital__v { font-size: var(--fs-2xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.15; letter-spacing: -0.02em; }
+.vital__s { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vital__v.t-ok { color: var(--c-text); } .vital__v.t-bad { color: var(--c-bad-text); }
+.vital__v.t-action { color: var(--c-action-text); } .vital__v.t-info { color: var(--c-primary); }
+@media (max-width: 900px) { .vitals { flex-wrap: wrap; } .vital { flex: 1 1 33%; border-top: 1px solid var(--c-separator); } .vital:nth-child(-n+3) { border-top: 0; } }
+@media (max-width: 520px) { .vital { flex-basis: 50%; } }
+
+/* ---- main column: the incident queue, full width ---- */
+.cmd { display: block; }
 .cmd__main { min-width: 0; }
 
 /* group heading */
