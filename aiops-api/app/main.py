@@ -83,6 +83,11 @@ async def agent_py():
     return _dist("aiops-agent.py")
 
 
+@app.get("/install/netwatch.py", response_class=PlainTextResponse, include_in_schema=False)
+async def netwatch_py():
+    return _dist("netwatch.py")
+
+
 # ---------------- compatibility for agents installed before /api/v1 ----------------
 @app.get("/api/ping", include_in_schema=False)
 async def ping():

@@ -4,7 +4,7 @@ DIR="$HOME/.aiops-agent"
 PL="$HOME/Library/LaunchAgents/com.aiops.agent.plist"
 if [ -f "$PL" ]; then launchctl unload "$PL" 2>/dev/null; rm -f "$PL"; fi
 pkill -f "$DIR/aiops-agent.py" 2>/dev/null || true
-docker rm -f aiops-ebpf aiops-otelcol >/dev/null 2>&1 || true   # the eBPF tracer and log collector the agent started
+docker rm -f aiops-ebpf aiops-otelcol aiops-netwatch >/dev/null 2>&1 || true   # tracer, log collector, network watcher
 ( crontab -l 2>/dev/null | grep -v aiops-agent.py ) | crontab - 2>/dev/null || true
 AK="$HOME/.ssh/authorized_keys"   # the key AIOps kept its data channel open with (servers connected from the web page)
 if [ -f "$AK" ] && grep -q ' aiops-platform$' "$AK"; then grep -v ' aiops-platform$' "$AK" > "$AK.tmp" && cat "$AK.tmp" > "$AK" && rm -f "$AK.tmp"; fi

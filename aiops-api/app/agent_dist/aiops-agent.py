@@ -13,12 +13,13 @@ import os
 import platform
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
 import urllib.request
 
-VERSION = "1.4.1"
+VERSION = "1.5.1"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
 HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
@@ -158,7 +159,116 @@ def inventory():
     details = container_details([c["name"] for c in containers])
     for c in containers:
         c.update(details.get(c["name"], {}))
-    return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers}
+    return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers,
+            "interfaces": interfaces(), "neighbors": neighbors()}
+
+
+# ---------------- your network: the segment this machine sits on (passive, nothing is scanned) ----------------
+NET_SKIP = ("lo", "docker", "br-", "veth", "virbr", "cni", "flannel", "kube", "tun", "tap", "wg", "tailscale", "zt")
+NAMES = {}
+
+
+def interfaces():
+    if DARWIN:
+        return []
+    try:
+        addrs = json.loads(sh(["ip", "-j", "addr", "show"]) or "[]")
+        routes = json.loads(sh(["ip", "-j", "route", "show", "default"]) or "[]")
+    except ValueError:
+        return []
+    gw = {r.get("dev"): r.get("gateway") for r in routes}
+    out = []
+    for a in addrs:
+        name = a.get("ifname", "")
+        if name.startswith(NET_SKIP):
+            continue
+        for ai in a.get("addr_info") or []:
+            if ai.get("family") == "inet" and ai.get("scope") == "global":
+                out.append({"name": name, "cidr": f"{ai['local']}/{ai['prefixlen']}", "mac": a.get("address"),
+                            "gateway": gw.get(name)})
+    return out
+
+
+def _name(ip):
+    """Reverse DNS, cached; slow or missing answers are skipped."""
+    if ip not in NAMES:
+        import concurrent.futures as cf
+        with cf.ThreadPoolExecutor(1) as ex:
+            try:
+                NAMES[ip] = ex.submit(socket.gethostbyaddr, ip).result(timeout=1)[0]
+            except Exception:
+                NAMES[ip] = None
+    return NAMES[ip]
+
+
+def neighbors():
+    """What the passive watcher heard over ARP, plus the kernel's own neighbour table."""
+    if DARWIN:
+        return []
+    seen = {}
+    try:
+        for ip, v in json.load(open(os.path.join(DIR, "net", "neighbors.json"))).items():
+            seen[ip] = {"ip": ip, "mac": v.get("mac"), "last_seen": v.get("last_seen")}
+    except (OSError, ValueError):
+        pass
+    try:
+        for n in json.loads(sh(["ip", "-j", "neigh", "show"]) or "[]"):
+            dev = n.get("dev", "")
+            if n.get("lladdr") and not dev.startswith(NET_SKIP) and n.get("dst", "").count(".") == 3:
+                seen.setdefault(n["dst"], {"ip": n["dst"], "mac": n["lladdr"], "last_seen": time.time()})
+    except ValueError:
+        pass
+    new = [ip for ip in seen if ip not in NAMES][:16]
+    for ip in new:
+        _name(ip)
+    for ip, n in seen.items():
+        n["name"] = NAMES.get(ip)
+    return list(seen.values())[:1000]
+
+
+NETWATCH_IMAGE = CFG.get("netwatch_image", "python:3.12-alpine")
+NETWATCH_NAME = "aiops-netwatch"
+NETWATCH = {"state": "disabled", "error": None}
+
+
+def netwatch_apply():
+    """Run the passive ARP listener (CAP_NET_RAW only, 48 MB, a tenth of a CPU)."""
+    if DARWIN or str(CFG.get("netwatch", "auto")).lower() in ("off", "0", "false", "no"):
+        NETWATCH.update(state="disabled", error=None)
+        return
+    if not shutil.which("docker") or subprocess.run(["docker", "info"], capture_output=True).returncode != 0:
+        NETWATCH.update(state="unavailable", error="Docker is not installed or this user cannot run it")
+        return
+    script = os.path.join(DIR, "netwatch.py")
+    try:
+        code = urllib.request.urlopen(f"{API}/install/netwatch.py", timeout=15).read()
+        if not os.path.exists(script) or open(script, "rb").read() != code:
+            with open(script, "wb") as f:
+                f.write(code)
+    except Exception as e:
+        if not os.path.exists(script):
+            NETWATCH.update(state="error", error=f"cannot download the watcher: {e}")
+            return
+    net = os.path.join(DIR, "net")
+    os.makedirs(net, exist_ok=True)
+    os.chmod(net, 0o770)  # the watcher writes here through this user's group - it has no root file rights
+    digest = hashlib.sha1(open(script, "rb").read() + NETWATCH_IMAGE.encode()).hexdigest()[:12]
+    cur = sh(["docker", "inspect", "-f", '{{index .Config.Labels "aiops.cfg"}} {{.State.Running}}', NETWATCH_NAME]).split()
+    if cur == [digest, "true"]:
+        NETWATCH.update(state="running", error=None)
+        return
+    sh(["docker", "rm", "-f", NETWATCH_NAME])
+    r = subprocess.run(["docker", "run", "-d", "--name", NETWATCH_NAME, "--restart", "unless-stopped",
+                        "--label", f"aiops.cfg={digest}", "--network=host", "--cap-drop", "ALL", "--cap-add", "NET_RAW",
+                        "--group-add", str(os.getgid()),
+                        "--memory", "48m", "--cpus", "0.1", "-v", f"{script}:/w/netwatch.py:ro",
+                        "-v", f"{os.path.join(DIR, 'net')}:/out", NETWATCH_IMAGE, "python3", "/w/netwatch.py",
+                        "/out/neighbors.json"], capture_output=True, text=True, timeout=600)
+    if r.returncode == 0:
+        NETWATCH.update(state="starting", error=None)
+        print(f"{time.strftime('%H:%M:%S')} network watcher started (listens to ARP only)", flush=True)
+    else:
+        NETWATCH.update(state="error", error=(r.stderr or r.stdout).strip()[-300:])
 
 
 def container_details(names):
@@ -182,6 +292,7 @@ def push_inventory():
     inv = inventory()
     inv["ebpf"] = EBPF
     inv["collector"] = COLLECTOR
+    inv["netwatch"] = NETWATCH
     req = urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/inventory", data=json.dumps(inv).encode(),
                                  method="POST", headers={"Content-Type": "application/json"})
     reply = json.loads(urllib.request.urlopen(req, timeout=15).read() or b"{}")
@@ -189,12 +300,13 @@ def push_inventory():
         self_uninstall()
     ebpf_apply(reply.get("instrument") or [])
     collector_apply(reply.get("collector"))
+    netwatch_apply()
 
 
 def self_uninstall():
     """Remove everything AIOps put on this machine, tell the platform, then stop. Same as uninstall.sh."""
     print(f"{time.strftime('%H:%M:%S')} removing myself (asked from the AIOps web page)", flush=True)
-    sh(["docker", "rm", "-f", EBPF_NAME, COLLECTOR_NAME])
+    sh(["docker", "rm", "-f", EBPF_NAME, COLLECTOR_NAME, NETWATCH_NAME])
     cron = sh(["crontab", "-l"])
     if "aiops-agent.py" in cron:
         keep = "".join(l + "\n" for l in cron.splitlines() if "aiops-agent.py" not in l)

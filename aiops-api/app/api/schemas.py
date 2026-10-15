@@ -56,6 +56,9 @@ class Inventory(BaseModel):
     connections: list[dict] = []
     containers: list[dict] = []
     ebpf: dict | None = None  # {state: running|starting|unavailable|disabled|error, services, error, version}
+    interfaces: list[dict] = []  # [{name, cidr, mac, gateway}] - the segments this server sits on
+    neighbors: list[dict] = []  # [{ip, mac, name, last_seen}] heard over ARP by the passive watcher
+    netwatch: dict | None = None  # passive watcher status {state, error}
     collector: dict | None = None  # OpenTelemetry Collector for logs + container metrics: {state, logs, error, version}
 
 
