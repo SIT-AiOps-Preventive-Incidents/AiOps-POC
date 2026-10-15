@@ -113,3 +113,39 @@ class SshConnectIn(BaseModel):
         if bool(self.password) == bool(self.private_key):
             raise ValueError("give either a password or a private key")
         return self
+
+
+class BulkTarget(BaseModel):
+    """One machine to connect in a bulk run. name defaults to the address when the discovery had no hostname."""
+    address: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.:-]+$")
+    name: str | None = Field(default=None, max_length=60, pattern=r"^[A-Za-z0-9._-]+$")
+
+
+class SshBulkConnectIn(BaseModel):
+    """Connect several machines in one go with one shared credential - the fleet case: many VMs from one template
+    reachable with the same key or password. Each becomes its own connect job; the credential is used once per host
+    and never stored."""
+    targets: list[BulkTarget] = Field(min_length=1, max_length=50)
+    port: int = Field(default=22, ge=1, le=65535)
+    user: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    password: str | None = None
+    private_key: str | None = None
+    passphrase: str | None = None
+    ebpf: bool = True
+
+    @model_validator(mode="after")
+    def _one_way_in(self):
+        if bool(self.password) == bool(self.private_key):
+            raise ValueError("give either a password or a private key")
+        return self
+
+    def each(self) -> list[SshConnectIn]:
+        """One SshConnectIn per target, carrying the shared credential. A target without a hostname is named after
+        its address (dots and colons swapped for dashes so it is a valid host name)."""
+        out = []
+        for t in self.targets:
+            name = t.name or t.address.replace(".", "-").replace(":", "-")
+            out.append(SshConnectIn(name=name, address=t.address, port=self.port, user=self.user,
+                                    password=self.password, private_key=self.private_key,
+                                    passphrase=self.passphrase, ebpf=self.ebpf))
+        return out

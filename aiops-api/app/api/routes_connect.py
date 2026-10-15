@@ -3,7 +3,7 @@ from fastapi import APIRouter, Response
 
 from .. import remote, repo
 from .errors import not_found
-from .schemas import SshConnectIn
+from .schemas import SshBulkConnectIn, SshConnectIn
 
 router = APIRouter(prefix="/api/v1/connect/ssh", tags=["connect"])
 
@@ -13,6 +13,12 @@ async def connect(body: SshConnectIn, response: Response):
     job = remote.start(body)
     response.headers["Location"] = f"/api/v1/connect/ssh/jobs/{job['id']}"
     return {"job_id": job["id"]}
+
+
+@router.post("/bulk", status_code=202, summary="Connect several machines at once with one shared credential")
+async def connect_bulk(body: SshBulkConnectIn):
+    jobs = [{"name": c.name, "address": c.address, "job_id": remote.start(c)["id"]} for c in body.each()]
+    return {"count": len(jobs), "jobs": jobs}
 
 
 @router.get("/jobs/{job_id}", summary="Progress of a connect: steps, installer output, error")

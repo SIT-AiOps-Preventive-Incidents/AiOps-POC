@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from .. import netseg
 from ..netdisco import service
+from .errors import ApiError
 
 router = APIRouter(prefix="/api/v1/network", tags=["network"])
 
@@ -67,8 +68,10 @@ async def recommendations():
 async def topology_graph():
     from .. import health, repo
     segments, neighbors, base = netseg.load()
-    live = {h["name"]: h["status"] for h in await health.hosts_health()}
+    live = {h["name"]: h for h in await health.hosts_health()}
     for h in base:
-        h["status"] = live.get(h["name"])
+        hh = live.get(h["name"]) or {}
+        h["status"] = hh.get("status")
+        h["problem_id"] = hh.get("problem_id")   # so a problem machine on the Fleet links to its incident
     svc = {s["service"]: s["status"] for s in await health.services_health()}
     return netseg.graph(segments, neighbors, base, svc, repo.discovered_edges(3600))

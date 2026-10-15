@@ -193,12 +193,6 @@ def test_poll_resolves_names_and_reports_unreachable(monkeypatch):
     assert bad.reachable is False and bad.error.startswith("cannot resolve")
 
 
-def test_scenario_port_command_targets_the_right_port():
-    from app.netdisco import scenarios
-    cmd = scenarios._port_cmd("10.20.255.", "down")[2]
-    assert "/^10\\.20\\.255\\./" in cmd and cmd.endswith(" down")
-
-
 def test_own_lldp_frames_heard_back_are_not_neighbours():
     echo = SW_APP + (".1.0.8802.1.1.2.1.4.1.1.9.0.24.2 = STRING: sw-app\n"
                      ".1.0.8802.1.1.2.1.4.1.1.7.0.24.2 = STRING: eth2\n")

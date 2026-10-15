@@ -10,7 +10,7 @@ from pydantic import ValidationError
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app import remote  # noqa: E402
-from app.api.schemas import SshConnectIn  # noqa: E402
+from app.api.schemas import SshBulkConnectIn, SshConnectIn  # noqa: E402
 
 PUB = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPlatformKeyForTests aiops@old-comment"
 
@@ -70,3 +70,42 @@ def test_friendly_reason_for_common_ssh_errors():
     assert "password or key" in remote.reason(PermissionError("Permission denied"))
     assert "reach" in remote.reason(TimeoutError())
     assert "18080" in remote.reason(RuntimeError("remote port forwarding failed for listen port 18080"))
+
+
+def test_bulk_connect_expands_to_one_job_per_host_sharing_one_credential():
+    b = SshBulkConnectIn(user="poc", password="s3cret", ebpf=True,
+                         targets=[{"address": "10.4.82.40", "name": "db2"},
+                                  {"address": "10.4.82.41"}])              # no hostname from discovery
+    each = b.each()
+    assert [c.name for c in each] == ["db2", "10-4-82-41"]                 # address becomes a valid host name
+    assert all(c.password == "s3cret" and c.user == "poc" and c.ebpf for c in each)
+    assert all(isinstance(c, SshConnectIn) for c in each)                 # each runs through the single-host path
+
+
+def test_bulk_connect_needs_exactly_one_credential_and_at_least_one_target():
+    with pytest.raises(ValidationError):
+        SshBulkConnectIn(user="poc", targets=[{"address": "10.4.82.40"}])                 # no credential
+    with pytest.raises(ValidationError):
+        SshBulkConnectIn(user="poc", password="x", private_key="y", targets=[{"address": "10.4.82.40"}])  # both
+    with pytest.raises(ValidationError):
+        SshBulkConnectIn(user="poc", password="x", targets=[])                             # nothing to connect
+
+
+def test_bulk_route_starts_one_job_per_target_and_reports_them(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from app.api import errors, routes_connect
+    started = []
+
+    def fake_start(c):
+        started.append(c.name)
+        return {"id": f"job-{c.name}"}
+    monkeypatch.setattr(routes_connect.remote, "start", fake_start)
+    app = FastAPI(); errors.install(app); app.include_router(routes_connect.router)
+    r = TestClient(app).post("/api/v1/connect/ssh/bulk", json={
+        "user": "poc", "password": "s3cret",
+        "targets": [{"address": "10.4.82.40", "name": "db2"}, {"address": "10.4.82.41"}]})
+    assert r.status_code == 202
+    body = r.json()
+    assert body["count"] == 2 and [j["name"] for j in body["jobs"]] == ["db2", "10-4-82-41"]
+    assert [j["job_id"] for j in body["jobs"]] == ["job-db2", "job-10-4-82-41"] and started == ["db2", "10-4-82-41"]

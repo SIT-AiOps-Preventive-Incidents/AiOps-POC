@@ -18,7 +18,18 @@ const props = defineProps({ id: String });
 const store = useIncidentStore();
 const ui = useUiStore();
 const inc = computed(() => store.byId[props.id]);
-usePolling(() => store.load(props.id), 4000);
+// blast radius: the other machines AIOps monitors on the same network as the affected host - the first to check,
+// and the same set the AI widens its search to.
+const neighbours = ref([]);
+let fetchedFor = "";
+usePolling(async () => {
+  await store.load(props.id);
+  const i = inc.value;
+  if (i && i.entity_type === "host" && i.entity !== fetchedFor) {
+    fetchedFor = i.entity;
+    try { neighbours.value = (await api.hosts.get(i.entity)).neighbours || []; } catch { neighbours.value = []; }
+  }
+}, 4000);
 
 const steps = computed(() => {
   const i = inc.value;
@@ -113,6 +124,12 @@ async function openTrace(id) {
       <div class="stack sticky">
         <FixPanel :incident="inc" />
         <FeedbackCard :incident="inc" />
+        <UiCard v-if="neighbours.length" title="Blast radius">
+          <p class="small muted" style="margin:-2px 0 8px">Other machines AIOps monitors on {{ inc.entity }}'s network — check these first if the cause is shared.</p>
+          <router-link v-for="n in neighbours" :key="n.host" :to="`/computers/${n.host}`" class="nbr">
+            <UiStatusDot tone="ok" :size="7" /><b>{{ n.host }}</b><span class="muted small">{{ n.networks.join(', ') }}{{ n.owner ? ` · ${n.owner}` : '' }}</span>
+          </router-link>
+        </UiCard>
         <UiCard title="Notifications">
           <div v-for="n in inc.notifications" :key="n.id" class="small">{{ n.event.replace(/_/g, " ") }} · {{ clock(n.ts) }} · <span class="muted">{{ n.status }}</span></div>
           <p v-if="!inc.notifications.length" class="small muted">None sent</p>
@@ -148,6 +165,9 @@ async function openTrace(id) {
 .ev li::before { content: ""; position: absolute; left: 0; top: 16px; width: 6px; height: 6px; border-radius: 1px; background: var(--c-primary); }
 .ev__src { display: inline-block; margin-right: 8px; padding: 0 6px; border-radius: var(--radius-sm); background: var(--c-fill); font-size: 11px; font-weight: var(--fw-semibold); color: var(--c-text-2); line-height: 18px; vertical-align: 1px; }
 .rb { margin: 0; padding-left: 20px; } .rb li { margin: 4px 0; }
+.nbr { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--c-separator); color: var(--c-text); text-decoration: none; }
+.nbr:first-of-type { border-top: 0; } .nbr:hover b { color: var(--c-primary); } .nbr b { font-weight: var(--fw-medium); font-size: var(--fs-sm); }
+.nbr span { margin-left: auto; }
 .sticky { position: sticky; top: 12px; }
 @media (max-width: 1080px) { .sticky { position: static; } }
 </style>

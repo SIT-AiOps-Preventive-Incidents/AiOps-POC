@@ -71,9 +71,12 @@
   --fs-xs: 12px;  --fs-sm: 13px;  --fs-md: 14px;  --fs-lg: 16px;
   --fs-xl: 18px;  --fs-2xl: 24px; --fs-3xl: 28px;
   --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 600;
+  /* leading: one value per role, so line spacing never drifts between places (headings tight, body readable) */
+  --lh-tight: 1.2; --lh-snug: 1.35; --lh-normal: 1.5;
 
-  /* ---- spacing (4 px grid) ---- */
-  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  /* ---- spacing (4 px grid) - the only gaps/paddings in use; large steps named so section gaps never drift ---- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 28px;
+  --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
 
   /* ---- shape & depth: borders do the work, shadows only for things that float ---- */
   --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 10px; --radius-pill: 999px;

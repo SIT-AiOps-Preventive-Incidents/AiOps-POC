@@ -124,3 +124,15 @@ def test_graph_is_internet_gateway_hub_machines_services():
     assert ("host:esg360-prod", "hub:10.148.0.0/24") in links
     assert not any(n["id"].startswith("hub:172.17") for n in g["nodes"])      # Docker bridges are not networks
     assert next(n for n in g["nodes"] if n["id"] == "svc:postgres")["status"] == "problem"
+
+
+def test_a_monitored_host_with_an_open_problem_links_straight_to_the_incident():
+    hosts = [{"name": "cp26pt1", "ip_addresses": ["10.4.82.20"], "owner": "team-platform",
+              "services": ["aiops-api"], "status": "problem", "problem_id": 42}]
+    g = netseg.graph(SEGS, NEIGH, hosts, {}, [])
+    cp = next(n for n in g["nodes"] if n["id"] == "host:cp26pt1")
+    assert cp["problem_id"] == 42
+    assert cp["link"] == "/computers/cp26pt1"                     # the chip still opens the machine
+    assert cp["problem_link"] == "/problems/42"                   # and the Fleet can jump to the incident
+    healthy = next(n for n in netseg.graph(SEGS, NEIGH, HOSTS, {}, [])["nodes"] if n["id"] == "host:cp26pt1")
+    assert healthy.get("problem_id") is None and "problem_link" not in healthy
