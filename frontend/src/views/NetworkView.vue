@@ -82,6 +82,7 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
 <template>
   <div class="page page--wide">
     <UiPageHeader title="Network" :subtitle="`What the switches and routers see, from the core down to the services. ${lab ? 'Read from the NIKA research lab' : 'Found over SNMP and LLDP'} every minute.`">
+      <UiButton variant="tint" icon="globe" to="/network/yours">Your network</UiButton>
       <UiButton icon="arrow_sync" :loading="scanning" :disabled="empty" @click="scanNow">Scan now</UiButton>
     </UiPageHeader>
 

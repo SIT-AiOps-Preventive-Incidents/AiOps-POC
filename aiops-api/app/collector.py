@@ -13,7 +13,7 @@ in environment variable NAMES (NODE_VERSION, JAVA_HOME, PG_MAJOR ...). Only the 
 import json
 import re
 
-OWN = ("aiops-ebpf", "aiops-otelcol")
+OWN = ("aiops-ebpf", "aiops-otelcol", "aiops-netwatch")
 ENV_RUNTIME = [("NODE_VERSION", "node"), ("JAVA_HOME", "java"), ("JAVA_VERSION", "java"), ("PYTHON_VERSION", "python"),
                ("GOLANG_VERSION", "go"), ("DOTNET_VERSION", "dotnet"), ("ASPNET_VERSION", "dotnet"),
                ("RUBY_VERSION", "ruby"), ("PHP_VERSION", "php"), ("NGINX_VERSION", "nginx"), ("PG_MAJOR", "postgres"),

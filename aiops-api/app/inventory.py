@@ -9,7 +9,7 @@ Connecting a computer is enough to see what runs on it:
 """
 import re
 
-from . import collector, db, repo
+from . import collector, db, netseg, repo
 
 # OS / desktop noise that listens on a port but is not a "service" anyone runs on purpose.
 IGNORE_PROCESSES = {
@@ -57,7 +57,8 @@ def ingest(host: str, inv: dict) -> dict:
     ips = sorted(set(inv.get("ips") or []))
     db.ex("UPDATE hosts SET ip_addresses=%s, last_inventory_at=now() WHERE name=%s", (ips, host))
 
-    status = {**(inv.get("ebpf") or {}), **({"collector": inv["collector"]} if inv.get("collector") else {})}
+    status = {**(inv.get("ebpf") or {}), **({"collector": inv["collector"]} if inv.get("collector") else {}),
+              **({"netwatch": inv["netwatch"]} if inv.get("netwatch") else {})}
     db.ex("UPDATE hosts SET auto_instrument=%s WHERE name=%s", (db.J(status) if status else None, host))
     found, listeners = [], {}  # (port) -> service_name, for matching local connections
     # ---- containers ----
@@ -118,6 +119,7 @@ def ingest(host: str, inv: dict) -> dict:
         if dst and dst != src:
             repo.upsert_connection(src, dst, host)
             edges += 1
+    netseg.ingest(host, inv)  # segments and neighbours heard on the wire (passive)
     containers = [c for c in inv.get("containers") or [] if c.get("name") not in ignore]
     out = {"host": host, "services": sorted(set(found)), "edges": edges,
            "instrument": _targets(listeners) + collector.trace_targets(containers)}

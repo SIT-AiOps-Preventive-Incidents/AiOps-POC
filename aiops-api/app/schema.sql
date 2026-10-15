@@ -277,3 +277,25 @@ CREATE TABLE IF NOT EXISTS ssh_links (
 -- Release 1.3: "Remove agent" from the web page. Set when someone asks; the agent removes itself on its next
 -- report (collector, eBPF tracer, autostart, the platform key) and then the host row is deleted.
 ALTER TABLE hosts ADD COLUMN IF NOT EXISTS uninstall_requested_at TIMESTAMPTZ;
+
+-- Release 1.4: "Your network". Segments each connected server sits on, and the neighbours its passive watcher heard
+-- over ARP (nothing is scanned). talks_with = processes on the server that had a connection to the neighbour.
+CREATE TABLE IF NOT EXISTS net_segments (
+  cidr       TEXT NOT NULL,
+  host_name  TEXT NOT NULL,
+  iface      TEXT NOT NULL DEFAULT '',
+  gateway    TEXT,
+  last_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (cidr, host_name)
+);
+CREATE TABLE IF NOT EXISTS net_neighbors (
+  cidr       TEXT NOT NULL,
+  ip         TEXT NOT NULL,
+  mac        TEXT,
+  name       TEXT,
+  seen_by    TEXT,
+  talks_with TEXT[] NOT NULL DEFAULT '{}',
+  first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (cidr, ip)
+);
