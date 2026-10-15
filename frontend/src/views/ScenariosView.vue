@@ -42,44 +42,21 @@ function describe(id) {
   if (kind === "Code") return { icon: "code", title: `${svc}-service stops answering`, what: `A code-level fault stops ${svc}-service; its callers start failing.` };
   return { icon: "warning", title: c.replace(/_/g, " "), what: "A recorded fault." };
 }
-// NIKA (SIGCOMM NGNO '25): its own fault cases on its research network, injected by NIKA's injector
-const NIKA = {
-  "link_down.0": ["Client cable down", "client_0's cable to the super-spine router goes down."],
-  "link_down.1": ["DNS server cable down", "dns_pod0's cable to its leaf router goes down: the pod loses name resolution."],
-  "link_down.2": ["Fabric uplink down", "The cable between leaf_router_0_0 and spine_router_0_0 goes down."],
-  "link_detach.1": ["DNS server interface removed", "dns_pod0's network interface is detached from the node."],
-  "frr_service_down.0": ["Spine router stops routing", "FRR stops on spine_router_0_0: its ports stay up but it no longer routes."],
-};
-const nika = computed(() => (listed.value || []).filter((id) => id.startsWith("nika:")).map((id) => {
-  const k = id.slice(5);
-  const [title, what] = NIKA[k] || [k.replace(/[._]/g, " "), "A fault case from NIKA's pool."];
-  return { id, title, what, icon: k.startsWith("frr") ? "developer_board" : "flowchart" };
-}));
 const anomod = computed(() => (listed.value || []).filter((id) => id.startsWith("anomod:")).map((id) => ({ id, ...describe(id) })));
 async function run(id) {
   busy.value = id;
   try {
     await api.scenarios.run(id);
-    ui.toast(id === "reset" ? "Everything reset" : id.startsWith("net_") || id.startsWith("nika:") ? "Started. Opening Network…" : "Started. Opening Incidents…");
-    if (id !== "reset") setTimeout(() => router.push(id.startsWith("net_") || id.startsWith("nika:") ? "/network" : "/problems"), 900);
+    ui.toast(id === "reset" ? "Everything reset" : id.startsWith("net_") ? "Started. Opening Fleet…" : "Started. Opening Incidents…");
+    if (id !== "reset") setTimeout(() => router.push(id.startsWith("net_") ? "/network" : "/problems"), 900);
   } catch (e) { ui.toast(e.message); } finally { busy.value = ""; }
 }
 </script>
 <template>
   <div class="page">
     <UiPageHeader title="Demo scenarios" subtitle="Break something on purpose and watch the AI find and fix it. Detection takes about 40 s, the AI another 1-3 minutes." />
-    <template v-if="nika.length">
-      <h3 class="sec sec--first">Network (NIKA, SIGCOMM NGNO '25 research lab)</h3>
-      <p class="small muted note">NIKA redeploys its lab clean (~20 s), then injects its own case. The Network page shows NIKA's ground truth next to what AIOps One sees.</p>
-      <UiList>
-        <UiListRow v-for="s in nika" :key="s.id" :title="s.title" :detail="s.what">
-          <template #leading><UiAppTile :icon="s.icon" color="var(--c-warn)" /></template>
-          <template #accessory><UiButton size="sm" :loading="busy === s.id" @click="run(s.id)">Start</UiButton></template>
-        </UiListRow>
-      </UiList>
-    </template>
     <template v-if="anomod.length">
-      <h3 :class="['sec', { 'sec--first': !nika.length }]">SocialNetwork (AnoMod, recorded on a real deployment)</h3>
+      <h3 class="sec sec--first">SocialNetwork (AnoMod, recorded on a real deployment)</h3>
       <p class="small muted note">Each run replays the logs and traces AnoMod recorded while the fault was injected, re-timed to now. Detection and root cause come from AIOps One, not from the recording.</p>
       <UiList>
         <UiListRow v-for="s in anomod" :key="s.id" :title="s.title" :detail="s.what">
