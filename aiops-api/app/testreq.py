@@ -16,7 +16,7 @@ async def start(entry: str | None = None) -> dict:
     """Fire the request; returns immediately with a test id (= trace id)."""
     svc = repo.service(entry) if entry else None
     if not svc:
-        svc = next((s for s in repo.list_services(("service", "network")) if s.get("entry_url")), None)
+        svc = next((s for s in repo.list_services(("service", "network")) if s.get("entry_url") and s.get("instrumentation") != "check"), None)
     if not svc or not svc.get("entry_url"):
         raise LookupError("no service has an entry URL to send a test request to")
     trace_id, span_id = os.urandom(16).hex(), os.urandom(8).hex()

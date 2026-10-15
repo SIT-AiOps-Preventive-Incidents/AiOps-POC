@@ -7,7 +7,7 @@ const s = computed(() => props.service);
 const subtitle = computed(() => {
   if (s.value.kind === "process" || s.value.kind === "external")
     return `${s.value.kind === "external" ? "External" : "Discovered"} on ${s.value.hosts.join(", ") || "-"} · seen ${ago(s.value.last_seen)}`;
-  const auto = s.value.instrumentation === "ebpf" ? "Traced automatically · " : "";
+  const auto = { ebpf: "Traced automatically · ", check: "Checked from outside · " }[s.value.instrumentation] || "";
   if (s.value.status === "no-data") return `${auto}Waiting for data`;
   return `${auto}${s.value.version ? `v${s.value.version} · ` : ""}${rate(s.value.rps)} · p95 ${ms(s.value.p95_ms)}`;
 });

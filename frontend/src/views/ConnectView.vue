@@ -16,6 +16,12 @@
         <span class="logos"><UiLogo v-for="l in ['python', 'node', 'java', 'dotnet', 'go', 'ruby', 'php']" :key="l" :name="l" :size="26" :alt="l" /></span>
         <span class="go">3 steps ›</span>
       </router-link>
+      <router-link to="/connect/website" class="choice">
+        <UiAppTile icon="globe" color="var(--c-chart-2)" :size="48" />
+        <b>A website you cannot install on</b>
+        <span class="muted">Give its address. AIOps calls it every 10 seconds like a browser, learns its normal response time and opens a problem when it slows down or stops answering.</span>
+        <span class="go">No install · 1 step ›</span>
+      </router-link>
     </div>
     <div class="section-label">Good to know</div>
     <UiList plain>
@@ -26,7 +32,7 @@
   </div>
 </template>
 <style scoped>
-.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .choice { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 22px; color: var(--c-text); display: flex; flex-direction: column; gap: 8px; border: 2px solid transparent; }
 .choice:hover { border-color: var(--c-primary); }
 .choice b { font-size: 19px; }
