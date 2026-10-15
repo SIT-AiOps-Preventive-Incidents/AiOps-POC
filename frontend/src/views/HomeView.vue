@@ -84,31 +84,31 @@ const heroIcon = computed(() => (status.value.tone === "ok" ? "checkmark" : stat
         <!-- left: what needs me -->
         <div class="cmd__main">
           <template v-if="awaitingList.length">
-            <h2 class="grp grp--action"><UiIcon name="person" :size="15" />{{ t("Needs your approval", "รอคุณอนุมัติ") }}<span class="grp__n">{{ awaitingList.length }}</span></h2>
-            <ul class="rows">
-              <li v-for="i in awaitingList" :key="i.id" class="row row--you" @click="$router.push(`/problems/${i.id}`)">
-                <div class="row__body">
-                  <div class="row__t"><b>{{ kindLabel(i) }}</b> <span class="muted">{{ t("on", "ที่") }} {{ entityOf(i) }}</span></div>
-                  <div class="row__s">P-{{ i.id }} · {{ ago(i.detected_at) }}<template v-if="i.root_cause"> · <span class="ai">{{ t("AI", "AI") }}</span> {{ i.root_cause }}</template></div>
+            <h2 class="grp"><UiIcon name="person" :size="15" />{{ t("Needs your approval", "รอคุณอนุมัติ") }}<span class="grp__n">{{ awaitingList.length }}</span></h2>
+            <div class="list">
+              <div v-for="i in awaitingList" :key="i.id" class="item" @click="$router.push(`/problems/${i.id}`)">
+                <div class="item__body">
+                  <div class="item__t"><b>{{ kindLabel(i) }}</b> <span class="muted">{{ t("on", "ที่") }} {{ entityOf(i) }}</span></div>
+                  <div class="item__s">P-{{ i.id }} · {{ ago(i.detected_at) }}<template v-if="i.root_cause"> · <span class="ai">{{ t("AI", "AI") }}</span> {{ i.root_cause }}</template></div>
                 </div>
                 <SeverityPill :severity="i.severity" />
-                <UiButton variant="action" size="sm" icon="checkmark" :to="`/problems/${i.id}`" @click.stop>{{ t("Review", "ดู") }}</UiButton>
-              </li>
-            </ul>
+                <UiButton variant="action" size="sm" :to="`/problems/${i.id}`" @click.stop>{{ t("Review", "ดู") }}</UiButton>
+              </div>
+            </div>
           </template>
 
           <template v-if="investigatingList.length">
-            <h2 class="grp grp--info"><UiIcon name="sparkle" :size="15" />{{ t("AI is investigating", "AI กำลังสืบสวน") }}<span class="grp__n">{{ investigatingList.length }}</span></h2>
-            <ul class="rows">
-              <li v-for="i in investigatingList" :key="i.id" class="row" @click="$router.push(`/problems/${i.id}`)">
-                <div class="row__body">
-                  <div class="row__t"><b>{{ kindLabel(i) }}</b> <span class="muted">{{ t("on", "ที่") }} {{ entityOf(i) }}</span></div>
-                  <div class="row__s">P-{{ i.id }} · {{ ago(i.detected_at) }}<template v-if="i.root_cause"> · <span class="ai">{{ t("AI", "AI") }}</span> {{ i.root_cause }}</template><template v-else> · {{ t("reading metrics, traces and logs…", "กำลังอ่าน metric, trace และ log…") }}</template></div>
+            <h2 class="grp"><UiIcon name="sparkle" :size="15" />{{ t("AI is investigating", "AI กำลังสืบสวน") }}<span class="grp__n">{{ investigatingList.length }}</span></h2>
+            <div class="list">
+              <div v-for="i in investigatingList" :key="i.id" class="item" @click="$router.push(`/problems/${i.id}`)">
+                <div class="item__body">
+                  <div class="item__t"><b>{{ kindLabel(i) }}</b> <span class="muted">{{ t("on", "ที่") }} {{ entityOf(i) }}</span></div>
+                  <div class="item__s">P-{{ i.id }} · {{ ago(i.detected_at) }}<template v-if="i.root_cause"> · <span class="ai">{{ t("AI", "AI") }}</span> {{ i.root_cause }}</template><template v-else> · {{ t("reading metrics, traces and logs…", "กำลังอ่าน metric, trace และ log…") }}</template></div>
                 </div>
                 <SeverityPill :severity="i.severity" />
                 <UiButton variant="tint" size="sm" :to="`/problems/${i.id}`" @click.stop>{{ t("Open", "เปิด") }}</UiButton>
-              </li>
-            </ul>
+              </div>
+            </div>
           </template>
 
           <div v-if="!queue.length" class="clear">
@@ -167,23 +167,21 @@ const heroIcon = computed(() => (status.value.tone === "ok" ? "checkmark" : stat
 .cmd__main { min-width: 0; }
 
 /* group heading */
-.grp { display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); font-weight: var(--fw-semibold); margin: 6px 0 10px; }
-.grp + .rows + .grp { margin-top: 22px; }
+.grp { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); margin: 0 0 8px; }
 .grp .ui-icon { color: var(--c-text-3); }
-.grp--action .ui-icon { color: var(--c-action); } .grp--info .ui-icon { color: var(--c-primary); }
 .grp__n { font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-text-2); background: var(--c-fill); border-radius: var(--radius-pill); padding: 1px 9px; }
+.list + .grp { margin-top: 22px; }
 
-/* incident rows: dense, scannable, one action each */
-.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--c-surface); border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg); cursor: pointer; }
-.row:hover { border-color: var(--c-primary); }
-.row--you { border-left: 3px solid var(--c-action); }
-.row__body { flex: 1; min-width: 0; }
-.row__t { font-size: var(--fs-md); } .row__t b { font-weight: var(--fw-semibold); }
-.row__s { font-size: var(--fs-sm); color: var(--c-text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row__s .ai { color: var(--c-primary); font-weight: var(--fw-semibold); }
-.row .severity-pill, .row :deep(.ui-pill) { flex: none; } .row .ui-button { flex: none; }
+/* incident list: one clean card, rows divided by hairlines, highlighted on hover - no heavy coloured bars */
+.list { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; }
+.item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--c-separator); cursor: pointer; }
+.item:first-child { border-top: 0; }
+.item:hover { background: var(--c-hover); }
+.item__body { flex: 1; min-width: 0; }
+.item__t { font-size: var(--fs-md); } .item__t b { font-weight: var(--fw-semibold); }
+.item__s { font-size: var(--fs-sm); color: var(--c-text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item__s .ai { color: var(--c-primary); font-weight: var(--fw-semibold); }
+.item :deep(.ui-pill) { flex: none; } .item .ui-button { flex: none; }
 
 /* all-clear state */
 .clear { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 48px 24px;
