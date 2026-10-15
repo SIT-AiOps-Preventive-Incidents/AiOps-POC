@@ -137,7 +137,9 @@ async def t_findSilentServices(service: str):
 
 async def t_whoAnswers(call: str, minutes: int = 60):
     """Which service normally answers a call: look for a trace in the past hour where that call got a reply."""
-    found = await tm.tempo_search(f'{{ name = "{call}" }}', minutes=minutes, limit=20)
+    # "> { }": only traces where that span has a child, i.e. the call was answered (TraceQL structural operator)
+    found = await tm.tempo_search(f'{{ name = "{call}" }} > {{ }}', minutes=minutes, limit=10) or \
+        await tm.tempo_search(f'{{ name = "{call}" }}', minutes=minutes, limit=20)
     for tr in found[:8]:
         svc = tm.answerer(await tm.tempo_trace(tr["traceID"]), call)
         if svc:
