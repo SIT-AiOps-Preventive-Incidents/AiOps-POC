@@ -9,9 +9,9 @@
    ========================================================================= */
 :root {
   /* ---- neutrals ---- */
-  --c-bg: #ffffff;            /* page */
+  --c-bg: #f4f5f7;            /* page canvas - a subtle tint so white cards lift off it (depth, not flat) */
   --c-surface: #ffffff;       /* cards, tables, sheets */
-  --c-raised: #f7f8fa;        /* sidebar, table headers, wells */
+  --c-raised: #eef0f3;        /* sidebar, table headers, wells */
   --c-fill: #f2f4f7;          /* inputs, hover */
   --c-fill-2: #e6e9ee;        /* tracks, pressed */
   --c-border: #e2e5ea;        /* card and table borders */
@@ -46,7 +46,7 @@
 
   /* ---- chrome & special surfaces ---- */
   --c-chrome-top: #ffffff;
-  --c-chrome-side: #f7f8fa;
+  --c-chrome-side: #ffffff;
   --c-hover: #f2f4f7;
   --c-overlay: rgba(15, 18, 24, 0.4);
   --c-toast: #0f1218;  --c-on-toast: #ffffff;
@@ -65,8 +65,8 @@
   --c-chart-5: #0e8f8f;  /* disk */
 
   /* ---- type ---- */
-  --font: "IBM Plex Sans", "IBM Plex Sans Thai", system-ui, sans-serif;
-  --font-th: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
+  --font: "Inter", "Noto Sans Thai", system-ui, -apple-system, sans-serif;
+  --font-th: "Noto Sans Thai", "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --fs-xs: 12px;  --fs-sm: 13px;  --fs-md: 14px;  --fs-lg: 16px;
   --fs-xl: 18px;  --fs-2xl: 24px; --fs-3xl: 28px;
