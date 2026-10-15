@@ -54,6 +54,7 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
       <UiButton v-if="d.host.problem_id" :to="`/problems/${d.host.problem_id}`">Open problem P-{{ d.host.problem_id }}</UiButton>
       <UiPill v-else :tone="d.host.status === 'healthy' ? 'ok' : 'neutral'">{{ d.host.status === "healthy" ? "Online" : d.host.status }}</UiPill>
       <UiButton variant="tint" icon="flowchart" :to="{ path: '/map' }">On the map</UiButton>
+      <UiButton variant="danger" icon="dismiss" @click="confirmRemove = true">{{ isAgent ? "Remove agent" : "Remove" }}</UiButton>
     </UiPageHeader>
     <div class="grid grid--4">
       <UiAreaChart title="CPU" :points="d.series.cpu" :format="pct0" :normal="d.normal?.cpu" />
@@ -75,7 +76,6 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
       <UiList plain><UiListRow v-for="c in d.containers" :key="c.name" :title="c.name" :subtitle="c.image">
         <template #accessory><span :class="{ bad: c.cpu_pct > 50 }">CPU {{ num(c.cpu_pct) }}% · {{ num(c.mem_mb, 0) }} MB</span></template></UiListRow></UiList>
     </template>
-    <UiButton class="mt" variant="danger" size="sm" @click="confirmRemove = true">{{ isAgent ? "Remove agent" : "Remove this computer" }}</UiButton>
     <UiSheet v-model="confirmRemove" :title="isAgent ? `Remove the agent from ${d.host.name}?` : `Remove ${d.host.name}?`">
       <template v-if="!isAgent"><p class="muted">AIOps stops watching it. Nothing of AIOps runs on that machine.</p></template>
       <template v-else-if="!job">
