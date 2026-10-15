@@ -11,7 +11,7 @@ FROM python:3.12-slim
 WORKDIR /srv
 # net-snmp's snmpbulkwalk: network discovery polls switches and routers with it (app/netdisco)
 RUN apt-get update && apt-get install -y --no-install-recommends snmp && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir fastapi "uvicorn[standard]" httpx docker "psycopg[binary]"
+RUN pip install --no-cache-dir fastapi "uvicorn[standard]" httpx docker "psycopg[binary]" asyncssh
 COPY aiops-api/app ./app
 COPY --from=web /web/dist ./app/web
 ENV PYTHONUNBUFFERED=1

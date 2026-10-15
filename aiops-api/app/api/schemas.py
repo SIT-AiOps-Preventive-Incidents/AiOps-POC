@@ -1,7 +1,7 @@
 """Request bodies. Pydantic validates them, so handlers only see well-formed input (bad input -> 422)."""
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ServiceIn(BaseModel):
@@ -91,3 +91,21 @@ class RunbookPatch(BaseModel):
 
 class TestRequestIn(BaseModel):
     entry: str | None = None
+
+
+class SshConnectIn(BaseModel):
+    """Connect a server from the platform. The password or key is used once and never stored."""
+    name: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9._-]+$")
+    address: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.:-]+$")
+    port: int = Field(default=22, ge=1, le=65535)
+    user: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    password: str | None = None
+    private_key: str | None = None
+    passphrase: str | None = None
+    ebpf: bool = True
+
+    @model_validator(mode="after")
+    def _one_way_in(self):
+        if bool(self.password) == bool(self.private_key):
+            raise ValueError("give either a password or a private key")
+        return self

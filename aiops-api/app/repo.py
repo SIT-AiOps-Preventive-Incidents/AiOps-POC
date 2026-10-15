@@ -498,3 +498,27 @@ def open_problem_targets() -> list[dict]:
     return db.q("""SELECT i.id, i.entity_name AS entity, c.params FROM incidents i
                    LEFT JOIN remediation_candidates c ON c.incident_id=i.id AND c.rank=0
                    WHERE i.status <> ALL(%s) ORDER BY i.id""", (list(CLOSED),))
+
+
+# =====================================================================================
+# servers connected from the platform (remote.py)
+# =====================================================================================
+def save_ssh_link(name: str, address: str, port: int, username: str, host_key: str):
+    db.ex("""INSERT INTO ssh_links(host_name, address, port, username, host_key) VALUES (%s,%s,%s,%s,%s)
+             ON CONFLICT (host_name) DO UPDATE SET address=EXCLUDED.address, port=EXCLUDED.port,
+             username=EXCLUDED.username, host_key=EXCLUDED.host_key""", (name, address, port, username, host_key))
+
+
+def ssh_link(name: str) -> dict | None:
+    return db.one("SELECT * FROM ssh_links WHERE host_name=%s", (name,))
+
+
+def ssh_links() -> list[dict]:
+    return db.q("SELECT * FROM ssh_links ORDER BY host_name")
+
+
+def delete_ssh_link(name: str) -> bool:
+    if not ssh_link(name):
+        return False
+    db.ex("DELETE FROM ssh_links WHERE host_name=%s", (name,))
+    return True
