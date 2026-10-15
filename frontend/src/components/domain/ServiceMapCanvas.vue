@@ -234,7 +234,7 @@ svg { display: block; max-width: 100%; height: auto; }
 .lane { fill: var(--c-fill); stroke: var(--c-separator); stroke-dasharray: 5 5; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); }
 .lane-sub { font-weight: 400; fill: var(--c-text-2); }
-.edge { fill: none; stroke: var(--c-edge); stroke-width: 1.6; transition: opacity var(--dur); }
+.edge { fill: none; stroke: var(--c-edge); stroke-width: 2; transition: opacity var(--dur); }
 .edge.net { stroke-dasharray: 5 4; }
 .edge.bad { stroke: var(--c-bad); stroke-width: 2; }
 .edge.sel { stroke: var(--c-primary); stroke-width: 2.2; }
@@ -242,7 +242,7 @@ svg { display: block; max-width: 100%; height: auto; }
 .edge-label { font: 600 11px var(--font); fill: var(--c-primary); }
 .edge-label.bad { fill: var(--c-bad-text); }
 .node { cursor: pointer; transition: opacity var(--dur); }
-.node .box { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1; }
+.node .box { fill: var(--c-surface); stroke: var(--c-border); stroke-width: 1.25; }
 .node:hover .box, .node:focus-visible .box { stroke: var(--c-primary); }
 .node.disc .box { stroke-dasharray: 5 4; stroke: var(--c-edge-disc); }
 .node.sel .box { stroke: var(--c-primary); stroke-width: 2; }
