@@ -207,7 +207,7 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
             <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Address</th><th>MAC</th><th>Where</th><th>First seen</th><th>Last seen</th></tr></thead>
             <tbody>
               <tr v-for="n in nodes" :key="n.id" @click="selected = n.id; tab = 'map'">
-                <td><div class="who"><UiAppTile :icon="tileIcon(n)" :size="24" /><b>{{ n.name }}</b><UiPill v-if="n.new" tone="info">new</UiPill></div></td>
+                <td><div class="who"><UiAppTile :icon="tileIcon(n)" :size="24" /><b>{{ n.name }}</b><UiPill v-if="n.new" tone="info" :mark="false">new</UiPill></div></td>
                 <td>{{ n.kind === "device" ? `${n.role} device` : kindLabel[n.kind] }}</td>
                 <td><span class="health"><UiStatusDot :tone="tone(n) === 'action' ? 'warn' : tone(n)" :size="7" />{{ statusLabel(n) }}</span></td>
                 <td class="mono">{{ n.ip || "-" }}</td>

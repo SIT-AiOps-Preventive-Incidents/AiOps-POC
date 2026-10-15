@@ -9,6 +9,7 @@ import TraceWaterfall from "@/components/domain/TraceWaterfall.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { clock, clockSec, dur } from "@/lib/format";
+import { confidenceLevel, evidenceSource } from "@/lib/insight";
 import { useIncidentStore } from "@/stores/incidents";
 import { useUiStore } from "@/stores/ui";
 import { ref } from "vue";
@@ -26,7 +27,8 @@ const steps = computed(() => {
   const s = [
     { label: "Detected", ts: i.detected_at, done: true },
     { label: "AI investigated", ts: i.analyzed_at, done: !!i.analyzed_at },
-    { label: "Your approval", ts: i.approval?.decision === "approved" ? i.approval.decided_at : null, done: i.approval?.decision === "approved", you: true },
+    { label: i.approval?.decision === "approved" ? `Approved by ${i.approval.approver}` : "Your approval",
+      ts: i.approval?.decision === "approved" ? i.approval.decided_at : null, done: i.approval?.decision === "approved", you: true },
     { label: "Fix applied", ts: ex?.ok ? ex.executed_at : null, done: !!ex?.ok },
     { label: "Verified", ts: i.status === "resolved" ? i.resolved_at : null, done: i.status === "resolved" },
   ];
@@ -52,6 +54,13 @@ const trigger = computed(() => {
   if (s.reason === "safety") return `${name} was ${now}, over the safety limit of ${fmtUnit(s.threshold, s.unit)}.`;
   return s.threshold ? `${name} was ${now}; the limit is ${fmtUnit(s.threshold, s.unit)}.` : `${name} was ${now}.`;
 });
+const conf = computed(() => confidenceLevel(inc.value?.confidence, { llmOk: inc.value?.llm_ok }));
+const impact = computed(() => {
+  const i = inc.value;
+  const who = `${i.entity_type === "host" ? "Host" : "Service"} ${i.entity}`;
+  return i.affected?.length ? `${who}, and ${i.affected.length} more: ${i.affected.join(", ")}` : `${who} only; nothing else is affected so far`;
+});
+const evidence = computed(() => (inc.value?.evidence || []).map((text) => ({ text, source: evidenceSource(text) })));
 const samples = computed(() => (inc.value?.steps || []).filter((s) => s.kind === "tool" && s.data?.output?.samples?.length)
   .flatMap((s) => s.data.output.samples).slice(0, 4));
 const trace = ref(null);
@@ -73,16 +82,28 @@ async function openTrace(id) {
       <div class="stack">
         <UiCard title="What happened">
           <template v-if="inc.root_cause">
-            <p class="rc">{{ inc.root_cause }}</p>
-            <p v-if="trigger" class="trig">{{ trigger }}</p>
+            <dl class="rca">
+              <dt>Root cause</dt><dd class="rc">{{ inc.root_cause }}</dd>
+              <template v-if="trigger"><dt>What failed</dt><dd>{{ trigger }}</dd></template>
+              <dt>Impact</dt><dd>{{ impact }}</dd>
+            </dl>
+            <div :class="['conf', `conf--${conf.level}`]" role="note">
+              <span class="conf__badge"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+                <circle v-if="conf.level === 'high'" cx="6" cy="6" r="5" fill="currentColor" />
+                <path v-else-if="conf.level === 'medium'" d="M6 1a5 5 0 0 1 0 10z" fill="currentColor" />
+                <circle v-else cx="6" cy="6" r="4.3" fill="none" stroke="currentColor" stroke-width="1.6" />
+                <circle v-if="conf.level !== 'low'" cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.2" /></svg>
+                {{ conf.label }} <span class="conf__n">{{ Math.round((inc.confidence || 0) * 100) }}%</span></span>
+              <span class="conf__advice">{{ conf.advice }}</span>
+            </div>
+            <p v-if="!inc.llm_ok" class="small unconf">Could not confirm with the model: this summary was assembled from the evidence below.</p>
             <p class="muted summary">{{ inc.summary }}</p>
-            <div class="row small"><span class="muted">AI confidence</span><div class="conf"><div :style="{ width: `${(inc.confidence || 0) * 100}%` }" /></div><b>{{ Math.round((inc.confidence || 0) * 100) }}%</b></div>
-            <p class="small dim mt-2">{{ inc.path === "known" ? "Matched a known problem from runbook memory" : `Written by ${inc.llm_model || "AI"}${inc.llm_ok ? "" : " (from evidence)"}` }}, analysis took {{ dur((inc.analysis_ms || 0) / 1000) }}</p>
+            <p class="small dim">{{ inc.path === "known" ? "Matched a known problem from runbook memory" : `Written by ${inc.llm_model || "AI"}` }}, analysis took {{ dur((inc.analysis_ms || 0) / 1000) }}</p>
           </template>
           <UiWait v-else title="The AI is reading metrics, traces and logs…" />
         </UiCard>
-        <UiCard v-if="inc.evidence.length" title="Evidence">
-          <ul class="ev"><li v-for="(e, i) in inc.evidence" :key="i">{{ e }}</li></ul>
+        <UiCard v-if="evidence.length" title="Evidence">
+          <ul class="ev"><li v-for="(e, i) in evidence" :key="i"><span v-if="e.source" class="ev__src">{{ e.source }}</span>{{ e.text }}</li></ul>
           <div v-if="samples.length" class="row row--wrap mt-2 small"><span class="muted">Example traces</span>
             <UiButton v-for="t in samples" :key="t.trace_id" variant="tint" size="sm" @click="openTrace(t.trace_id)">{{ t.trace_id.slice(0, 8) }}</UiButton></div>
         </UiCard>
@@ -107,17 +128,25 @@ async function openTrace(id) {
   <div v-else class="page"><UiPageHeader title="Loading…" :back="{ to: '/problems', label: 'Incidents' }" /></div>
 </template>
 <style scoped>
-.rc { font-size: var(--fs-xl); font-weight: var(--fw-semibold); line-height: 1.4; }
-.trig { margin-top: 10px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--c-fill); font-size: var(--fs-sm); color: var(--c-text-2); }
+.rca { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px 14px; margin: 0; }
+.rca dt { font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--c-text-3); padding-top: 3px; }
+.rca dd { margin: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
+.rca dd.rc { font-size: var(--fs-lg); font-weight: var(--fw-semibold); color: var(--c-text); line-height: 1.4; }
+@media (max-width: 640px) { .rca { grid-template-columns: 1fr; gap: 2px; } .rca dd { margin-bottom: 8px; } }
+.conf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 14px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--c-fill); font-size: var(--fs-sm); }
+.conf__badge { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--fw-semibold); }
+.conf__n { font-weight: var(--fw-regular, 400); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.conf--high .conf__badge { color: var(--c-ok-text); } .conf--medium .conf__badge { color: var(--c-warn-text); } .conf--low .conf__badge { color: var(--c-bad-text); }
+.conf__advice { color: var(--c-text-2); }
+.unconf { margin-top: 8px; color: var(--c-warn-text); }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 20px; }
 .facts b { font-weight: var(--fw-medium); color: var(--c-text); }
 .summary { margin: 10px 0 12px; }
-.conf { flex: 1; height: 4px; background: var(--c-fill-2); border-radius: 2px; overflow: hidden; }
-.conf div { height: 100%; background: var(--c-primary); border-radius: 3px; }
 .ev { list-style: none; padding: 0; margin: 0; }
 .ev li { padding: 8px 0 8px 16px; position: relative; border-top: 1px solid var(--c-separator); }
 .ev li:first-child { border-top: 0; }
 .ev li::before { content: ""; position: absolute; left: 0; top: 16px; width: 6px; height: 6px; border-radius: 1px; background: var(--c-primary); }
+.ev__src { display: inline-block; margin-right: 8px; padding: 0 6px; border-radius: var(--radius-sm); background: var(--c-fill); font-size: 11px; font-weight: var(--fw-semibold); color: var(--c-text-2); line-height: 18px; vertical-align: 1px; }
 .rb { margin: 0; padding-left: 20px; } .rb li { margin: 4px 0; }
 .sticky { position: sticky; top: 12px; }
 @media (max-width: 1080px) { .sticky { position: static; } }
