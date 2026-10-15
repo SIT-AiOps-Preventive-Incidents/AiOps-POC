@@ -35,6 +35,25 @@ async def discovered(view: str = "network"):
                         "listening_on": sorted({s["host"] for s in segments})}}
 
 
+@router.post("/proxmox", status_code=200, summary="Read a Proxmox hypervisor (read-only token) and match its VMs to what we found")
+async def connect_proxmox(body: dict):
+    from .. import db, netseg, proxmox
+    url, tid, secret = (body.get("url") or "").strip(), (body.get("token_id") or "").strip(), body.get("secret") or ""
+    if not (url.startswith("https://") and tid and secret):
+        raise ApiError(422, "need an https url, an API token id (user@realm!name) and its secret")
+    try:
+        data = await proxmox.fetch(url, tid, secret, verify=body.get("verify_tls", True))
+    except Exception as e:
+        raise ApiError(502, f"could not read Proxmox: {type(e).__name__}: {e}")
+    _, neighbors, _ = netseg.load()
+    matched = sum(1 for n in neighbors if (n.get("mac") or "").lower() in data["mac_to_vm"])
+    db.ex("INSERT INTO settings(key, value) VALUES ('proxmox_url', %s) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value", (url,))
+    db.ex("INSERT INTO settings(key, value) VALUES ('proxmox_token_id', %s) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value", (tid,))
+    db.ex("INSERT INTO settings(key, value) VALUES ('proxmox_secret', %s) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value", (secret,))
+    return {"nodes": len(data["nodes"]), "vms": len(data["vms"]), "matched_to_discovered": matched,
+            "sample": [{"name": v["name"], "node": v["node"], "pool": v["pool"]} for v in data["vms"][:8]]}
+
+
 @router.get("/recommendations", summary="Which discovered-but-unmonitored machines to connect first, and why")
 async def recommendations():
     from .. import fleet, health, netseg

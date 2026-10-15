@@ -35,3 +35,17 @@ def recommend(segments: list[dict], neighbors: list[dict], hosts: list[dict], pr
                     "score": score, "reasons": reasons})
     out.sort(key=lambda r: (-r["score"], r["name"]))
     return out
+
+
+def neighbours(host: str, segments: list[dict], hosts: list[dict]) -> list[dict]:
+    """The other machines AIOps monitors on the same network(s) as `host` - the first ring of blast radius when
+    something goes wrong, and the set the agent should check for a shared cause (e.g. a busy hypervisor node)."""
+    mine = {s["cidr"] for s in segments if s["host"] == host}
+    out = []
+    for h in hosts:
+        if h["name"] == host:
+            continue
+        shared = sorted(mine & {s["cidr"] for s in segments if s["host"] == h["name"]})
+        if shared:
+            out.append({"host": h["name"], "owner": h.get("owner"), "networks": shared})
+    return out
