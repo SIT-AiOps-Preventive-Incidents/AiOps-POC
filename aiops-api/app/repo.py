@@ -493,6 +493,18 @@ def discovered_edges(max_age_s: int = 600) -> list[dict]:
                    WHERE c.last_seen > now() - make_interval(secs => %s)""", (max_age_s,))
 
 
+def prune_host_inventory(host: str, max_age_s: int = 3600) -> None:
+    """A reporting host prunes what it no longer runs: drop this host's service instances not seen in the last
+    `max_age_s` (a removed container/listener stops being reported), then delete discovered *process* services
+    left with no instances anywhere. Only runs on a host that is actively reporting, so a brief agent outage
+    never wipes a host's services; external DBs and SNMP network devices (no instances) are left alone."""
+    db.ex("""DELETE FROM service_instances i USING hosts h
+             WHERE i.host_id=h.id AND h.name=%s AND i.last_seen < now() - make_interval(secs => %s)""",
+          (host, max_age_s))
+    db.ex("""DELETE FROM services s WHERE s.source='discovered' AND s.kind='process'
+             AND NOT EXISTS (SELECT 1 FROM service_instances i WHERE i.service_id=s.id)""")
+
+
 def open_problem_targets() -> list[dict]:
     """Open incidents with the entity and the service/instance their recommended fix targets (for map badges)."""
     return db.q("""SELECT i.id, i.entity_name AS entity, c.params FROM incidents i

@@ -120,6 +120,7 @@ def ingest(host: str, inv: dict) -> dict:
             repo.upsert_connection(src, dst, host)
             edges += 1
     netseg.ingest(host, inv)  # segments and neighbours heard on the wire (passive)
+    repo.prune_host_inventory(host)  # drop this host's instances we no longer see, and any now-empty discovered process
     containers = [c for c in inv.get("containers") or [] if c.get("name") not in ignore]
     out = {"host": host, "services": sorted(set(found)), "edges": edges,
            "instrument": _targets(listeners) + collector.trace_targets(containers)}
