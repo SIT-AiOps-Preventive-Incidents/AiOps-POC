@@ -40,12 +40,18 @@ const isActive = (to, path) => (to === "/" ? path === "/" : path.startsWith(to))
   <aside :class="['sidebar', { open: ui.navOpen }]">
     <router-link to="/" class="brand" aria-label="AIOps One overview">
       <svg class="brand__mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
-        <defs><linearGradient id="bm" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#2b78ff" /><stop offset="1" stop-color="#0d50d8" /></linearGradient></defs>
-        <rect width="28" height="28" rx="7.5" fill="url(#bm)" />
-        <path d="M6.6 20.8 14 7.8 21.4 20.8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M10 16.4H18" stroke="#fff" stroke-width="2.2" stroke-linecap="round" />
-        <circle cx="14" cy="7.8" r="2.4" fill="var(--c-action)" stroke="#0d50d8" stroke-width="1.1" />
+        <defs>
+          <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#4f7cff" /><stop offset="1" stop-color="#1b36c8" /></linearGradient>
+          <linearGradient id="bmg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.18" /><stop offset="0.5" stop-color="#ffffff" stop-opacity="0" /></linearGradient>
+        </defs>
+        <rect width="28" height="28" rx="8" fill="url(#bm)" />
+        <rect width="28" height="28" rx="8" fill="url(#bmg)" />
+        <path d="M8 19.5 14 13 20 8" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.95" />
+        <circle cx="8" cy="19.5" r="2.4" fill="#fff" />
+        <circle cx="14" cy="13" r="2.4" fill="#fff" />
+        <circle cx="20" cy="8" r="3" fill="var(--c-action)" stroke="#1b36c8" stroke-width="1.2" />
       </svg>
       <b>AIOps One</b>
     </router-link>
