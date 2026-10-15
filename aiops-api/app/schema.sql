@@ -260,3 +260,16 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Release 1.1: automatic (eBPF) instrumentation. How a service is traced, and what the host's agent reports about it.
 ALTER TABLE services ADD COLUMN IF NOT EXISTS instrumentation TEXT;   -- NULL = not traced, 'sdk' = OpenTelemetry SDK, 'ebpf' = traced by the host agent
 ALTER TABLE hosts    ADD COLUMN IF NOT EXISTS auto_instrument JSONB;  -- last eBPF status from the agent: {state, services, error, version}
+
+-- Release 1.2: servers connected from the platform over SSH. AIOps signs in once with the user's password or key,
+-- then keeps a data channel open with its own key (limited to two loopback ports). host_key = the server's SSH key
+-- seen on first contact, checked on every reconnect. No password or user key is ever stored.
+CREATE TABLE IF NOT EXISTS ssh_links (
+  host_name    TEXT PRIMARY KEY,
+  address      TEXT NOT NULL,
+  port         INT  NOT NULL DEFAULT 22,
+  username     TEXT NOT NULL,
+  host_key     TEXT NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_connected_at TIMESTAMPTZ
+);

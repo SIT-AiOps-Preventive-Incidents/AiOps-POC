@@ -4,7 +4,7 @@ import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
-import { installCommand, tunnelCommand } from "@/lib/connect";
+import { connectBody, installCommand, missing } from "@/lib/connect";
 import { slug } from "@/lib/format";
 import { useCatalogStore } from "@/stores/catalog";
 import { useUiStore } from "@/stores/ui";
@@ -15,12 +15,37 @@ const name = ref(ui.prefs.computerName || "my-mac");
 const os = ref("mac");
 const origin = window.location.origin;
 const clean = computed(() => slug(name.value) || "my-mac");
-const reach = ref("direct");
-const login = ref("");
-const tunnel = computed(() => os.value === "linux" && reach.value === "tunnel");
-const command = computed(() => installCommand({ origin, name: clean.value, tunnel: tunnel.value }));
-const tunnelCmd = computed(() => tunnelCommand({ login: login.value.trim() }));
+const command = computed(() => installCommand({ origin, name: clean.value }));
 watch(clean, (v) => ui.setPref("computerName", v));
+
+// Linux servers: AIOps signs in once and does the rest, or the user runs the command
+const how = ref("platform");
+const fromAiops = computed(() => os.value === "linux" && how.value === "platform");
+const form = ref({ address: "", port: "22", user: "", auth: "key", password: "", key: "", keyFile: "", passphrase: "", ebpf: true });
+const job = ref(null);
+const running = computed(() => job.value?.state === "running");
+async function pickKey(ev) {
+  const f = ev.target.files?.[0];
+  if (!f) return;
+  form.value.key = await f.text();
+  form.value.keyFile = f.name;
+}
+async function connectServer() {
+  const why = missing(form.value);
+  if (why) return ui.toast(why);
+  try {
+    const { job_id } = await api.connect.ssh(connectBody(clean.value, form.value));
+    form.value.password = ""; form.value.key = ""; form.value.passphrase = "";   // not kept in the page either
+    job.value = await api.connect.job(job_id);
+  } catch (e) {
+    ui.toast(e.message);
+  }
+}
+usePolling(async () => {
+  if (running.value) job.value = await api.connect.job(job.value.id);
+}, 1500);
+const STEP_TONE = { done: "ok", running: "info", failed: "bad", pending: "neutral" };
+const STEP_TEXT = { done: "Done", running: "Working", failed: "Failed", pending: "Waiting" };
 
 // live status: not seen -> registered -> metrics -> services discovered
 const host = ref(null);
@@ -46,20 +71,41 @@ async function addNodeExporter() {
         <label class="lbl">System</label>
         <UiSegmented v-model="os" :options="[{ value: 'mac', label: 'macOS', logo: 'apple' }, { value: 'linux', label: 'Linux', logo: 'linux' }]" label="System" />
         <template v-if="os === 'linux'">
-          <label class="lbl">How it reaches AIOps</label>
-          <UiSegmented v-model="reach" :options="[{ value: 'direct', label: 'Directly (campus or VPN)' }, { value: 'tunnel', label: 'Through an SSH tunnel' }]" label="Reach" />
-          <template v-if="tunnel">
-            <UiField v-model="login" label="SSH login of the server" placeholder="poc@34.2.129.3" mono class="mt" />
-            <p class="small muted">For a server outside the campus network, such as a cloud VM. AIOps connects out to it; nothing is opened on the server and the tunnel only listens on its loopback.</p>
-          </template>
+          <label class="lbl">How to connect it</label>
+          <UiSegmented v-model="how" :options="[{ value: 'platform', label: 'From AIOps - no command' }, { value: 'command', label: 'Run a command myself' }]" label="How" />
         </template></div></li>
-      <li v-if="tunnel" class="step done"><span class="n">2</span><div class="body"><h2>On the AIOps server, open the tunnel</h2>
-        <UiCodeBlock :code="tunnelCmd" />
-        <p class="small muted mt-2">Keep it running (for example as a systemd service). The server then reaches AIOps on 127.0.0.1:18080 and 127.0.0.1:14318.</p></div></li>
-      <li class="step done"><span class="n">{{ tunnel ? 3 : 2 }}</span><div class="body"><h2>Paste this in Terminal {{ os === "mac" ? "on the Mac" : "on the server" }}</h2>
+      <li v-if="fromAiops" :class="['step', { done: job?.state === 'done' }]"><span class="n">2</span><div class="body"><h2>Sign in to the server once</h2>
+        <template v-if="!job || job.state === 'failed'">
+          <div class="grid2">
+            <UiField v-model="form.address" label="Server address" placeholder="34.2.129.3" mono />
+            <UiField v-model="form.user" label="User" placeholder="ubuntu" mono />
+          </div>
+          <label class="lbl">Sign in with</label>
+          <UiSegmented v-model="form.auth" :options="[{ value: 'key', label: 'SSH key file' }, { value: 'password', label: 'Password' }]" label="Sign in with" />
+          <UiField v-if="form.auth === 'password'" v-model="form.password" type="password" label="Password" class="mt" @enter="connectServer" />
+          <template v-else>
+            <label class="file mt"><input type="file" @change="pickKey" /><span>{{ form.keyFile || "Choose the key file you use for this server" }}</span></label>
+            <UiField v-model="form.passphrase" type="password" label="Key passphrase" hint="(only if it has one)" />
+          </template>
+          <div class="row mt"><UiSwitch v-model="form.ebpf" label="Trace its services automatically" /><span>Trace its services automatically (eBPF, capped at 200 MB)</span></div>
+          <UiButton class="mt" @click="connectServer">Connect</UiButton>
+          <p class="small muted mt-2">Used once to install the agent, then forgotten. AIOps keeps the data channel open with its own key, which can only open two ports on the server's loopback - no shell.</p>
+          <p v-if="job?.state === 'failed'" class="small bad mt-2">{{ job.error }}</p>
+        </template>
+        <template v-if="job">
+          <UiList plain class="mt">
+            <UiListRow v-for="s in job.steps" :key="s.key" :title="s.label">
+              <template #accessory><UiSpinner v-if="s.state === 'running'" :size="16" /><UiPill v-else :tone="STEP_TONE[s.state]">{{ STEP_TEXT[s.state] }}</UiPill></template>
+            </UiListRow>
+          </UiList>
+          <UiDisclosure v-if="job.log.length" :card="false" title="What AIOps did on the server" class="mt-2">
+            <UiCodeBlock :code="job.log.slice(-14).join('\n')" />
+          </UiDisclosure>
+        </template></div></li>
+      <li v-else class="step done"><span class="n">2</span><div class="body"><h2>Paste this in Terminal {{ os === "mac" ? "on the Mac" : "on the server" }}</h2>
         <UiCodeBlock :code="command" />
         <p class="small muted mt-2">{{ os === "mac" ? "No admin password and nothing opened on your Mac. It starts again by itself when you log in." : "No sudo needed, only python3. If this user can run Docker, the services found are also traced with eBPF - no code change. Opt out with AIOPS_EBPF=0." }}</p></div></li>
-      <li :class="['step', { done: connected }]"><span class="n">{{ tunnel ? 4 : 3 }}</span><div class="body"><h2>See it and its services appear</h2>
+      <li :class="['step', { done: connected }]"><span class="n">3</span><div class="body"><h2>See it and its services appear</h2>
         <UiWait v-if="!host" :title="`Waiting for ${clean}…`" subtitle="This updates by itself." />
         <UiWait v-else-if="!connected" :title="`${clean} is registered`" subtitle="Waiting for its first measurements…" />
         <template v-else>
@@ -85,5 +131,9 @@ async function addNodeExporter() {
 .n { width: 28px; height: 28px; border-radius: 50%; background: var(--c-primary); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
 .step.done .n { background: var(--c-ok); }
 .body { min-width: 0; } h2 { font-size: var(--fs-lg); margin: 2px 0 8px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.file { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--c-text-3); border-radius: 10px; cursor: pointer; margin-bottom: 10px; }
+.file input { max-width: 110px; }
+@media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
 .lbl { display: block; font-size: var(--fs-sm); color: var(--c-text-2); margin: 12px 0 6px; font-weight: 500; }
 </style>

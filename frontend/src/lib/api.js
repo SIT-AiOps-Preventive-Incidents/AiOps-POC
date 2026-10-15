@@ -73,6 +73,7 @@ export const api = {
   skills: { list: () => get("/skills") },
   notifications: { list: () => get("/notifications"), test: () => post("/notifications/test") },
   settings: { get: () => get("/settings"), update: (body) => patch("/settings", body) },
+  connect: { ssh: (body) => post("/connect/ssh", body), job: (id) => get(`/connect/ssh/jobs/${id}`), links: () => get("/connect/ssh/links") },
   checks: { create: (body) => post("/checks", body), recent: (name) => get(`/checks/${enc(name)}`) },
   scenarios: { list: () => get("/scenarios"), run: (id) => post(`/scenarios/${id}/runs`) },
   network: {
