@@ -21,7 +21,7 @@ SKILLS = {
     "service-error-analysis": {
         "category": "Service", "name": "Service error analysis", "kinds": ["error_rate", "traffic_drop"],
         "description": "Failure-rate spikes in a service: trace error origin, error logs, version/commit correlation.",
-        "tools": ["getMetric", "searchTraces", "searchLoadBalancerLogs", "getErrorRateByVersion", "getDeployHistory",
+        "tools": ["getMetric", "searchTraces", "findSilentServices", "searchLoadBalancerLogs", "getErrorRateByVersion", "getDeployHistory",
                   "searchLogs"]},
     "service-latency-analysis": {
         "category": "Service", "name": "Service latency analysis", "kinds": ["latency"],
@@ -106,6 +106,29 @@ async def t_searchTraces(service: str, mode: str = "error", minutes: int = 5):
         n = max(len(samples), 1)
         out["avg_self_time_ms_by_service"] = {k: round(v / n, 1) for k, v in selft.most_common()}
     return out
+
+
+def silent_services(before: dict[str, float], now: dict[str, float], exclude: set[str] = frozenset(),
+                    min_before: float = 0.005) -> list[dict]:
+    """Services that answered requests over the past hour and (almost) none in the last minutes, quietest first.
+    A service that stops answering leaves no failing span of its own: only its callers' errors and its silence."""
+    out = []
+    for svc, b in before.items():
+        if svc in exclude or b < min_before:
+            continue
+        n = now.get(svc, 0.0)
+        if n < 0.2 * b:
+            out.append({"service": svc, "per_min_before": round(b * 60, 2), "per_min_now": round(n * 60, 2)})
+    return sorted(out, key=lambda x: x["per_min_now"] / max(x["per_min_before"], 1e-9))
+
+
+async def t_findSilentServices(service: str):
+    def by_svc(rows):
+        return {r["metric"].get("service_name"): float(r["value"][1]) for r in rows if r["metric"].get("service_name")}
+    before = by_svc(await tm.prom(f"sum by (service_name) (rate({tm.CALLS}{{{tm.SRV}}}[55m] offset 5m))"))
+    now = by_svc(await tm.prom(f"sum by (service_name) (rate({tm.CALLS}{{{tm.SRV}}}[5m]))"))
+    known = {r["service_name"] for r in repo.list_services(("service",))}
+    return {"silent": silent_services({k: v for k, v in before.items() if k in known}, now, {service})}
 
 
 async def t_searchLogs(service: str, levels: str = "ERROR|WARN.*", contains: str = "", minutes: int = 10):
@@ -206,7 +229,7 @@ async def t_getContainerStats():
     return {"top_by_cpu": stats[:8]}
 
 
-TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVersion,
+TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVersion, "findSilentServices": t_findSilentServices,
          "getDeployHistory": t_getDeployHistory, "searchTraces": t_searchTraces, "searchLogs": t_searchLogs,
          "getTopSourceIPs": t_getTopSourceIPs, "getHostMetrics": t_getHostMetrics,
          "getContainerStats": t_getContainerStats, "searchLoadBalancerLogs": t_searchLoadBalancerLogs,
@@ -262,6 +285,11 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
     tr = await run.tool("searchTraces", service=ent, mode="error")
     origins = tr.get("error_origin_services") or {}
     origin = max(origins, key=origins.get) if origins else ent
+    silent = []
+    if origin == ent:   # the failing span is the alerting service's own: is something it depends on not answering?
+        silent = (await run.tool("findSilentServices", service=ent)).get("silent") or []
+        if silent:
+            origin = silent[0]["service"]
     if origin != ent:
         await run.tool("getMetric", entity=origin, metric="error_rate")
     lb = None
@@ -290,6 +318,7 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
         "top_error_log": top_log.get("example"), "top_error_log_count": top_log.get("count"),
         "lb_by_upstream": lb and lb.get("by_upstream"),
         "lb_hot_instance": hot_inst if instance_specific else None, "lb_hot_share": round(hot_share, 2),
+        "silent_services": silent,
     }
     cands = []
     if instance_specific:
@@ -303,7 +332,7 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
                 "service": origin, "to_version": good["version"], "to_commit": good["commit_hash"],
                 "from_version": suspect["version"], "from_commit": suspect["commit_hash"]}})
     cands.append({"type": "restart_service", "params": {"service": origin}})
-    conf = 0.45 + (0.2 if origins else 0) + (0.25 if suspect or instance_specific else 0) + (0.1 if top_log else 0)
+    conf = 0.45 + (0.2 if origins else 0) + (0.25 if suspect or instance_specific or silent else 0) + (0.1 if top_log else 0)
     facts["evidence_confidence"] = round(min(conf, 0.95), 2)
     return facts, cands
 
@@ -408,7 +437,13 @@ def findings(kind: str, facts: dict) -> list[str]:
     if kind == "error_rate":
         o = f["error_origin_service"]
         votes = f.get("trace_origin_votes") or {}
-        if votes:
+        sil = f.get("silent_services") or []
+        if sil:
+            x = sil[0]
+            out.append(f"{x['service']} stopped answering: it handled {x['per_min_before']} requests/min over the past "
+                       f"hour and {x['per_min_now']} in the last 5 minutes, while calls through "
+                       f"{f['alerting_service']} fail. A stopped service leaves no failing span of its own.")
+        if votes and not sil:
             out.append(f"The alert fired on {f['alerting_service']}, but distributed traces show the failing span "
                        f"originates in {o} ({votes.get(o, 0)} of {sum(votes.values())} sampled error traces).")
         vers = f.get("error_rate_by_version") or []
@@ -466,7 +501,12 @@ def fallback_text(kind: str, facts: dict, action: dict) -> dict:
     a = remediation.label(action)
     if kind == "error_rate":
         sd = facts.get("suspect_deploy")
-        if facts.get("lb_hot_instance"):
+        sil = facts.get("silent_services") or []
+        if sil and not sd:
+            x = sil[0]
+            rc = (f"{x['service']} stopped answering ({x['per_min_before']} requests/min over the past hour, "
+                  f"{x['per_min_now']} now), so calls through {facts['alerting_service']} fail")
+        elif facts.get("lb_hot_instance"):
             rc = (f"Instance {facts['lb_hot_instance']} of {facts['error_origin_service']} is faulty "
                   f"({_pct(facts['lb_hot_share'])} of 5xx behind the load balancer): "
                   f"{facts.get('top_error_log') or 'see logs'}")

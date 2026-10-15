@@ -7,7 +7,7 @@ import { computed } from "vue";
 import HistoryStrip from "@/components/domain/HistoryStrip.vue";
 import IncidentCard from "@/components/domain/IncidentCard.vue";
 import { usePolling } from "@/composables/usePolling";
-import { ago, dur, ms, num, pct } from "@/lib/format";
+import { ago, dur, ms, num, pct, rate } from "@/lib/format";
 import { HEALTH_TONE, kindIcon, languageLogo, osLogo } from "@/lib/vocab";
 import { useAppStore } from "@/stores/app";
 import { useIncidentStore } from "@/stores/incidents";
@@ -69,13 +69,13 @@ const FLOW = computed(() => [
         <h2 class="section-title">Services <router-link to="/map">Service map</router-link></h2>
         <div class="table-wrap">
           <table class="tbl">
-            <thead><tr><th>Service</th><th>Status</th><th class="r">Requests/s</th><th class="r">Errors</th><th class="r">p95</th><th>Last 7 days</th></tr></thead>
+            <thead><tr><th>Service</th><th>Status</th><th class="r">Requests</th><th class="r">Errors</th><th class="r">p95</th><th>Last 7 days</th></tr></thead>
             <tbody>
               <tr v-for="s in app.services" :key="s.service" @click="$router.push(`/services/${s.service}`)">
                 <td><div class="who"><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" />
                   <router-link :to="`/services/${s.service}`" @click.stop>{{ s.name }}</router-link><span v-if="s.version" class="ver">v{{ s.version }}</span></div></td>
                 <td><span class="health"><UiStatusDot :tone="HEALTH_TONE[s.status]" :size="7" />{{ healthLabel[s.status] || s.status }}</span></td>
-                <td class="r num">{{ num(s.rps) }}</td>
+                <td class="r num">{{ rate(s.rps) }}</td>
                 <td :class="['r', 'num', { bad: s.error_rate > 0.05 }]">{{ pct(s.error_rate) }}</td>
                 <td class="r num">{{ ms(s.p95_ms) }}</td>
                 <td><HistoryStrip :incidents="historyFor(s.service)" /></td>

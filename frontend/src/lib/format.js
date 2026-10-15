@@ -2,6 +2,8 @@
 
 export const pct = (v, d = 1) => (v == null ? "-" : `${(v * 100).toFixed(d)}%`);
 export const num = (v, d = 1) => (v == null ? "-" : Number(v).toFixed(d));
+/** A request rate that stays readable when traffic is light: 0.04 req/s reads as "2.4 req/min", not "0.0 req/s". */
+export const rate = (v) => (v == null ? "-" : v > 0 && v < 0.1 ? `${(v * 60).toFixed(1)} req/min` : `${Number(v).toFixed(1)} req/s`);
 export const ms = (v) => (v == null ? "-" : v >= 1000 ? `${(v / 1000).toFixed(2)} s` : `${Math.round(v)} ms`);
 export const round = (v) => (v == null ? "-" : `${Math.round(v)}%`);
 
