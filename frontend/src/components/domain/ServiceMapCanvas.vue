@@ -83,7 +83,7 @@ const graph = computed(() => {
     laneBoxes.push({ host, os: h?.os, y, h: (bottom - top) + LANE_HEAD + 16, count: ids.length });
     y += (bottom - top) + LANE_HEAD + 30;
   }
-  return { by, edges, nodes: all.map((n) => by[n.id]), mainLayers: Math.max(...Object.values(mainL)) + 1, laneBoxes, W: Wd, H: y + 10 };
+  return { by, edges, mainIds, nodes: all.map((n) => by[n.id]), mainLayers: Math.max(...Object.values(mainL)) + 1, laneBoxes, W: Wd, H: y + 10 };
 });
 
 const bad = (n) => !!n.problem_id || (n.error_rate ?? 0) > THR || (n.instances || []).some((i) => i.problem_id || i.error_rate > THR);
@@ -105,7 +105,11 @@ function geom(e) {
   const mx = back ? x1 + 60 : (x1 + x2) / 2;
   return { x1, y1, x2, y2, mx, mx2: back ? x2 - 60 : mx, d: `M${x1} ${y1} C${mx} ${y1} ${back ? x2 - 60 : mx} ${y2} ${x2} ${y2}` };
 }
-const edgeViews = computed(() => (graph.value?.edges || []).map((e) => {
+const edgeViews = computed(() => (graph.value?.edges || [])
+  // Only draw the request flow (main path). Services discovered on a computer are shown as a grid
+  // inside their host lane, not a flow - drawing their edges across that grid just makes spaghetti.
+  .filter((e) => graph.value.mainIds.has(e.from) && graph.value.mainIds.has(e.to))
+  .map((e) => {
   const gm = geom(e);
   if (!gm) return null;
   const sel = map.selected && (e.from === map.selected || e.to === map.selected);
