@@ -31,9 +31,9 @@ def test_active_sweep_asks_only_who_has_on_our_own_segment():
     f = netwatch._arp_request(own_ip, bytes.fromhex("001122334455"), target)
     assert f[:6] == b"\xff" * 6                                   # broadcast on the local segment, not a routed packet
     assert f[12:14] == b"\x08\x06"                                # ARP, never a TCP/UDP service probe
-    htype, ptype, hlen, plen, op = struct.unpack("!HHBBH", f[14:24])
+    _htype, ptype, _hlen, _plen, op = struct.unpack("!HHBBH", f[14:22])
     assert op == 1 and ptype == 0x0800                           # "who has", a request, not a reply or anything else
-    assert f[14 + 8 + 6 + 6:14 + 8 + 6 + 6 + 4] == socket.inet_aton("10.4.82.31")
+    assert f[14 + 8 + 6 + 4 + 6:14 + 8 + 6 + 4 + 6 + 4] == socket.inet_aton("10.4.82.31")   # target ip after sender mac+ip and the empty target mac
     assert netwatch.SWEEP_MAX <= 1024 and netwatch.SWEEP_RATE <= 100   # bounded: at most a /22, rate-limited
 
 

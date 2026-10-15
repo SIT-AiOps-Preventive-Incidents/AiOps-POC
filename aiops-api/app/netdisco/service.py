@@ -14,7 +14,7 @@ import time
 
 from .. import db, repo
 from .. import telemetry as tm
-from . import kathara, snmp, topology
+from . import snmp, topology
 
 log = logging.getLogger("netdisco")
 SCAN_S = int(os.environ.get("NET_SCAN_S", "60"))
@@ -86,21 +86,10 @@ def _save(topo: dict):
                   (db.T(e["ts"]), e["kind"], e["severity"], e["entity"], e["text"]))
 
 
-def _kathara():
-    try:
-        return kathara.snapshot(tm.docker_client())
-    except Exception as e:
-        log.warning("kathara labs: %s", e)
-        return [], {}
-
-
 def has_sources() -> bool:
     if device_addresses():
         return True
-    try:
-        return bool(tm.docker_client().containers.list(filters={"label": kathara.LABEL}, limit=1))
-    except Exception:
-        return False
+    return False
 
 
 async def scan() -> dict:
@@ -109,13 +98,10 @@ async def scan() -> dict:
     community = db.settings().get("net_snmp_community") or "public"
     devices = list(await asyncio.gather(*(snmp.poll(a, community) for a in addrs)))
     endpoints = await asyncio.to_thread(_endpoints)
-    lab_devices, lab_endpoints = await asyncio.to_thread(_kathara)     # NIKA research labs, read in place
-    devices += lab_devices
-    endpoints.update(lab_endpoints)
     known = await asyncio.to_thread(_known)
     topo = topology.build(devices, endpoints, known, now=time.time())
     topo["impacted_services"] = topology.impacted_services(topo)
-    topo["sources"] = addrs + [d.name for d in lab_devices]
+    topo["sources"] = addrs
     await asyncio.to_thread(_save, topo)
     for e in topo["events"]:
         log.info("network event %s: %s", e["kind"], e["text"])
