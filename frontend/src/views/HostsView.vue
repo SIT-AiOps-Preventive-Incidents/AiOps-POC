@@ -17,7 +17,7 @@ usePolling(() => cat.loadHosts(), 10000);
           <UiPill v-if="h.problem_id" tone="bad">Problem</UiPill>
           <UiPill v-else :tone="h.status === 'healthy' ? 'ok' : 'neutral'">{{ h.status === "healthy" ? "Online" : h.status === "offline" ? "Offline" : "Waiting" }}</UiPill></div>
         <div class="mt-2"><UiMeter label="CPU" :value="h.cpu" /><UiMeter label="Memory" :value="h.mem" :warn="80" /><UiMeter label="Disk" :value="h.disk" :warn="80" /></div>
-        <div class="small dim mt-2">{{ h.services.length }} services · {{ h.agent === "aiops-agent" ? "AIOps agent" : "node_exporter" }}</div>
+        <div class="small dim mt-2">{{ h.services.length }} services · {{ h.agent === "aiops-agent" ? "RadarOps agent" : "node_exporter" }}</div>
       </router-link>
       <router-link to="/connect/computer" class="card add"><UiIcon name="add_circle" :size="30" /><b>Add a host</b></router-link>
     </div>

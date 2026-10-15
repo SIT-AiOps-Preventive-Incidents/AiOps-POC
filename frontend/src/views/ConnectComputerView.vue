@@ -14,7 +14,7 @@ const ui = useUiStore();
 const cat = useCatalogStore();
 const route = useRoute();
 
-// ---- connect a server from AIOps: sign in once on this page, AIOps does the rest ----
+// ---- connect a server from RadarOps: sign in once on this page, RadarOps does the rest ----
 // address can be pre-filled from the Fleet map ("Monitor this machine" on a discovered VM)
 const form = ref({ name: "", address: route.query.address ? String(route.query.address) : "", port: "22", user: "", auth: "password", password: "", key: "", keyFile: "", passphrase: "", ebpf: true });
 const suggested = computed(() => hostName("", form.value.address) || "server-name");
@@ -110,7 +110,7 @@ async function addNodeExporter() {
 <template>
   <div class="page page--narrow">
     <UiPageHeader :title="bulkMode ? `Monitor ${targets.length} machines` : 'Add a host'" :back="{ to: bulkMode ? '/network' : '/connect', label: bulkMode ? 'Fleet' : 'Add a host or service' }"
-                  :subtitle="bulkMode ? 'Sign in once with a credential these machines share. AIOps installs the agent on each and starts watching their services.' : 'Sign in to the server once from here. AIOps installs what it needs, then finds and watches every service on it.'" />
+                  :subtitle="bulkMode ? 'Sign in once with a credential these machines share. RadarOps installs the agent on each and starts watching their services.' : 'Sign in to the server once from here. RadarOps installs what it needs, then finds and watches every service on it.'" />
 
     <!-- bulk: one shared sign-in for many machines -->
     <section v-if="bulkMode && !bulkJobs" class="card">
@@ -166,14 +166,14 @@ async function addNodeExporter() {
       </template>
       <UiDisclosure :card="false" title="More options" class="mt-2">
         <div class="grid2">
-          <UiField v-model="form.name" label="Name in AIOps" :placeholder="suggested" />
+          <UiField v-model="form.name" label="Name in RadarOps" :placeholder="suggested" />
           <UiField v-model="form.port" label="SSH port" placeholder="22" mono />
         </div>
         <div class="row mt-2"><UiSwitch v-model="form.ebpf" label="Trace its services automatically" /><span>Logs, metrics and traces for every service (collector capped at 256 MB, eBPF tracer at 384 MB)</span></div>
       </UiDisclosure>
       <p v-if="job?.state === 'failed'" class="small bad mt-2">{{ job.error }}</p>
       <UiButton class="mt connect" @click="connectServer">{{ job?.state === "failed" ? "Try again" : "Connect" }}</UiButton>
-      <p class="small muted mt-2">Used once to install the agent, then forgotten. AIOps keeps the connection open with its own key, which can only open two ports on the server's loopback - it cannot run anything there.</p>
+      <p class="small muted mt-2">Used once to install the agent, then forgotten. RadarOps keeps the connection open with its own key, which can only open two ports on the server's loopback - it cannot run anything there.</p>
     </section>
 
     <section v-else-if="!bulkMode" class="card">
@@ -192,7 +192,7 @@ async function addNodeExporter() {
           {{ s.label }}
         </li>
       </ol>
-      <UiDisclosure v-if="job.log.length" :card="false" title="What AIOps did on the server" class="mt-2">
+      <UiDisclosure v-if="job.log.length" :card="false" title="What RadarOps did on the server" class="mt-2">
         <UiCodeBlock :code="job.log.slice(-16).join('\n')" />
       </UiDisclosure>
       <template v-if="ring.state === 'done' && connected">
@@ -201,7 +201,7 @@ async function addNodeExporter() {
         <UiList><ServiceRow v-for="s in services" :key="s.service" :service="s" /></UiList>
         <AutoTraceStatus class="mt" :host="host" :services="services" />
         <div class="section-label">Map its network <span class="muted">(optional)</span></div>
-        <p class="small muted">AIOps already lists the machines this server hears on its network. To also find machines that stay quiet, it can send one round of ARP requests across the server's own segment — it never touches another network or any service port. Only on a network you are authorised to scan; on a shared network, ask the owner first.</p>
+        <p class="small muted">RadarOps already lists the machines this server hears on its network. To also find machines that stay quiet, it can send one round of ARP requests across the server's own segment — it never touches another network or any service port. Only on a network you are authorised to scan; on a shared network, ask the owner first.</p>
         <div class="row mt-2"><UiSwitch v-model="scanAuthorised" label="I am authorised to scan this server's network" /><span>I am authorised to scan this server's network</span></div>
         <div class="row mt"><UiButton :disabled="!scanAuthorised || scanning || scanDone" @click="scanSegment">{{ scanDone ? "Scan requested" : scanning ? "Requesting…" : "Scan its segment once" }}</UiButton><UiButton variant="tint" :to="`/computers/${target}`">View {{ target }}</UiButton><UiButton variant="tint" to="/network">Fleet map</UiButton></div>
       </template>
@@ -218,7 +218,7 @@ async function addNodeExporter() {
       <p v-if="!target && host" class="small mt-2">{{ connected ? `${ownName} is connected.` : `${ownName} is registered, waiting for its first measurements…` }}</p>
     </UiDisclosure>
     <UiDisclosure v-if="!bulkMode" class="mt" title="A server that already runs node_exporter">
-      <p class="small muted">AIOps collects from it on port 9100, so it must be reachable from this server.</p>
+      <p class="small muted">RadarOps collects from it on port 9100, so it must be reachable from this server.</p>
       <UiField v-model="ne.name" label="Name" placeholder="db-01" />
       <UiField v-model="ne.address" label="Address" placeholder="10.4.82.30:9100" mono />
       <UiButton variant="tint" class="mt" @click="addNodeExporter">Add server</UiButton>

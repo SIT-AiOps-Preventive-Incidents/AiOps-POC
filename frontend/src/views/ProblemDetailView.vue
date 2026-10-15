@@ -18,7 +18,7 @@ const props = defineProps({ id: String });
 const store = useIncidentStore();
 const ui = useUiStore();
 const inc = computed(() => store.byId[props.id]);
-// blast radius: the other machines AIOps monitors on the same network as the affected host - the first to check,
+// blast radius: the other machines RadarOps monitors on the same network as the affected host - the first to check,
 // and the same set the AI widens its search to.
 const neighbours = ref([]);
 let fetchedFor = "";
@@ -44,9 +44,9 @@ const steps = computed(() => {
       ts: i.approval?.decision === "approved" ? i.approval.decided_at : null, done: i.approval?.decision === "approved", you: true,
       hint: i.approval?.decision === "approved" ? `${i.approval.approver} approved the fix.` : "Nothing changes until a person approves the fix. The AI has already tested it in a dry run." },
     { label: "Fix applied", ts: ex?.ok ? ex.executed_at : null, done: !!ex?.ok,
-      hint: ex?.ok ? "The approved fix ran on the affected service." : "The approved fix runs here, then AIOps checks it worked." },
+      hint: ex?.ok ? "The approved fix ran on the affected service." : "The approved fix runs here, then RadarOps checks it worked." },
     { label: "Verified", ts: i.status === "resolved" ? i.resolved_at : null, done: i.status === "resolved",
-      hint: "AIOps re-checks the signal that tripped and resolves the incident only once it is back to normal." },
+      hint: "RadarOps re-checks the signal that tripped and resolves the incident only once it is back to normal." },
   ];
   const now = s.findIndex((x) => !x.done);
   const failed = ["remediation_failed", "rejected"].includes(i.status);
@@ -129,7 +129,7 @@ async function openTrace(id) {
       <div class="stack sticky">
         <FixPanel :incident="inc" />
         <UiCard v-if="neighbours.length" title="Blast radius" icon="flowchart">
-          <p class="small muted" style="margin:-2px 0 8px">Other machines AIOps monitors on {{ inc.entity }}'s network — check these first if the cause is shared.</p>
+          <p class="small muted" style="margin:-2px 0 8px">Other machines RadarOps monitors on {{ inc.entity }}'s network — check these first if the cause is shared.</p>
           <router-link v-for="n in neighbours" :key="n.host" :to="`/computers/${n.host}`" class="nbr">
             <UiStatusDot tone="ok" :size="7" /><b>{{ n.host }}</b><span class="muted small">{{ n.networks.join(', ') }}{{ n.owner ? ` · ${n.owner}` : '' }}</span>
           </router-link>

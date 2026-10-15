@@ -50,7 +50,7 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
 <template>
   <div v-if="d" class="page">
     <UiPageHeader :title="d.host.name" :back="{ to: '/computers', label: 'Hosts' }"
-                  :subtitle="`${d.host.os} · ${d.host.agent === 'aiops-agent' ? 'AIOps agent' : d.host.address} · owner ${d.host.owner || '-'}`">
+                  :subtitle="`${d.host.os} · ${d.host.agent === 'aiops-agent' ? 'RadarOps agent' : d.host.address} · owner ${d.host.owner || '-'}`">
       <UiButton v-if="d.host.problem_id" :to="`/problems/${d.host.problem_id}`">Open problem P-{{ d.host.problem_id }}</UiButton>
       <UiPill v-else :tone="d.host.status === 'healthy' ? 'ok' : 'neutral'">{{ d.host.status === "healthy" ? "Online" : d.host.status }}</UiPill>
       <UiButton variant="tint" icon="flowchart" :to="{ path: '/map' }">On the map</UiButton>
@@ -82,9 +82,9 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
         <template #accessory><span :class="{ bad: c.cpu_pct > 50 }">CPU {{ num(c.cpu_pct) }}% · {{ num(c.mem_mb, 0) }} MB</span></template></UiListRow></UiList>
     </template>
     <UiSheet v-model="confirmRemove" :title="isAgent ? `Remove the agent from ${d.host.name}?` : `Remove ${d.host.name}?`">
-      <template v-if="!isAgent"><p class="muted">AIOps stops watching it. Nothing of AIOps runs on that machine.</p></template>
+      <template v-if="!isAgent"><p class="muted">RadarOps stops watching it. Nothing of RadarOps runs on that machine.</p></template>
       <template v-else-if="!job">
-        <p class="muted">On its next report (within a minute) the agent removes everything AIOps put on {{ d.host.name }}: the log collector, the eBPF tracer, its autostart and the platform key. Then the server disappears from AIOps. Nothing else on the server is touched.</p>
+        <p class="muted">On its next report (within a minute) the agent removes everything RadarOps put on {{ d.host.name }}: the log collector, the eBPF tracer, its autostart and the platform key. Then the server disappears from RadarOps. Nothing else on the server is touched.</p>
       </template>
       <template v-else>
         <div class="removing">

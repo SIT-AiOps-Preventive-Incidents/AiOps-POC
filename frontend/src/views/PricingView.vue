@@ -6,7 +6,7 @@ const cycle = ref("yearly");
 const yearly = computed(() => cycle.value === "yearly");
 const PLANS = [
   {
-    id: "free", name: "Starter", tagline: "One team trying AIOps on a few machines.",
+    id: "free", name: "Starter", tagline: "One team trying RadarOps on a few machines.",
     monthly: 0, yearly: 0, unit: "forever", cta: "Start free", to: "/connect", primary: false,
     features: ["Up to 10 monitored machines", "Host health + service discovery", "Service map and Fleet map",
       "Agentic root-cause analysis", "Every fix needs your approval", "8 days of history", "Community support"],
@@ -27,7 +27,7 @@ const PLANS = [
 ];
 const price = (p) => (p.monthly == null ? "Custom" : p.monthly === 0 ? "$0" : `$${yearly.value ? p.yearly : p.monthly}`);
 const FAQ = [
-  ["What counts as a monitored host?", "Any computer, server or VM with the AIOps agent reporting. Machines you only discover on the network but do not monitor are free."],
+  ["What counts as a monitored host?", "Any computer, server or VM with the RadarOps agent reporting. Machines you only discover on the network but do not monitor are free."],
   ["Does the AI change anything on its own?", "No. The AI finds the cause and tests a fix in a dry run, but nothing is applied until a person approves — on every plan."],
   ["Can we self-host?", "Yes. Starter and Team run in your own environment; Enterprise adds air-gapped and SSO. Your telemetry never has to leave your network."],
 ];

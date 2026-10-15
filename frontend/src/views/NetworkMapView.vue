@@ -2,7 +2,7 @@
 /**
  * Fleet - the machines across your networks (VMs on a hypervisor, cloud instances, servers, devices), drawn
  * as a 2D map in the Service-map style. Internet, the gateway and each network at the top; the machines below,
- * grouped the way you choose (by network, owner, status or whether AIOps monitors them). Click a machine for
+ * grouped the way you choose (by network, owner, status or whether RadarOps monitors them). Click a machine for
  * its details, and connect the ones you do not monitor yet - straight from here.
  */
 import { computed, ref } from "vue";
@@ -42,11 +42,11 @@ const monitorMany = () => {
 const VW = 1180, PAD = 20, CHIP_W = 176, CHIP_H = 34, GAP = 10, LANE_HEAD = 34, LANE_PAD = 12, BOX_H = 46, HUB_W = 210;
 const short = (s) => (s || "").replace(/\.sit\.kmutt\.ac\.th$/i, "");
 const GROUPS = [{ value: "network", label: "Network" }, { value: "owner", label: "Owner" }, { value: "status", label: "Status" }, { value: "coverage", label: "Monitoring" }];
-const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on AIOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Device", service: "Service" };
+const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Device", service: "Service" };
 const isProblem = (s) => ["problem", "down", "error"].includes(s);
 const statusDot = (m) => (isProblem(m.status) ? "bad" : m.monitored && ["healthy", "ok"].includes(m.status) ? "ok" : m.monitored ? "ok" : "neutral");
 
-// one record per machine (VM / server / device), with the network it sits on and whether AIOps monitors it
+// one record per machine (VM / server / device), with the network it sits on and whether RadarOps monitors it
 const machines = computed(() => {
   if (!g.value) return [];
   const hubOf = {};
@@ -65,10 +65,10 @@ const summary = computed(() => {
 function groupKey(m) {
   if (group.value === "owner") return m.owner || "No owner";
   if (group.value === "status") return isProblem(m.status) ? "Needs attention" : m.monitored ? "Healthy · monitored" : "Discovered · not monitored";
-  if (group.value === "coverage") return m.monitored ? "Monitored by AIOps" : "Not monitored yet";
+  if (group.value === "coverage") return m.monitored ? "Monitored by RadarOps" : "Not monitored yet";
   return m.cidr;
 }
-const KEY_RANK = { "Needs attention": 0, "Healthy · monitored": 1, "Monitored by AIOps": 1, "Discovered · not monitored": 2, "Not monitored yet": 2, "No owner": 9 };
+const KEY_RANK = { "Needs attention": 0, "Healthy · monitored": 1, "Monitored by RadarOps": 1, "Discovered · not monitored": 2, "Not monitored yet": 2, "No owner": 9 };
 
 const view = computed(() => {
   if (!g.value) return null;
@@ -142,7 +142,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
     <section v-if="recs && recs.recommendations.length" class="recs">
       <div class="recs-head">
         <b>Suggested to monitor next</b>
-        <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · AIOps ranked them by what it would learn</span>
+        <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · RadarOps ranked them by what it would learn</span>
         <UiButton v-if="picked.size" size="sm" icon="add" class="bulk-btn" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
       </div>
       <div class="rec-row">

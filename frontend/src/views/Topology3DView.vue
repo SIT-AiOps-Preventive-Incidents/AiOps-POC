@@ -19,7 +19,7 @@ const spin = ref(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
 const error = ref("");
 const noGl = ref(false);
 
-const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on AIOps", "virtual machine": "Virtual machine",
+const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on RadarOps", "virtual machine": "Virtual machine",
   container: "Container", device: "Device", "random MAC": "Device (random MAC)", service: "Service" };
 const counts = computed(() => {
   const c = {};
@@ -286,7 +286,7 @@ const open = () => selected.value?.link && router.push(selected.value.link);
           <template v-if="selected.mac"><dt>MAC</dt><dd>{{ selected.mac }}</dd></template>
           <template v-if="selected.vendor"><dt>Made by</dt><dd>{{ selected.vendor }}</dd></template>
           <template v-if="selected.owner"><dt>Owner</dt><dd>{{ selected.owner }}</dd></template>
-          <template v-if="selected.status"><dt>Status</dt><dd>{{ selected.status === "heard" ? "heard on the network, not on AIOps" : selected.status }}</dd></template>
+          <template v-if="selected.status"><dt>Status</dt><dd>{{ selected.status === "heard" ? "heard on the network, not on RadarOps" : selected.status }}</dd></template>
         </dl>
         <UiButton v-if="selected.link" size="sm" @click="open">Open</UiButton>
       </aside>
