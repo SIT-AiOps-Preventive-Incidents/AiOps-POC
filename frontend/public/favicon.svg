@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#3730a3"/></linearGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a86bd"/><stop offset="1" stop-color="#0f4162"/></linearGradient>
     <linearGradient id="gh" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
   </defs>
   <rect width="32" height="32" rx="9" fill="url(#g)"/>
@@ -8,5 +8,5 @@
   <path d="M9 22.3 16 15 23 9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
   <circle cx="9" cy="22.3" r="2.8" fill="#fff"/>
   <circle cx="16" cy="15" r="2.8" fill="#fff"/>
-  <circle cx="23" cy="9" r="3.4" fill="#ef5f3c" stroke="#3730a3" stroke-width="1.4"/>
+  <circle cx="23" cy="9" r="3.4" fill="#e8552d" stroke="#0f4162" stroke-width="1.4"/>
 </svg>

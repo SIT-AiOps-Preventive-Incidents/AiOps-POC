@@ -8,7 +8,7 @@ body {
 a { color: var(--c-primary); text-decoration: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
-h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.013em; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.021em; }
 p { margin: 0; }
 code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
 :lang(th), .th { font-family: var(--font-th); }
