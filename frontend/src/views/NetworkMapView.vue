@@ -208,13 +208,13 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .stat { background: var(--c-surface); box-shadow: var(--shadow-1); border-radius: var(--radius-lg); padding: 10px 16px; min-width: 96px; }
 .stat b { font-size: 24px; display: block; line-height: 1.1; } .stat span { font-size: var(--fs-sm); color: var(--c-text-2); }
-.stat.ok b { color: var(--c-ok-text, var(--c-ok)); } .stat.bad b { color: var(--c-bad-text, var(--c-bad)); }
+.stat.ok b { color: var(--c-ok-text); } .stat.bad b { color: var(--c-bad-text); }
 .recs { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
 .recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
 .bulk-btn { margin-left: auto; align-self: center; }
 .rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 10px 12px 10px 34px; display: flex; flex-direction: column; gap: 4px; position: relative; cursor: pointer; }
-.rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint, #eef3ff); }
+.rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint); }
 .rec > input { position: absolute; left: 12px; top: 12px; width: 15px; height: 15px; cursor: pointer; }
 .rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; } .rec-why { min-height: 32px; } .rec .ui-button { align-self: start; margin-top: 2px; }
 .bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -228,23 +228,23 @@ svg { display: block; width: 100%; height: auto; }
 .lane { fill: var(--c-fill); stroke: var(--c-separator); stroke-dasharray: 5 5; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); } .lane-sub { font-weight: 400; fill: var(--c-text-2); }
 .node { cursor: pointer; } .node .box { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1.4; }
-.node .box.internet { fill: var(--c-primary-tint, #eef3ff); stroke: var(--c-primary); }
+.node .box.internet { fill: var(--c-primary-tint); stroke: var(--c-primary); }
 .node .box.hub { fill: #fff7e6; stroke: #f59e0b; } .node .box.gateway { stroke: #0d1b4c; }
 .node:hover .box { stroke: var(--c-primary); }
 .nm { font: 600 14px var(--font); fill: var(--c-text); } .kd { font: 11.5px var(--font); fill: var(--c-text-2); }
 .chip { cursor: pointer; } .chip .cbox { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1; }
-.chip:hover .cbox { stroke: var(--c-primary); } .chip.sel .cbox { stroke: var(--c-primary); stroke-width: 2; fill: var(--c-primary-tint, #eef3ff); }
+.chip:hover .cbox { stroke: var(--c-primary); } .chip.sel .cbox { stroke: var(--c-primary); stroke-width: 2; fill: var(--c-primary-tint); }
 .chip.faded { opacity: 0.22; } .acc { fill: var(--c-primary); } .acc.bad { fill: var(--c-bad); }
-.chip.problem .cbox { fill: var(--c-bad-fill, #fdecec); stroke: var(--c-bad); animation: chip-alert 1.6s var(--ease, ease) infinite; }
+.chip.problem .cbox { fill: var(--c-bad-bg); stroke: var(--c-bad); animation: chip-alert 1.6s var(--ease, ease) infinite; }
 .chip.problem:hover .cbox, .chip.problem.sel .cbox { stroke: var(--c-bad); }
 @keyframes chip-alert { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .chip.problem .cbox { animation: none; } }
 .ct { font: 500 12px var(--font); fill: var(--c-text); }
-.dot.ok { fill: var(--c-ok); } .dot.bad { fill: var(--c-bad); } .dot.neutral { fill: var(--c-neutral, #9aa3b2); }
+.dot.ok { fill: var(--c-ok); } .dot.bad { fill: var(--c-bad); } .dot.neutral { fill: var(--c-neutral); }
 .side { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; position: sticky; top: 12px; }
 .shead { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .shead b { font-size: var(--fs-lg); overflow-wrap: anywhere; }
 .alert { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 9px 11px; border-radius: var(--radius-md);
-  background: var(--c-bad-fill, #fdecec); color: var(--c-bad-text, var(--c-bad)); font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
+  background: var(--c-bad-bg); color: var(--c-bad-text); font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
 .alert .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; } .alert .dot.bad { background: var(--c-bad); }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0; font-size: var(--fs-sm); } dt { color: var(--c-text-3); } dd { margin: 0; overflow-wrap: anywhere; }
 </style>
