@@ -5,8 +5,8 @@
 # Started and removed by up.sh / down.sh; the main stack runs the same with or without it.
 name: netlab
 x-node: &node
-  build: ./node
-  image: aiops-netnode:latest
+  image: aiops-netnode:latest      # built once by up.sh (three parallel builds of one tag collide without buildx)
+  pull_policy: never
   restart: unless-stopped
   mem_limit: 96m
   cap_add: [NET_ADMIN, NET_RAW, SYS_ADMIN]

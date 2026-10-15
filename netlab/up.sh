@@ -6,7 +6,8 @@
 #   4. checkout reaches payment and inventory by their lab addresses, so those calls really cross the network
 set -euo pipefail
 cd "$(dirname "$0")"
-docker compose up -d --build
+docker build -q -t aiops-netnode:latest node >/dev/null
+docker compose up -d
 NODE=aiops-netnode:latest
 helper() { docker run --rm "$@"; }
 
