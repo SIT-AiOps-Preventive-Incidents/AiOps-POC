@@ -23,8 +23,8 @@ API_TARGET = ("127.0.0.1", 8080)
 OTLP_TARGET = (os.environ.get("OTLP_HOST", "otel-collector"), 4318)
 KEY_PATH = os.environ.get("SSH_KEY_PATH", "/data/ssh/platform_ed25519")
 RETRY_S = 10
-STEPS = [("connect", "Sign in over SSH"), ("channel", "Open the data channel"), ("install", "Install the agent"),
-         ("link", "Keep the channel open with the platform key"), ("data", "First data from the server")]
+STEPS = [("connect", "Sign in to the server"), ("channel", "Open a secure connection"), ("install", "Install the agent"),
+         ("link", "Keep the connection open"), ("data", "Find the services running on it")]
 _jobs: dict[str, dict] = {}
 _links: dict[str, dict] = {}
 
@@ -164,9 +164,11 @@ async def _run(job: dict, body):
             raise RuntimeError(_links.get(body.name, {}).get("error") or "the platform key could not open the channel")
         log.append("channel kept open with the platform key")
         step(job, "data")
-        for _ in range(45):
-            h = repo.host(body.name)
-            if h and h.get("last_inventory_at"):
+        for _ in range(60):                              # the agent reports what listens on the server within ~1 min
+            found = db.q("""SELECT DISTINCT s.service_name FROM service_instances i JOIN services s ON s.id=i.service_id
+                            JOIN hosts h ON h.id=i.host_id WHERE h.name=%s""", (body.name,))
+            if found:
+                log.append(f"found {len(found)} service(s): {', '.join(r['service_name'] for r in found[:8])}")
                 break
             await asyncio.sleep(2)
         finish(job)
