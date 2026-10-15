@@ -82,8 +82,9 @@ def build(devices: list[Device], endpoints: dict[str, dict], known: dict | None 
             if e.port == mgmt or e.ip in device_ips or not _in_port_subnet(d, e.port, e.ip):
                 continue
             nodes[f"dev:{d.name}"].update(role="access", layer=1)
-            hid = f"host:{e.mac}"
             ep = endpoints.get(e.ip) or {}
+            # a host is its MAC, unless the source names it for good (NIKA nodes get a new MAC on every redeploy)
+            hid = f"host:{ep['name']}" if ep.get("stable_name") else f"host:{e.mac}"
             port = d.port_by_name(e.port)
             seen_hosts.add(hid)
             up = (port is None or port.up) and ep.get("link_up", True)   # either end of the cable can be down
