@@ -226,6 +226,26 @@ def error_origin(spans: list[dict]) -> list[dict]:
     return [s for s in spans if s["error"] and not any(c["error"] for c in children.get(s["id"], []))]
 
 
+CLIENT_KINDS = (3, "SPAN_KIND_CLIENT")
+
+
+def unanswered_calls(spans: list[dict]) -> list[dict]:
+    """Client spans nobody answered: the call left the caller and no span of the callee came back. A service that
+    is down produces exactly this, and nothing else, because it cannot record a span of its own."""
+    parents = {s["parent"] for s in spans}
+    return [s for s in spans if s.get("kind") in CLIENT_KINDS and s["id"] not in parents]
+
+
+def answerer(spans: list[dict], call_name: str) -> str | None:
+    """In a trace where the call `call_name` was answered, the service that answered it."""
+    for s in spans:
+        if s["name"] == call_name and s.get("kind") in CLIENT_KINDS:
+            child = next((c for c in spans if c["parent"] == s["id"] and c["service"] != s["service"]), None)
+            if child:
+                return child["service"]
+    return None
+
+
 def self_time(spans: list[dict]) -> dict[str, float]:
     children: dict[str, list] = {}
     for s in spans:

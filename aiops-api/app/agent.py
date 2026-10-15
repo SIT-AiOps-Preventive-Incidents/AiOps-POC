@@ -21,7 +21,7 @@ SKILLS = {
     "service-error-analysis": {
         "category": "Service", "name": "Service error analysis", "kinds": ["error_rate", "traffic_drop"],
         "description": "Failure-rate spikes in a service: trace error origin, error logs, version/commit correlation.",
-        "tools": ["getMetric", "searchTraces", "findSilentServices", "searchLoadBalancerLogs", "getErrorRateByVersion", "getDeployHistory",
+        "tools": ["getMetric", "searchTraces", "whoAnswers", "findSilentServices", "searchLoadBalancerLogs", "getErrorRateByVersion", "getDeployHistory",
                   "searchLogs"]},
     "service-latency-analysis": {
         "category": "Service", "name": "Service latency analysis", "kinds": ["latency"],
@@ -82,12 +82,14 @@ async def t_searchTraces(service: str, mode: str = "error", minutes: int = 5):
     cond = "status = error" if mode == "error" else f"duration > {int(db.fsetting('p95_threshold_ms'))}ms"
     q = f'{{ resource.service.name = "{service}" && {cond} }}'
     found = await tm.tempo_search(q, minutes=minutes, limit=20)
-    origins, inst, msgs, selft, samples = Counter(), Counter(), Counter(), Counter(), []
+    origins, inst, msgs, selft, samples, unanswered = Counter(), Counter(), Counter(), Counter(), [], Counter()
     for tr in found[:6]:
         spans = await tm.tempo_trace(tr["traceID"])
         if not spans:
             continue
         if mode == "error":
+            for u in tm.unanswered_calls(spans):
+                unanswered[(u["service"], u["name"])] += 1
             for o in tm.error_origin(spans):
                 origins[o["service"]] += 1
                 inst[o["instance"]] += 1
@@ -102,6 +104,7 @@ async def t_searchTraces(service: str, mode: str = "error", minutes: int = 5):
         out["error_origin_services"] = dict(origins.most_common())
         out["error_origin_instances"] = dict(inst.most_common())
         out["error_messages"] = dict(msgs.most_common(3))
+        out["unanswered_calls"] = [{"caller": c, "call": n, "traces": k} for (c, n), k in unanswered.most_common(5)]
     else:
         n = max(len(samples), 1)
         out["avg_self_time_ms_by_service"] = {k: round(v / n, 1) for k, v in selft.most_common()}
@@ -125,10 +128,21 @@ def silent_services(before: dict[str, float], now: dict[str, float], exclude: se
 async def t_findSilentServices(service: str):
     def by_svc(rows):
         return {r["metric"].get("service_name"): float(r["value"][1]) for r in rows if r["metric"].get("service_name")}
-    before = by_svc(await tm.prom(f"sum by (service_name) (rate({tm.CALLS}{{{tm.SRV}}}[55m] offset 5m))"))
+    # its busiest 5 minutes in the hour before: a service replayed or deployed recently still counts as "was answering"
+    before = by_svc(await tm.prom(f"max_over_time(sum by (service_name) (rate({tm.CALLS}{{{tm.SRV}}}[5m]))[60m:1m] offset 5m)"))
     now = by_svc(await tm.prom(f"sum by (service_name) (rate({tm.CALLS}{{{tm.SRV}}}[5m]))"))
     known = {r["service_name"] for r in repo.list_services(("service",))}
     return {"silent": silent_services({k: v for k, v in before.items() if k in known}, now, {service})}
+
+
+async def t_whoAnswers(call: str, minutes: int = 60):
+    """Which service normally answers a call: look for a trace in the past hour where that call got a reply."""
+    found = await tm.tempo_search(f'{{ name = "{call}" }}', minutes=minutes, limit=20)
+    for tr in found[:8]:
+        svc = tm.answerer(await tm.tempo_trace(tr["traceID"]), call)
+        if svc:
+            return {"call": call, "answered_by": svc, "trace_id": tr["traceID"]}
+    return {"call": call, "answered_by": None}
 
 
 async def t_searchLogs(service: str, levels: str = "ERROR|WARN.*", contains: str = "", minutes: int = 10):
@@ -229,7 +243,7 @@ async def t_getContainerStats():
     return {"top_by_cpu": stats[:8]}
 
 
-TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVersion, "findSilentServices": t_findSilentServices,
+TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVersion, "findSilentServices": t_findSilentServices, "whoAnswers": t_whoAnswers,
          "getDeployHistory": t_getDeployHistory, "searchTraces": t_searchTraces, "searchLogs": t_searchLogs,
          "getTopSourceIPs": t_getTopSourceIPs, "getHostMetrics": t_getHostMetrics,
          "getContainerStats": t_getContainerStats, "searchLoadBalancerLogs": t_searchLoadBalancerLogs,
@@ -285,11 +299,21 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
     tr = await run.tool("searchTraces", service=ent, mode="error")
     origins = tr.get("error_origin_services") or {}
     origin = max(origins, key=origins.get) if origins else ent
-    silent = []
-    if origin == ent:   # the failing span is the alerting service's own: is something it depends on not answering?
+    silent, unanswered, callee = [], tr.get("unanswered_calls") or [], None
+    # A call nobody answered points at the service that should have: find who normally answers it.
+    for u in unanswered[:3]:   # calls to untraced stores (redis, mongo) are never answered by a span: skip those
+        callee = (await run.tool("whoAnswers", call=u["call"])).get("answered_by")
+        if callee:
+            unanswered = [u] + [x for x in unanswered if x is not u]
+            break
+    if callee or origin == ent:   # is the callee (or anything it depends on) silent right now?
         silent = (await run.tool("findSilentServices", service=ent)).get("silent") or []
-        if silent:
-            origin = silent[0]["service"]
+        if callee and any(x["service"] == callee for x in silent):
+            silent = [x for x in silent if x["service"] == callee] + [x for x in silent if x["service"] != callee]
+    if callee:
+        origin = callee
+    elif silent and origin == ent:
+        origin = silent[0]["service"]
     if origin != ent:
         await run.tool("getMetric", entity=origin, metric="error_rate")
     lb = None
@@ -318,7 +342,7 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
         "top_error_log": top_log.get("example"), "top_error_log_count": top_log.get("count"),
         "lb_by_upstream": lb and lb.get("by_upstream"),
         "lb_hot_instance": hot_inst if instance_specific else None, "lb_hot_share": round(hot_share, 2),
-        "silent_services": silent,
+        "silent_services": silent, "unanswered_calls": unanswered, "unanswered_callee": callee,
     }
     cands = []
     if instance_specific:
@@ -332,7 +356,7 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
                 "service": origin, "to_version": good["version"], "to_commit": good["commit_hash"],
                 "from_version": suspect["version"], "from_commit": suspect["commit_hash"]}})
     cands.append({"type": "restart_service", "params": {"service": origin}})
-    conf = 0.45 + (0.2 if origins else 0) + (0.25 if suspect or instance_specific or silent else 0) + (0.1 if top_log else 0)
+    conf = 0.45 + (0.2 if origins else 0) + (0.25 if suspect or instance_specific or callee or silent else 0) + (0.1 if top_log else 0)
     facts["evidence_confidence"] = round(min(conf, 0.95), 2)
     return facts, cands
 
@@ -438,12 +462,17 @@ def findings(kind: str, facts: dict) -> list[str]:
         o = f["error_origin_service"]
         votes = f.get("trace_origin_votes") or {}
         sil = f.get("silent_services") or []
+        un, callee = f.get("unanswered_calls") or [], f.get("unanswered_callee")
+        if un and callee:
+            u = un[0]
+            out.append(f"In {u['traces']} sampled error traces, {u['caller']} called {u['call']} and got no answer; "
+                       f"in healthy traces that call is answered by {callee}.")
         if sil:
             x = sil[0]
             out.append(f"{x['service']} stopped answering: it handled {x['per_min_before']} requests/min over the past "
                        f"hour and {x['per_min_now']} in the last 5 minutes, while calls through "
                        f"{f['alerting_service']} fail. A stopped service leaves no failing span of its own.")
-        if votes and not sil:
+        if votes and not sil and not callee:
             out.append(f"The alert fired on {f['alerting_service']}, but distributed traces show the failing span "
                        f"originates in {o} ({votes.get(o, 0)} of {sum(votes.values())} sampled error traces).")
         vers = f.get("error_rate_by_version") or []
@@ -502,7 +531,12 @@ def fallback_text(kind: str, facts: dict, action: dict) -> dict:
     if kind == "error_rate":
         sd = facts.get("suspect_deploy")
         sil = facts.get("silent_services") or []
-        if sil and not sd:
+        callee = facts.get("unanswered_callee")
+        if callee and not sd:
+            u = (facts.get("unanswered_calls") or [{}])[0]
+            rc = (f"{callee} is not answering: {u.get('caller')}'s call {u.get('call')} gets no reply, "
+                  f"so requests through {facts['alerting_service']} fail")
+        elif sil and not sd:
             x = sil[0]
             rc = (f"{x['service']} stopped answering ({x['per_min_before']} requests/min over the past hour, "
                   f"{x['per_min_now']} now), so calls through {facts['alerting_service']} fail")
