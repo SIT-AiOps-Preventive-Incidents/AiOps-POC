@@ -20,7 +20,10 @@ const graph = computed(() => {
   const d = map.data;
   if (!d) return null;
   const clients = { id: "clients", name: "Clients", kind: "client", instances: [], hosts: [] };
-  const all = [clients, ...d.nodes];
+  // Focus a computer: show ONLY that machine's services (a real service map of that machine), laid out on their
+  // own - the rest are not drawn at all, not greyed out. "All" and "Only problems" keep the whole graph.
+  const src = map.filter.startsWith("host:") ? d.nodes.filter((n) => n.hosts?.includes(map.filter.slice(5))) : d.nodes;
+  const all = [clients, ...src];
   const by = Object.fromEntries(all.map((n) => [n.id, { ...n }]));
   // Clients enter at the public entry point (a service with a test-request URL). Other traced roots - e.g. apps the
   // host agent traces with eBPF - are their own little flows and are drawn inside their computer's lane.
@@ -79,11 +82,8 @@ const graph = computed(() => {
 const bad = (n) => !!n.problem_id || (n.error_rate ?? 0) > THR || (n.instances || []).some((i) => i.problem_id || i.error_rate > THR);
 const focus = computed(() => {
   const g = graph.value;
-  if (!g || map.filter === "all") return null;
-  if (map.filter.startsWith("host:")) {
-    const host = map.filter.slice(5);
-    return new Set(g.nodes.filter((n) => n.hosts?.includes(host)).map((n) => n.id));
-  }
+  // host focus now subsets the whole graph (above), so nothing to fade; only "Only problems" dims the off-path nodes
+  if (!g || map.filter === "all" || map.filter.startsWith("host:")) return null;
   const keep = new Set();
   const up = (id) => { if (keep.has(id)) return; keep.add(id); g.edges.filter((e) => e.to === id).forEach((e) => up(e.from)); };
   g.nodes.filter(bad).forEach((n) => up(n.id));
