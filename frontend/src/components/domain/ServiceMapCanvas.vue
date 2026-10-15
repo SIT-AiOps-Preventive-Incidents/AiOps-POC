@@ -13,8 +13,8 @@ import { useMapStore } from "@/stores/map";
 
 const map = useMapStore();
 const emit = defineEmits(["select"]);
-const W = 196, CW = 240, GAP = 22, TOP = 40, LANE_HEAD = 40, THR = 0.05;
-const nodeH = (n) => 66 + (n.instances?.length ? 30 : 0);
+const W = 168, CW = 190, GAP = 18, TOP = 40, LANE_HEAD = 40, THR = 0.05;
+const nodeH = (n) => 58 + (n.instances?.length ? 26 : 0);
 
 const graph = computed(() => {
   const d = map.data;
@@ -125,7 +125,7 @@ function chipLabel(n, inst) {
 
 const kindText = (n) => n.kind === "client" ? "Users on the internet" : n.kind === "network" ? (n.id.includes("firewall") ? "Firewall" : "Load balancer")
   : n.kind === "process" ? `Discovered on ${n.hosts?.[0] || "-"}` : n.kind === "external" ? "External dependency" : `Service · ${n.owner || "no owner"}`;
-const metric = (n) => n.kind === "client" ? "" : n.rps != null ? `${rate(n.rps)} · ${pct(n.error_rate)} errors`
+const metric = (n) => n.kind === "client" ? "" : n.rps != null ? `${rate(n.rps)} · ${pct(n.error_rate)}`
   : n.kind === "process" || n.kind === "external" ? (n.seen_recently ? "running · not traced" : "not seen recently") : "no traffic yet";
 const logoOf = (n) => n.kind === "client" ? null : languageLogo(n.kind === "network" ? "nginx" : n.language || n.id);
 
@@ -194,18 +194,22 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <g v-for="n in graph.nodes.filter((x) => x.x != null)" :key="n.id"
          :class="['node', { bad: bad(n), sel: map.selected === n.id, faded: focus && !focus.has(n.id) && n.id !== 'clients', disc: n.kind === 'process' || n.kind === 'external', hit: visited[n.id] }]"
          role="button" :aria-label="n.name" tabindex="0" @click="emit('select', n.id)" @keydown.enter="emit('select', n.id)" @keydown.space.prevent="emit('select', n.id)">
-        <rect class="box" :x="n.x" :y="n.y" :width="W" :height="nodeH(n)" rx="14" />
-        <circle :cx="n.x + 24" :cy="n.y + 24" r="14" class="logo-bg" />
-        <image v-if="logoOf(n)" :href="`/icons/b/${logoOf(n)}.svg`" :x="n.x + 15" :y="n.y + 15" width="18" height="18" />
-        <image v-else :href="`/icons/f/${n.kind === 'client' ? 'globe' : n.kind === 'external' ? 'database' : 'apps'}_regular.svg`" :x="n.x + 15" :y="n.y + 15" width="18" height="18" />
-        <circle v-if="n.kind !== 'client'" :cx="n.x + 35" :cy="n.y + 13" r="4.5" :class="['sdot', bad(n) ? 'bad' : n.rps != null || n.seen_recently ? 'ok' : 'off']" />
-        <text :x="n.x + 46" :y="n.y + 22" class="nm">{{ n.id === "clients" ? "Clients" : n.id }}</text>
-        <text :x="n.x + 46" :y="n.y + 38" class="kd">{{ kindText(n) }}</text>
-        <text :x="n.x + 14" :y="n.y + 57" :class="['kp', { bad: bad(n) }]">{{ metric(n) }}{{ n.problem_id ? ` · P-${n.problem_id}` : "" }}</text>
+        <rect class="box" :x="n.x" :y="n.y" :width="W" :height="nodeH(n)" rx="11" />
+        <circle :cx="n.x + 20" :cy="n.y + 20" r="13" class="logo-bg" />
+        <image v-if="logoOf(n)" :href="`/icons/b/${logoOf(n)}.svg`" :x="n.x + 12" :y="n.y + 12" width="16" height="16" />
+        <image v-else :href="`/icons/f/${n.kind === 'client' ? 'globe' : n.kind === 'external' ? 'database' : 'apps'}_regular.svg`" :x="n.x + 12" :y="n.y + 12" width="16" height="16" />
+        <circle v-if="n.kind !== 'client'" :cx="n.x + 31" :cy="n.y + 10" r="4" :class="['sdot', bad(n) ? 'bad' : n.rps != null || n.seen_recently ? 'ok' : 'off']" />
+        <foreignObject :x="n.x + 38" :y="n.y + 7" :width="W - 46" :height="n.instances?.length ? 42 : nodeH(n) - 12">
+          <div class="nd" xmlns="http://www.w3.org/1999/xhtml">
+            <div class="nd-nm">{{ n.id === "clients" ? "Clients" : n.id }}</div>
+            <div class="nd-kd">{{ kindText(n) }}</div>
+            <div v-if="metric(n) || n.problem_id" :class="['nd-kp', { bad: bad(n) }]">{{ metric(n) }}{{ n.problem_id ? ` · P-${n.problem_id}` : "" }}</div>
+          </div>
+        </foreignObject>
         <g v-for="(inst, k) in n.instances" :key="inst.id" :class="['chip', { bad: inst.error_rate > THR || inst.problem_id, hit: visitedInst[inst.id] }]"
-           :transform="`translate(${n.x + 12 + k * ((W - 24 - (n.instances.length - 1) * 6) / n.instances.length + 6)}, ${n.y + 64})`">
-          <rect :width="(W - 24 - (n.instances.length - 1) * 6) / n.instances.length" height="24" rx="7" />
-          <text x="8" y="16">{{ chipLabel(n, inst) }}</text>
+           :transform="`translate(${n.x + 10 + k * ((W - 20 - (n.instances.length - 1) * 5) / n.instances.length + 5)}, ${n.y + nodeH(n) - 28})`">
+          <rect :width="(W - 20 - (n.instances.length - 1) * 5) / n.instances.length" height="22" rx="6" />
+          <text x="7" y="15">{{ chipLabel(n, inst) }}</text>
         </g>
         <g v-if="visited[n.id]" :transform="`translate(${n.x + W - 8}, ${n.y - 8})`">
           <rect :x="-60" y="0" width="64" height="20" rx="10" :class="['stamp', { bad: visited[n.id].error }]" />
@@ -248,14 +252,17 @@ svg { display: block; width: 100%; height: auto; }
 .logo-bg { fill: var(--c-logo-bg); stroke: var(--c-separator); stroke-width: 0.5; }
 .sdot { stroke: var(--c-surface); stroke-width: 2; }
 .sdot.ok { fill: var(--c-ok); } .sdot.bad { fill: var(--c-bad); } .sdot.off { fill: var(--c-neutral); }
-.nm { font: 600 13.5px var(--font); fill: var(--c-text); }
-.kd { font: 12px var(--font); fill: var(--c-text-2); }
-.kp { font: 500 12px var(--font); fill: var(--c-text-2); }
-.kp.bad { fill: var(--c-bad-text); }
+/* node text in a foreignObject so a long service name wraps to two lines instead of overflowing */
+.nd { display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.nd-nm { font: 600 12px/1.2 var(--font); color: var(--c-text); word-break: break-word; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.nd-kd { font: 10.5px/1.25 var(--font); color: var(--c-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nd-kp { font: 500 10.5px/1.3 var(--font); color: var(--c-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.nd-kp.bad { color: var(--c-bad-text); }
 .chip rect { fill: var(--c-fill); transition: fill var(--dur); }
 .chip.bad rect { fill: var(--c-bad-bg); }
 .chip.hit rect { fill: var(--c-primary-tint-2); }
-.chip text { font: 500 11px var(--font); fill: var(--c-text); }
+.chip text { font: 500 10px var(--font); fill: var(--c-text); }
 .stamp { fill: var(--c-primary); }
 .stamp.bad { fill: var(--c-bad); }
 .stamp-t { font: 700 11px var(--font); fill: #fff; }
