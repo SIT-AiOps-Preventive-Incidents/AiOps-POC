@@ -26,6 +26,17 @@ LLDP_REM = ".1.0.8802.1.1.2.1.4.1.1"
 TABLES = [SYS, IF, IFX_NAME, IP_ADDR, ARP, LLDP_LOC_PORT, LLDP_REM]
 
 
+# IF-MIB ifType values that are real ports: ethernetCsmacd, gigabitEthernet, fibreChannel, ieee8023adLag.
+# Tunnels, loopback and other software interfaces are left out of port counts and the map.
+PHYSICAL_TYPES = {6, 62, 69, 117, 56, 161}
+# Linux reports a few tunnel devices as Ethernet too (GRE-in-Ethernet, ERSPAN); they are never cabled ports.
+VIRTUAL_NAMES = re.compile(r"^(gretap|erspan|ip6gre|ip6tnl|ip_vti|ip6_vti|tunl|sit|teql|dummy|bond_slave)\d*$")
+
+
+def is_port(p: "Port") -> bool:
+    return p.if_type in PHYSICAL_TYPES and not VIRTUAL_NAMES.match(p.name)
+
+
 @dataclass
 class Port:
     index: int
@@ -34,6 +45,7 @@ class Port:
     up: bool = True
     admin_up: bool = True
     speed_mbps: int = 0
+    if_type: int = 6
     ips: list[ipaddress.IPv4Interface] = field(default_factory=list)
 
 
@@ -130,6 +142,8 @@ def parse_device(address: str, rows: dict[str, str]) -> Device:
         p.mac = mac(rows.get(f"{IF}.6.{idx}", ""))
         p.up = rows.get(f"{IF}.8.{idx}", "1") == "1"
         p.admin_up = rows.get(f"{IF}.7.{idx}", "1") == "1"
+        t = rows.get(f"{IF}.3.{idx}", "6")
+        p.if_type = int(t) if t.isdigit() else 6
         speed = rows.get(f"{IF}.5.{idx}", "0")
         p.speed_mbps = int(speed) // 1_000_000 if speed.isdigit() else 0
         d.ports[p.index] = p
@@ -167,6 +181,8 @@ def parse_lldp(rows: dict[str, str], d: Device) -> list[Neighbor]:
             continue
         _, num, _ = parts
         port = loc.get(num) or (d.ports[int(num)].name if num.isdigit() and int(num) in d.ports else num)
+        if system == d.name:    # our own frames heard back (a bridge reflecting them): not a neighbour
+            continue
         out.append(Neighbor(port, system, rows.get(f"{LLDP_REM}.7.{key}", ""), rows.get(f"{LLDP_REM}.8.{key}", "")))
     return out
 
