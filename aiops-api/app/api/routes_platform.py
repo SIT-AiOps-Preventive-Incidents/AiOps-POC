@@ -9,7 +9,6 @@ from fastapi import APIRouter, Response
 
 from .. import datasets, db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
-from ..netdisco import scenarios as net_scenarios
 from .errors import ApiError, not_found
 from .schemas import DeploymentIn, RunbookPatch
 
@@ -141,9 +140,9 @@ SCENARIOS = ["bad_deploy", "instance_fault", "slow_db", "cpu_hog", "brute_force"
 
 
 def _scenarios() -> list[str]:
-    """The shop faults need the shop; the network faults are offered only while the network lab runs."""
+    """The shop faults need the shop; everything but `reset` is a shop fault."""
     shop = SCENARIOS[:-1] if datasets.DATASET == "shop" else []
-    return shop + (net_scenarios.NAMES if net_scenarios.available() else []) + SCENARIOS[-1:]
+    return shop + SCENARIOS[-1:]
 
 
 async def _post(url: str, body: dict):
@@ -166,11 +165,8 @@ async def run_scenario(scenario: str):
             raise not_found("scenario", scenario)
         await datasets.play(scenario)
         return {"scenario": scenario, "status": "started"}
-    if scenario not in SCENARIOS and scenario not in net_scenarios.NAMES:
+    if scenario not in SCENARIOS:
         raise not_found("scenario", scenario)
-    if scenario in net_scenarios.NAMES:
-        await net_scenarios.run(scenario)
-        return {"scenario": scenario, "status": "started"}
     if scenario == "bad_deploy":
         return await create_deployment(DeploymentIn(service="payment", version="1.3.0", commit="%07x" % random.randrange(16**7),
                                                     author="dev-somchai", message="feat(payment): apply member discount at charge time",
@@ -188,7 +184,6 @@ async def run_scenario(scenario: str):
             "error_rate": 0.5, "error_msg": "RedisTimeoutError: session cache unreachable from frontend-b "
                                             "(connection pool stuck after network blip)"})
     elif scenario == "reset":
-        await net_scenarios.reset()   # first: the network lab must recover even if a demo part below is missing
         await datasets.reset()        # AnoMod replay back to the normal run
         if datasets.DATASET != "shop":
             return {"scenario": scenario, "status": "reset"}

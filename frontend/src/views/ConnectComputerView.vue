@@ -4,7 +4,7 @@ import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
-import { connectBody, hostName, installCommand, missing, progress } from "@/lib/connect";
+import { bulkBody, connectBody, hostName, installCommand, missing, missingCred, parseTargets, progress } from "@/lib/connect";
 import { slug } from "@/lib/format";
 import { useRoute } from "vue-router";
 import { useCatalogStore } from "@/stores/catalog";
@@ -43,6 +43,28 @@ async function connectServer() {
 }
 const retry = () => { job.value = null; };
 
+// ---- bulk: connect several machines at once with one shared sign-in (from the Fleet's "Monitor selected") ----
+const targets = computed(() => parseTargets(route.query.address, route.query.names));
+const bulkMode = computed(() => targets.value.length > 1);
+const bulkJobs = ref(null);
+const bulkStat = computed(() => {
+  const j = bulkJobs.value || [];
+  return { total: j.length, done: j.filter((b) => b.job?.state === "done").length,
+    failed: j.filter((b) => b.job?.state === "failed").length };
+});
+const bulkBusy = computed(() => bulkJobs.value?.some((b) => !b.job || b.job.state === "running"));
+async function connectBulk() {
+  const why = missingCred(form.value);
+  if (why) return ui.toast(why);
+  try {
+    const { jobs } = await api.connect.bulk(bulkBody(form.value, targets.value));
+    Object.assign(form.value, { password: "", key: "", keyFile: "", passphrase: "" });
+    bulkJobs.value = jobs.map((j) => ({ ...j, job: null }));
+  } catch (e) {
+    ui.toast(e.message);
+  }
+}
+
 // ---- what the connected server looks like (also used by "run the command yourself") ----
 const own = ref({ name: ui.prefs.computerName || "my-mac", os: "mac" });
 const ownName = computed(() => slug(own.value.name) || "my-mac");
@@ -52,6 +74,11 @@ const host = ref(null);
 const services = ref([]);
 usePolling(async () => {
   if (busy.value) job.value = await api.connect.job(job.value.id);
+  if (bulkJobs.value) {
+    await Promise.all(bulkJobs.value.map(async (b) => {
+      if (!b.job || b.job.state === "running") b.job = await api.connect.job(b.job_id);
+    }));
+  }
   const hosts = await api.hosts.list();
   host.value = hosts.find((h) => h.name === watching.value) || null;
   if (host.value && ["healthy", "problem"].includes(host.value.status)) services.value = (await api.hosts.get(watching.value)).services;
@@ -82,10 +109,50 @@ async function addNodeExporter() {
 </script>
 <template>
   <div class="page page--narrow">
-    <UiPageHeader title="Add a host" :back="{ to: '/connect', label: 'Add a host or service' }"
-                  subtitle="Sign in to the server once from here. AIOps installs what it needs, then finds and watches every service on it." />
+    <UiPageHeader :title="bulkMode ? `Monitor ${targets.length} machines` : 'Add a host'" :back="{ to: bulkMode ? '/network' : '/connect', label: bulkMode ? 'Fleet' : 'Add a host or service' }"
+                  :subtitle="bulkMode ? 'Sign in once with a credential these machines share. AIOps installs the agent on each and starts watching their services.' : 'Sign in to the server once from here. AIOps installs what it needs, then finds and watches every service on it.'" />
 
-    <section v-if="!job || job.state === 'failed'" class="card">
+    <!-- bulk: one shared sign-in for many machines -->
+    <section v-if="bulkMode && !bulkJobs" class="card">
+      <label class="lbl lbl--top">Machines to monitor ({{ targets.length }})</label>
+      <div class="targets">
+        <span v-for="t in targets" :key="t.address" class="target">{{ t.name || t.address }}</span>
+      </div>
+      <div class="grid2 mt-2">
+        <UiField v-model="form.user" label="User (same on every machine)" placeholder="ubuntu" mono />
+        <UiField v-model="form.port" label="SSH port" placeholder="22" mono />
+      </div>
+      <label class="lbl">Sign in with</label>
+      <UiSegmented v-model="form.auth" :options="[{ value: 'password', label: 'Password' }, { value: 'key', label: 'SSH key file' }]" label="Sign in with" />
+      <UiField v-if="form.auth === 'password'" v-model="form.password" type="password" label="Password" class="mt" @enter="connectBulk" />
+      <template v-else>
+        <label class="file mt"><input type="file" @change="pickKey" /><span>{{ form.keyFile || "Choose the key these machines accept" }}</span></label>
+        <UiField v-model="form.passphrase" type="password" label="Key passphrase" hint="(only if it has one)" />
+      </template>
+      <div class="row mt-2"><UiSwitch v-model="form.ebpf" label="Trace their services automatically" /><span>Logs, metrics and traces for every service on each machine</span></div>
+      <UiButton class="mt connect" @click="connectBulk">Connect {{ targets.length }} machines</UiButton>
+      <p class="small muted mt-2">One credential, used once per machine to install the agent, then forgotten. Machines that refuse it are reported on their own — the rest still connect.</p>
+    </section>
+
+    <section v-else-if="bulkMode" class="card">
+      <div class="progress">
+        <UiProgressRing :value="bulkStat.total ? (bulkStat.done + bulkStat.failed) / bulkStat.total : 0" :state="bulkBusy ? 'running' : 'done'" />
+        <div>
+          <b class="now">{{ bulkBusy ? `Connecting ${bulkStat.total} machines…` : `${bulkStat.done} of ${bulkStat.total} connected` }}</b>
+          <div class="muted small">{{ bulkStat.failed ? `${bulkStat.failed} could not be reached` : "One shared sign-in, one agent per machine" }}</div>
+        </div>
+      </div>
+      <ul class="hostlist">
+        <li v-for="b in bulkJobs" :key="b.job_id">
+          <UiProgressRing :value="progress(b.job).value" :state="progress(b.job).state" :size="26" />
+          <router-link :to="`/computers/${b.name}`" class="hl-name">{{ b.name }}</router-link>
+          <span class="muted small">{{ b.job?.state === "failed" ? b.job.error : b.job?.state === "done" ? "connected" : progress(b.job).label || "starting…" }}</span>
+        </li>
+      </ul>
+      <div class="row mt"><UiButton variant="tint" to="/network">Open the Fleet map</UiButton></div>
+    </section>
+
+    <section v-if="!bulkMode && (!job || job.state === 'failed')" class="card">
       <div class="grid2">
         <UiField v-model="form.address" label="Server address" placeholder="34.2.129.3" mono />
         <UiField v-model="form.user" label="User" placeholder="ubuntu" mono />
@@ -109,7 +176,7 @@ async function addNodeExporter() {
       <p class="small muted mt-2">Used once to install the agent, then forgotten. AIOps keeps the connection open with its own key, which can only open two ports on the server's loopback - it cannot run anything there.</p>
     </section>
 
-    <section v-else class="card">
+    <section v-else-if="!bulkMode" class="card">
       <div class="progress">
         <UiProgressRing :value="ring.value" :state="ring.state" />
         <div>
@@ -140,7 +207,7 @@ async function addNodeExporter() {
       </template>
     </section>
 
-    <UiDisclosure class="mt" title="A laptop, or a machine you would rather set up yourself">
+    <UiDisclosure v-if="!bulkMode" class="mt" title="A laptop, or a machine you would rather set up yourself">
       <div class="grid2">
         <UiField v-model="own.name" label="Computer name" />
         <div><label class="lbl lbl--top">System</label>
@@ -150,7 +217,7 @@ async function addNodeExporter() {
       <UiCodeBlock :code="command" />
       <p v-if="!target && host" class="small mt-2">{{ connected ? `${ownName} is connected.` : `${ownName} is registered, waiting for its first measurements…` }}</p>
     </UiDisclosure>
-    <UiDisclosure class="mt" title="A server that already runs node_exporter">
+    <UiDisclosure v-if="!bulkMode" class="mt" title="A server that already runs node_exporter">
       <p class="small muted">AIOps collects from it on port 9100, so it must be reachable from this server.</p>
       <UiField v-model="ne.name" label="Name" placeholder="db-01" />
       <UiField v-model="ne.address" label="Address" placeholder="10.4.82.30:9100" mono />
@@ -176,5 +243,10 @@ async function addNodeExporter() {
 .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; flex: none; }
 .checklist li.running .dot { border-color: var(--c-primary); background: radial-gradient(var(--c-primary) 35%, transparent 40%); }
 .stats { font-weight: var(--fw-semibold); }
+.targets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.target { font-size: var(--fs-sm); background: var(--c-fill); border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: 3px 8px; font-family: var(--font-mono, monospace); }
+.hostlist { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 10px; }
+.hostlist li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.hl-name { font-weight: var(--fw-medium); overflow-wrap: anywhere; }
 @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } .progress { gap: 14px; } }
 </style>

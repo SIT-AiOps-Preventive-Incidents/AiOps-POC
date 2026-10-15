@@ -8,6 +8,8 @@ const COLORS = [
   ["Charts", ["--c-chart-1", "--c-chart-2", "--c-chart-3", "--c-chart-4", "--c-chart-5"]],
 ];
 const TYPE = [["--fs-3xl", "Large title"], ["--fs-2xl", "KPI value"], ["--fs-xl", "Section title"], ["--fs-lg", "Card headline"], ["--fs-md", "Body"], ["--fs-sm", "Secondary"], ["--fs-xs", "Caption"]];
+// the only spacing steps in use - gaps and paddings read from here so section spacing never drifts between pages
+const SPACE = [["--sp-1", "4"], ["--sp-2", "8"], ["--sp-3", "12"], ["--sp-4", "16"], ["--sp-5", "20"], ["--sp-6", "24"], ["--sp-7", "28"], ["--sp-8", "32"], ["--sp-10", "40"], ["--sp-12", "48"]];
 const values = ref({});
 onMounted(() => {
   const cs = getComputedStyle(document.documentElement);
@@ -25,8 +27,10 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
     <UiCard v-for="[group, list] in COLORS" :key="group" :title="group" class="mb">
       <div class="swatches"><div v-for="v in list" :key="v" class="sw"><span :style="{ background: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ values[v] }}</small></div></div>
     </UiCard>
-    <div class="section-label">Typography (system font: SF Pro / Sukhumvit Set)</div>
+    <div class="section-label">Typography (IBM Plex Sans · IBM Plex Sans Thai)</div>
     <UiCard><div v-for="[v, l] in TYPE" :key="v" class="type"><span :style="{ fontSize: `var(${v})` }">{{ l }} อ่านง่าย</span><code class="muted">{{ v }} · {{ values[v] }}</code></div></UiCard>
+    <div class="section-label">Spacing (4 px grid — the only gaps and paddings in use)</div>
+    <UiCard><div class="spacing"><div v-for="[v, px] in SPACE" :key="v" class="sp"><span class="sp__bar" :style="{ width: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ px }}px</small></div></div></UiCard>
     <div class="section-label">Buttons</div>
     <UiCard><div class="row row--wrap"><UiButton>Primary</UiButton><UiButton variant="tint">Tint</UiButton><UiButton variant="plain">Plain</UiButton><UiButton variant="danger">Danger</UiButton>
       <UiButton variant="ghost" icon="play">With icon</UiButton><UiButton loading>Loading</UiButton><UiButton disabled>Disabled</UiButton><UiButton size="sm">Small</UiButton></div>
@@ -63,4 +67,8 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 .sw { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .sw span { height: 44px; border-radius: 10px; box-shadow: inset 0 0 0 0.5px var(--c-separator); }
 .type { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 0.5px solid var(--c-separator); }
+.spacing { display: grid; gap: 10px; }
+.sp { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.sp__bar { height: 14px; background: var(--c-primary-tint-2); border-radius: 3px; flex: none; }
+.sp code { min-width: 64px; }
 </style>

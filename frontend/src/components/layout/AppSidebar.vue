@@ -5,26 +5,28 @@ import { useUiStore } from "@/stores/ui";
 
 const app = useAppStore();
 const ui = useUiStore();
-// Three jobs, in the order an on-call engineer meets them: watch, respond, set up.
+// Three jobs, in the order an on-call engineer meets them: watch, respond, set up. Two angles on what you run:
+// Fleet = the machines (all of them, monitored or not); Service map = the services and how they call each other.
 const NAV = [
   { items: [
     { to: "/", label: "Overview", icon: "home" },
     { to: "/problems", label: "Incidents", icon: "warning", badge: true },
-    { to: "/map", label: "Service map", icon: "flowchart" },
     { to: "/network", label: "Fleet", icon: "server" },
+    { to: "/map", label: "Service map", icon: "flowchart" },
     { to: "/services", label: "Services", icon: "cube" },
-    { to: "/computers", label: "Hosts", icon: "server" },
   ] },
   { label: "Automation", items: [
     { to: "/runbooks", label: "Runbooks", icon: "book" },
     { to: "/skills", label: "AI skills", icon: "sparkle" },
-    { to: "/deployments", label: "Deployments", icon: "branch" },
   ] },
   { label: "Setup", items: [
     { to: "/connect", label: "Add a host or service", icon: "add_circle" },
     { to: "/notifications", label: "Notifications", icon: "alert" },
-    { to: "/scenarios", label: "Demo scenarios", icon: "flash" },
     { to: "/settings", label: "Settings", icon: "settings" },
+  ] },
+  { label: "Demo & tools", items: [
+    { to: "/scenarios", label: "Demo scenarios", icon: "flash" },
+    { to: "/design", label: "Design system", icon: "sparkle" },
   ] },
 ];
 const badge = computed(() => app.kpi.open || 0);

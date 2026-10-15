@@ -26,6 +26,19 @@ async function load() {
 usePolling(load, 20000);
 const monitorIp = (ip) => router.push({ path: "/connect/computer", query: { address: ip } });
 
+// pick several suggestions and connect them in one go (one shared sign-in)
+const picked = ref(new Set());
+function toggle(ip) {
+  const s = new Set(picked.value);
+  s.has(ip) ? s.delete(ip) : s.add(ip);
+  picked.value = s;
+}
+const monitorMany = () => {
+  const chosen = (recs.value?.recommendations || []).filter((r) => picked.value.has(r.ip));
+  if (!chosen.length) return;
+  router.push({ path: "/connect/computer", query: { address: chosen.map((r) => r.ip).join(","), names: chosen.map((r) => r.name).join(",") } });
+};
+
 const VW = 1180, PAD = 20, CHIP_W = 176, CHIP_H = 34, GAP = 10, LANE_HEAD = 34, LANE_PAD = 12, BOX_H = 46, HUB_W = 210;
 const short = (s) => (s || "").replace(/\.sit\.kmutt\.ac\.th$/i, "");
 const GROUPS = [{ value: "network", label: "Network" }, { value: "owner", label: "Owner" }, { value: "status", label: "Status" }, { value: "coverage", label: "Monitoring" }];
@@ -40,7 +53,8 @@ const machines = computed(() => {
   for (const l of g.value.links) if (l.target.startsWith("hub:")) hubOf[l.source] = l.target.slice(4);
   return g.value.nodes.filter((n) => n.id.startsWith("host:") || n.id.startsWith("ip:")).map((n) => ({
     id: n.id, ip: n.ip, mac: n.mac, vendor: n.vendor, label: short(n.label || n.ip), kind: n.kind,
-    monitored: !!n.id.startsWith("host:"), owner: n.owner, status: n.status, link: n.link, cidr: hubOf[n.id] || "—",
+    monitored: !!n.id.startsWith("host:"), owner: n.owner, status: n.status, link: n.link,
+    problem_id: n.problem_id, problem_link: n.problem_link, cidr: hubOf[n.id] || "—",
   }));
 });
 const summary = computed(() => {
@@ -126,13 +140,18 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <div class="stat"><b>{{ summary.networks }}</b><span>networks</span></div>
     </div>
     <section v-if="recs && recs.recommendations.length" class="recs">
-      <div class="recs-head"><b>Suggested to monitor next</b><span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · AIOps ranked them by what it would learn</span></div>
+      <div class="recs-head">
+        <b>Suggested to monitor next</b>
+        <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · AIOps ranked them by what it would learn</span>
+        <UiButton v-if="picked.size" size="sm" icon="add" class="bulk-btn" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
+      </div>
       <div class="rec-row">
-        <div v-for="r in recs.recommendations.slice(0, 4)" :key="r.ip" class="rec">
+        <label v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', { checked: picked.has(r.ip) }]">
+          <input type="checkbox" :checked="picked.has(r.ip)" @change="toggle(r.ip)" />
           <div class="rec-name">{{ r.name }}</div>
           <div class="rec-why muted small">{{ r.reasons[0] }}</div>
-          <UiButton size="sm" icon="add" @click="monitorIp(r.ip)">Monitor</UiButton>
-        </div>
+          <UiButton size="sm" variant="tint" icon="add" @click.prevent="monitorIp(r.ip)">Monitor</UiButton>
+        </label>
       </div>
     </section>
     <div class="bar">
@@ -155,10 +174,10 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
             <text :x="b.x + 40" :y="b.y + (b.sub ? 20 : 28)" class="nm">{{ b.label }}</text>
             <text v-if="b.sub" :x="b.x + 40" :y="b.y + 36" class="kd">{{ b.sub }}</text>
           </g>
-          <g v-for="c in view.chips" :key="c.id" :class="['chip', { faded: matches && !matches.has(c.id), sel: selected && selected.ip === c.ip }]"
+          <g v-for="c in view.chips" :key="c.id" :class="['chip', { faded: matches && !matches.has(c.id), sel: selected && selected.ip === c.ip, problem: c.dot === 'bad' }]"
              role="button" tabindex="0" @click="pick(c)" @keydown.enter="pick(c)">
             <rect :x="c.x" :y="c.y" :width="c.w" :height="c.h" rx="9" class="cbox" />
-            <rect v-if="c.monitored" :x="c.x" :y="c.y" width="3.5" :height="c.h" class="acc" />
+            <rect v-if="c.monitored" :x="c.x" :y="c.y" width="3.5" :height="c.h" :class="['acc', { bad: c.dot === 'bad' }]" />
             <circle :cx="c.x + 16" :cy="c.y + c.h / 2" r="4.5" :class="['dot', c.dot]" />
             <text :x="c.x + 28" :y="c.y + c.h / 2 + 4" class="ct">{{ c.label }}</text>
           </g>
@@ -168,6 +187,9 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <aside v-if="selected" class="side">
         <div class="shead"><b>{{ short(selected.label) }}</b><UiButton variant="plain" size="sm" icon="dismiss" aria-label="Close" @click="selected = null" /></div>
         <div class="muted small">{{ KIND[selected.kind] || selected.kind }}<template v-if="selected.estimated"> · estimated</template></div>
+        <router-link v-if="selected.problem_link" :to="selected.problem_link" class="alert">
+          <span class="dot bad" /> Open incident P-{{ selected.problem_id }} — the AI is on it
+        </router-link>
         <dl>
           <template v-if="selected.ip"><dt>IP</dt><dd>{{ selected.ip }}</dd></template>
           <template v-if="selected.cidr && selected.cidr !== '—'"><dt>Network</dt><dd>{{ selected.cidr }}</dd></template>
@@ -189,8 +211,11 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .stat.ok b { color: var(--c-ok-text, var(--c-ok)); } .stat.bad b { color: var(--c-bad-text, var(--c-bad)); }
 .recs { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
 .recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
+.bulk-btn { margin-left: auto; align-self: center; }
 .rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 10px 12px 10px 34px; display: flex; flex-direction: column; gap: 4px; position: relative; cursor: pointer; }
+.rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint, #eef3ff); }
+.rec > input { position: absolute; left: 12px; top: 12px; width: 15px; height: 15px; cursor: pointer; }
 .rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; } .rec-why { min-height: 32px; } .rec .ui-button { align-self: start; margin-top: 2px; }
 .bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
 .search { min-width: 260px; flex: 1; max-width: 360px; } .search :deep(.ui-field) { margin: 0; } .search :deep(label) { display: none; }
@@ -209,10 +234,17 @@ svg { display: block; width: 100%; height: auto; }
 .nm { font: 600 14px var(--font); fill: var(--c-text); } .kd { font: 11.5px var(--font); fill: var(--c-text-2); }
 .chip { cursor: pointer; } .chip .cbox { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1; }
 .chip:hover .cbox { stroke: var(--c-primary); } .chip.sel .cbox { stroke: var(--c-primary); stroke-width: 2; fill: var(--c-primary-tint, #eef3ff); }
-.chip.faded { opacity: 0.22; } .acc { fill: var(--c-primary); }
+.chip.faded { opacity: 0.22; } .acc { fill: var(--c-primary); } .acc.bad { fill: var(--c-bad); }
+.chip.problem .cbox { fill: var(--c-bad-fill, #fdecec); stroke: var(--c-bad); animation: chip-alert 1.6s var(--ease, ease) infinite; }
+.chip.problem:hover .cbox, .chip.problem.sel .cbox { stroke: var(--c-bad); }
+@keyframes chip-alert { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .chip.problem .cbox { animation: none; } }
 .ct { font: 500 12px var(--font); fill: var(--c-text); }
 .dot.ok { fill: var(--c-ok); } .dot.bad { fill: var(--c-bad); } .dot.neutral { fill: var(--c-neutral, #9aa3b2); }
 .side { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; position: sticky; top: 12px; }
 .shead { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .shead b { font-size: var(--fs-lg); overflow-wrap: anywhere; }
+.alert { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 9px 11px; border-radius: var(--radius-md);
+  background: var(--c-bad-fill, #fdecec); color: var(--c-bad-text, var(--c-bad)); font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
+.alert .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; } .alert .dot.bad { background: var(--c-bad); }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0; font-size: var(--fs-sm); } dt { color: var(--c-text-3); } dd { margin: 0; overflow-wrap: anywhere; }
 </style>

@@ -46,7 +46,7 @@ def build(devices: list[Device], endpoints: dict[str, dict], known: dict | None 
         nodes[f"dev:{d.name}"] = {
             "id": f"dev:{d.name}", "kind": "device", "name": d.name, "role": "core", "layer": 0,
             "status": ("up" if d.routing_ok else "routing down") if d.reachable else "unreachable",
-            "ip": "" if d.address.startswith("kathara:") else d.address, "bgp_peers": d.bgp_peers, "descr": d.descr.split("\n")[0][:120],
+            "ip": d.address, "bgp_peers": d.bgp_peers, "descr": d.descr.split("\n")[0][:120],
             "uptime_s": d.uptime_s, "error": d.error,
             "ports": [{"name": p.name, "up": p.up, "mac": p.mac, "speed_mbps": p.speed_mbps,
                        "ips": [str(i) for i in p.ips], "mgmt": p.name == d.mgmt_port}

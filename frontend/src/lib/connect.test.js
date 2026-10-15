@@ -1,7 +1,7 @@
 // Run with: npm test (node --test, no extra dependencies)
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { connectBody, hostName, installCommand, missing, progress } from "./connect.js";
+import { bulkBody, connectBody, hostName, installCommand, missing, missingCred, parseTargets, progress } from "./connect.js";
 
 const form = (o = {}) => ({ name: "", address: " 34.2.129.3 ", port: "", user: "poc", auth: "password", password: "pw", key: "", passphrase: "", ebpf: true, ...o });
 const steps = (...states) => states.map((state, i) => ({ key: `s${i}`, label: `Step ${i}`, state }));
@@ -55,4 +55,29 @@ test("removing an agent shows the same ring: asked, agent removes itself, gone",
   const done = removal({ requestedAt: 1000, now: 1050, gone: true });
   assert.equal(done.state, "done");
   assert.equal(progress(done).value, 1);
+});
+
+test("the connect page accepts one address or many (bulk) from the Fleet", () => {
+  assert.deepEqual(parseTargets("10.4.82.40"), [{ address: "10.4.82.40" }]);
+  assert.deepEqual(parseTargets("10.4.82.40, 10.4.82.41 ,10.4.82.42"),
+    [{ address: "10.4.82.40" }, { address: "10.4.82.41" }, { address: "10.4.82.42" }]);
+  assert.deepEqual(parseTargets("10.4.82.40,10.4.82.41", "db2.sit.kmutt.ac.th,"),
+    [{ address: "10.4.82.40", name: "db2-sit-kmutt-ac-th" }, { address: "10.4.82.41" }]);
+  assert.deepEqual(parseTargets(""), []);
+});
+
+test("bulk connect sends one shared credential for every target", () => {
+  const f = form({ user: "poc", port: "2222", ebpf: false });
+  const targets = [{ address: "10.4.82.40", name: "db2" }, { address: "10.4.82.41" }];
+  assert.deepEqual(bulkBody(f, targets),
+    { targets, port: 2222, user: "poc", ebpf: false, password: "pw" });
+  const k = bulkBody(form({ user: "poc", auth: "key", key: "KEY", passphrase: "pp" }), targets);
+  assert.deepEqual(k, { targets, port: 22, user: "poc", ebpf: true, private_key: "KEY", passphrase: "pp" });
+});
+
+test("the shared credential still has to be complete, but no single address is needed", () => {
+  assert.equal(missingCred(form({ user: "" })), "Enter the user to sign in as");
+  assert.equal(missingCred(form({ password: "" })), "Enter the password");
+  assert.equal(missingCred(form({ auth: "key" })), "Choose the key file");
+  assert.equal(missingCred(form()), null);
 });

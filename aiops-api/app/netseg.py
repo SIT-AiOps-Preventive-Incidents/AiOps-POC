@@ -190,6 +190,7 @@ def graph(segments: list[dict], neighbors: list[dict], hosts: list[dict], svc_st
     segs = list({s["cidr"]: s for s in segments}.values())
     segs += estimated_segments(hosts, segs)
     status = {h["name"]: h.get("status") for h in hosts}
+    problems = {h["name"]: h.get("problem_id") for h in hosts}
     nodes, links, seen = [], [], set()
 
     def node(n):
@@ -220,8 +221,13 @@ def graph(segments: list[dict], neighbors: list[dict], hosts: list[dict], svc_st
         hub = f"hub:{i['cidr']}"
         if i["aiops_host"]:
             nid = f"host:{i['aiops_host']}"
-            node({"id": nid, "kind": "connected", "label": i["aiops_host"], "status": status.get(i["aiops_host"]) or "ok",
-                  "ip": i["ip"], "owner": i["owner"], "link": f"/computers/{i['aiops_host']}"})
+            pid = problems.get(i["aiops_host"])
+            n = {"id": nid, "kind": "connected", "label": i["aiops_host"], "status": status.get(i["aiops_host"]) or "ok",
+                 "ip": i["ip"], "owner": i["owner"], "link": f"/computers/{i['aiops_host']}"}
+            if pid:  # an open incident: the Fleet can jump straight into the RCA loop
+                n["problem_id"] = pid
+                n["problem_link"] = f"/problems/{pid}"
+            node(n)
             for svc in i["services"]:
                 node({"id": f"svc:{svc}", "kind": "service", "label": svc, "status": svc_status.get(svc) or "no-data",
                       "link": f"/services/{svc}"})

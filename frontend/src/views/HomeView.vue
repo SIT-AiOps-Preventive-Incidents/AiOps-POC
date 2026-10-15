@@ -3,10 +3,11 @@
 //   1. Is everything OK?               -> one status line (orange when a person is needed)
 //   2. Does anything need me?          -> the incident queue, each with its lifecycle
 //   3. How is each system doing?       -> services and hosts as tables, with 7 days of incident history
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import HistoryStrip from "@/components/domain/HistoryStrip.vue";
 import IncidentCard from "@/components/domain/IncidentCard.vue";
 import { usePolling } from "@/composables/usePolling";
+import { api } from "@/lib/api";
 import { ago, dur, ms, num, pct, rate } from "@/lib/format";
 import { rollup } from "@/lib/insight";
 import { HEALTH_TONE, kindIcon, languageLogo, osLogo } from "@/lib/vocab";
@@ -16,6 +17,16 @@ import { useIncidentStore } from "@/stores/incidents";
 const app = useAppStore();
 const incidents = useIncidentStore();
 usePolling(() => incidents.loadList(), 15000);
+
+// Fleet coverage: one clear next action — how much of the fleet AIOps watches, and what to connect next.
+const coverage = ref(null);
+usePolling(async () => {
+  try {
+    const [recs, disc] = await Promise.all([api.network.recommendations(), api.network.discovered()]);
+    const monitored = app.hosts.length;
+    coverage.value = { monitored, total: Math.max(disc.summary.machines, monitored), suggest: recs.count, top: recs.recommendations[0] };
+  } catch { coverage.value = null; }
+}, 30000);
 
 const queue = computed(() => [...app.awaiting, ...app.openProblems.filter((p) => p.status !== "awaiting_approval")]);
 const lastResolved = computed(() => incidents.list.find((i) => i.status === "resolved"));
@@ -31,7 +42,7 @@ const status = computed(() => {
 // "affected out of total", worst state first (Dynatrace / Carbon pattern); silence is counted, not hidden
 const health = computed(() => [
   { label: "Services", ...rollup(app.services), to: "/services" },
-  { label: "Hosts", ...rollup(app.hosts), to: "/hosts" },
+  { label: "Hosts", ...rollup(app.hosts), to: "/network" },
 ]);
 const historyFor = (name) => incidents.list.filter((i) => (i.entity_name || i.entity) === name);
 const healthLabel = { healthy: "Healthy", problem: "Problem", down: "Down", offline: "Offline", "no-data": "No data" };
@@ -71,6 +82,14 @@ const FLOW = computed(() => [
           <span class="flow__h">{{ f.hint }}</span>
         </li>
       </ol>
+
+      <router-link v-if="coverage && coverage.suggest" to="/network" class="coverage">
+        <div class="coverage__text">
+          <b>Monitoring {{ coverage.monitored }} of {{ coverage.total }} machines</b>
+          <span>{{ coverage.suggest }} more worth connecting<template v-if="coverage.top">, starting with {{ coverage.top.name }} — {{ coverage.top.reasons[0] }}</template>.</span>
+        </div>
+        <span class="coverage__cta">Review on the Fleet<UiIcon name="chevron_right" :size="16" /></span>
+      </router-link>
 
       <section v-if="queue.length">
         <h2 class="section-title">Open incidents <router-link to="/problems">All incidents</router-link></h2>
@@ -154,6 +173,14 @@ const FLOW = computed(() => [
 .flow__v { font-size: var(--fs-xl); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; color: var(--c-primary); }
 .flow li.you .flow__v { color: var(--c-action-text); }
 .flow__h { font-size: var(--fs-xs); color: var(--c-text-3); }
+
+.coverage { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 14px 18px; background: var(--c-surface);
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg); color: var(--c-text); text-decoration: none; }
+.coverage:hover { border-color: var(--c-primary); }
+.coverage__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.coverage__text b { font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+.coverage__text span { color: var(--c-text-2); font-size: var(--fs-sm); }
+.coverage__cta { display: inline-flex; align-items: center; gap: 2px; color: var(--c-primary); font-weight: var(--fw-semibold); font-size: var(--fs-sm); white-space: nowrap; }
 
 .queue { display: flex; flex-direction: column; gap: 10px; }
 

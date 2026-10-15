@@ -17,11 +17,33 @@ export function missing(f) {
   return null;
 }
 
+function credential(f) {
+  return f.auth === "password" ? { password: f.password }
+    : { private_key: f.key, ...(f.passphrase ? { passphrase: f.passphrase } : {}) };
+}
+
 export function connectBody(f) {
-  const body = { name: hostName(f.name, f.address), address: f.address.trim(), port: Number(f.port) || 22,
-    user: f.user.trim(), ebpf: Boolean(f.ebpf) };
-  if (f.auth === "password") return { ...body, password: f.password };
-  return { ...body, private_key: f.key, ...(f.passphrase ? { passphrase: f.passphrase } : {}) };
+  return { name: hostName(f.name, f.address), address: f.address.trim(), port: Number(f.port) || 22,
+    user: f.user.trim(), ebpf: Boolean(f.ebpf), ...credential(f) };
+}
+
+// The connect page can be opened for one machine or many (from the Fleet's "Monitor selected"): the address query
+// is one address or a comma-separated list. A target keeps its discovered hostname when the Fleet passed one.
+export function parseTargets(addressQuery, nameQuery) {
+  const names = String(nameQuery || "").split(",").map((s) => s.trim());
+  return String(addressQuery || "").split(",").map((s) => s.trim()).filter(Boolean)
+    .map((address, i) => (names[i] ? { address, name: slug(names[i].replace(/[.:]/g, "-")) || undefined } : { address }));
+}
+
+// Bulk connect: one shared sign-in, many machines. The credential is used once per host and never stored.
+export function bulkBody(f, targets) {
+  return { targets, port: Number(f.port) || 22, user: f.user.trim(), ebpf: Boolean(f.ebpf), ...credential(f) };
+}
+
+export function missingCred(f) {
+  if (!f.user.trim()) return "Enter the user to sign in as";
+  if (f.auth === "password" ? !f.password : !f.key) return f.auth === "password" ? "Enter the password" : "Choose the key file";
+  return null;
 }
 
 // How full the progress ring is: finished steps, plus half of the one being worked on. Full only when done.
