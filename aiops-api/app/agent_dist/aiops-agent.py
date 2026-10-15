@@ -18,7 +18,7 @@ import sys
 import time
 import urllib.request
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
 HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
@@ -249,7 +249,7 @@ def collector_apply(cfg):
     # read-only: container log files and the Docker API for per-container stats. Capped, so on a busy production
     # machine only the collector can be killed if it grows, never the apps.
     r = subprocess.run(["docker", "run", "-d", "--name", COLLECTOR_NAME, "--restart", "unless-stopped",
-                        "--label", f"aiops.cfg={digest}", "--memory", CFG.get("collector_memory", "150m"),
+                        "--label", f"aiops.cfg={digest}", "--memory", CFG.get("collector_memory", "256m"),
                         "--cpus", str(CFG.get("collector_cpus", "0.5")), "--network=host", "--user", "0:0",
                         "-v", f"{COLLECTOR_CFG}:/etc/otelcol/config.json:ro",
                         "-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",

@@ -72,7 +72,7 @@ def test_collector_reads_every_container_log_under_its_service_name():
     assert cfg["exporters"]["otlphttp"]["endpoint"] == "%OTLP%"     # the agent fills in its own way out
     assert cfg["service"]["pipelines"]["logs"]["receivers"] == sorted(logs)
     assert "docker_stats" in cfg["service"]["pipelines"]["metrics"]["receivers"]
-    assert cfg["processors"]["memory_limiter"]["limit_mib"] <= 120
+    assert 150 <= cfg["processors"]["memory_limiter"]["limit_mib"] <= 200   # measured 80-143 MB; below that it refuses logs
 
 
 def test_config_is_stable_so_the_agent_restarts_nothing_when_nothing_changed():

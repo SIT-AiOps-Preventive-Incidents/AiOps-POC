@@ -103,7 +103,7 @@ def config(host: str, containers: list[dict]) -> str:
         pipelines["logs"] = {"receivers": sorted(logs), "processors": proc, "exporters": ["otlphttp"]}
     return json.dumps({
         "receivers": receivers,
-        "processors": {"memory_limiter": {"check_interval": "2s", "limit_mib": 110, "spike_limit_mib": 30},
+        "processors": {"memory_limiter": {"check_interval": "2s", "limit_mib": 180, "spike_limit_mib": 40},
                        "batch": {"timeout": "5s"},
                        "resource/host": {"attributes": [{"key": "host.name", "value": host, "action": "upsert"}]}},
         "exporters": {"otlphttp": {"endpoint": "%OTLP%"}},
