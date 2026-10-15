@@ -8,10 +8,18 @@ import { useMapStore } from "@/stores/map";
 
 const map = useMapStore();
 usePolling(() => (map.test.phase === "playing" ? null : map.load()), 15000);
-const filters = computed(() => [
-  { value: "all", label: "All" }, { value: "problems", label: "Only problems" },
-  ...(map.data?.hosts || []).map((h) => ({ value: `host:${h.name}`, label: h.name })),
-]);
+// two independent controls, not one long mixed strip: a view (everything / only problems) and, separately,
+// which computer to focus on. Both still drive the store's single `filter`, so one wins at a time.
+const VIEWS = [{ value: "all", label: "All services" }, { value: "problems", label: "Only problems" }];
+const view = computed({
+  get: () => (map.filter === "problems" ? "problems" : "all"),
+  set: (v) => (map.filter = v),
+});
+const hosts = computed(() => map.data?.hosts || []);
+const focusedHost = computed({
+  get: () => (map.filter.startsWith("host:") ? map.filter.slice(5) : ""),
+  set: (name) => (map.filter = name ? `host:${name}` : "all"),
+});
 const busy = computed(() => ["sending", "tracing", "playing"].includes(map.test.phase));
 const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
 </script>
@@ -20,7 +28,16 @@ const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
     <UiPageHeader title="Service map" subtitle="Every hop a request takes, left to right. Computers you connect show what runs on them below.">
       <UiButton icon="play" :loading="busy" :disabled="!entry" @click="map.runTest()">{{ busy ? "Running test…" : "Send test request" }}</UiButton>
     </UiPageHeader>
-    <UiSegmented v-model="map.filter" :options="filters" label="Filter the map" class="filter" />
+    <div class="filter">
+      <UiSegmented v-model="view" :options="VIEWS" label="View" />
+      <label v-if="hosts.length" class="focus">
+        <span class="muted small">Focus a computer</span>
+        <select v-model="focusedHost">
+          <option value="">All computers</option>
+          <option v-for="h in hosts" :key="h.name" :value="h.name">{{ h.name }}</option>
+        </select>
+      </label>
+    </div>
     <div :class="['layout', { 'with-side': map.selected || map.test.phase !== 'idle' }]">
       <ServiceMapCanvas @select="map.select" />
       <div v-if="map.selected || map.test.phase !== 'idle'" class="stack">
@@ -33,7 +50,11 @@ const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
   </div>
 </template>
 <style scoped>
-.filter { margin-bottom: 14px; }
+.filter { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
+.focus { display: flex; align-items: center; gap: 8px; }
+.focus select { font: inherit; font-size: var(--fs-sm); padding: 6px 10px; border: 1px solid var(--c-border); border-radius: var(--radius-md);
+  background: var(--c-surface); color: var(--c-text); cursor: pointer; }
+.focus select:hover { border-color: var(--c-primary); }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .layout.with-side { grid-template-columns: minmax(0, 1fr) 340px; }
 @media (max-width: 1080px) { .layout.with-side { grid-template-columns: 1fr; } }
