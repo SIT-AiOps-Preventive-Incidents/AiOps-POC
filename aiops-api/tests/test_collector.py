@@ -69,7 +69,7 @@ def test_collector_reads_every_container_log_under_its_service_name():
     assert esg["include"] == [f"/var/lib/docker/containers/{ID['one-esg-360']}/{ID['one-esg-360']}-json.log"]
     assert esg["resource"] == {"service.name": "one-esg-360", "host.name": "esg360-prod"}
     assert esg["operators"][0]["type"] == "container"
-    assert cfg["exporters"]["otlphttp"]["endpoint"] == "__OTLP__"     # the agent fills in its own way out
+    assert cfg["exporters"]["otlphttp"]["endpoint"] == "%OTLP%"     # the agent fills in its own way out
     assert cfg["service"]["pipelines"]["logs"]["receivers"] == sorted(logs)
     assert "docker_stats" in cfg["service"]["pipelines"]["metrics"]["receivers"]
     assert cfg["processors"]["memory_limiter"]["limit_mib"] <= 120
@@ -81,3 +81,11 @@ def test_config_is_stable_so_the_agent_restarts_nothing_when_nothing_changed():
 
 def test_no_environment_values_are_needed():
     assert all("=" not in k for c in ESG for k in c["env_keys"])   # names only, never DATABASE_URL's value
+
+
+def test_placeholders_survive_the_installer():
+    """/install/aiops-agent.py rewrites __API__ and __OTLP__ in the agent, so the collector placeholders must differ."""
+    agent = open(os.path.join(os.path.dirname(__file__), "..", "app", "agent_dist", "aiops-agent.py")).read()
+    for ph in ("%OTLP%", "%DOCKER_API%"):
+        assert ph in collector.config("h", ESG) and ph in agent
+    assert "__OTLP__" not in collector.config("h", ESG) and "__API__" not in collector.config("h", ESG)

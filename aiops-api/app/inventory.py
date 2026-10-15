@@ -63,7 +63,7 @@ def ingest(host: str, inv: dict) -> dict:
     # ---- containers ----
     traced_by_container = {i["container"]: s["service_name"] for s in repo.list_services(("service", "network"))
                            for i in s["instances"] if i.get("container")}
-    ignore = platform_ignores() | {"aiops-ebpf"}  # the agent's own eBPF tracer
+    ignore = platform_ignores() | set(collector.OWN)  # the agent's own eBPF tracer and log collector
     for c in inv.get("containers") or []:
         name = c.get("name", "")
         if not name or name in ignore or (c.get("image") or "").startswith(NETWORK_DEVICE_IMAGES):

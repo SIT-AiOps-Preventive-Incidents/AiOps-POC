@@ -205,7 +205,7 @@ def collector_apply(cfg):
         COLLECTOR.update(state="unavailable", error="Docker is not installed or this user cannot run it")
         return
     api = sh(["docker", "version", "--format", "{{.Server.APIVersion}}"]).strip() or "1.44"
-    cfg = cfg.replace("__OTLP__", OTLP).replace("__DOCKER_API__", api)
+    cfg = cfg.replace("%OTLP%", OTLP).replace("%DOCKER_API%", api)
     digest = hashlib.sha1((cfg + COLLECTOR_IMAGE).encode()).hexdigest()[:12]
     cur = sh(["docker", "inspect", "-f", '{{index .Config.Labels "aiops.cfg"}} {{.State.Running}}', COLLECTOR_NAME]).split()
     if cur == [digest, "true"]:
