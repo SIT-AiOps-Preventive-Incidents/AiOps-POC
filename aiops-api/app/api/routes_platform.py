@@ -7,7 +7,7 @@ import random
 import httpx
 from fastapi import APIRouter, Response
 
-from .. import db, detector, health, llm, notify, remediation, repo
+from .. import datasets, db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
 from ..netdisco import scenarios as net_scenarios
 from .errors import ApiError, not_found
@@ -141,8 +141,9 @@ SCENARIOS = ["bad_deploy", "instance_fault", "slow_db", "cpu_hog", "brute_force"
 
 
 def _scenarios() -> list[str]:
-    """The network faults are offered only while the network lab runs."""
-    return SCENARIOS[:-1] + (net_scenarios.NAMES if net_scenarios.available() else []) + SCENARIOS[-1:]
+    """The shop faults need the shop; the network faults are offered only while the network lab runs."""
+    shop = SCENARIOS[:-1] if datasets.DATASET == "shop" else []
+    return shop + (net_scenarios.NAMES if net_scenarios.available() else []) + SCENARIOS[-1:]
 
 
 async def _post(url: str, body: dict):
@@ -154,11 +155,17 @@ async def _post(url: str, body: dict):
 
 @router.get("/scenarios", tags=["demo"])
 async def list_scenarios():
-    return await asyncio.to_thread(_scenarios)
+    names = await asyncio.to_thread(_scenarios)
+    return await datasets.replay_cases() + names
 
 
 @router.post("/scenarios/{scenario}/runs", status_code=202, tags=["demo"], summary="Inject a fault (or reset)")
 async def run_scenario(scenario: str):
+    if scenario.startswith(datasets.PREFIX):
+        if scenario not in await datasets.replay_cases():
+            raise not_found("scenario", scenario)
+        await datasets.play(scenario)
+        return {"scenario": scenario, "status": "started"}
     if scenario not in SCENARIOS and scenario not in net_scenarios.NAMES:
         raise not_found("scenario", scenario)
     if scenario in net_scenarios.NAMES:
@@ -182,6 +189,9 @@ async def run_scenario(scenario: str):
                                             "(connection pool stuck after network blip)"})
     elif scenario == "reset":
         await net_scenarios.reset()   # first: the network lab must recover even if a demo part below is missing
+        await datasets.reset()        # AnoMod replay back to the normal run
+        if datasets.DATASET != "shop":
+            return {"scenario": scenario, "status": "reset"}
         with open(remediation.BLOCKLIST, "w") as f:
             f.write("# managed by AIOps remediation (owner-approved block_ip actions)\n")
         await tm.container_exec(remediation.FW_CONTAINER, ["nginx", "-s", "reload"])

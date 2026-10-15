@@ -20,22 +20,31 @@ attach() {  # container network ip gateway
     docker network connect --ip "$3" "$2" "$1"
   helper --net "container:$1" --cap-add NET_ADMIN --entrypoint sh "$NODE" -c "ip route replace 10.20.0.0/16 via $4"
 }
-attach frontend-a nl-seg-app 10.20.1.11 10.20.1.1
-attach frontend-b nl-seg-app 10.20.1.12 10.20.1.1
-attach checkout   nl-seg-app 10.20.1.13 10.20.1.1
-attach payment    nl-seg-data 10.20.2.10 10.20.2.1
-attach inventory  nl-seg-data 10.20.2.11 10.20.2.1
+# Which hosts sit behind the switches: the shop's containers, or one small host per replayed AnoMod service
+# (replay/anomod). DEMO_DATASET picks, like it does for aiops-api.
+if [ "${DEMO_DATASET:-shop}" = anomod ]; then
+  APP_HOSTS="sn-nginx-web-server sn-compose-post-service sn-home-timeline-service sn-user-timeline-service sn-text-service sn-media-service sn-url-shorten-service sn-user-mention-service sn-unique-id-service"
+  DATA_HOSTS="sn-user-service sn-social-graph-service sn-post-storage-service"
+else
+  APP_HOSTS="frontend-a frontend-b checkout"
+  DATA_HOSTS="payment inventory"
+fi
+i=11; for h in $APP_HOSTS; do attach "$h" nl-seg-app "10.20.1.$i" 10.20.1.1; i=$((i + 1)); done
+i=10; for h in $DATA_HOSTS; do attach "$h" nl-seg-data "10.20.2.$i" 10.20.2.1; i=$((i + 1)); done
 
 hosts_line() {  # container ip name: pin a name to its lab address (marked so down.sh can remove it)
   docker exec "$1" sh -c "grep -q ' $3 # netlab' /etc/hosts || echo '$2 $3 # netlab' >> /etc/hosts"
 }
-hosts_line checkout 10.20.2.10 payment
-hosts_line checkout 10.20.2.11 inventory
+if [ "${DEMO_DATASET:-shop}" != anomod ]; then   # the shop's checkout really calls through the lab
+  hosts_line checkout 10.20.2.10 payment
+  hosts_line checkout 10.20.2.11 inventory
+fi
 
 echo "waiting for OSPF..."
+first_app=${APP_HOSTS%% *}
 for i in $(seq 1 30); do
-  docker exec checkout python -c "import socket; socket.create_connection(('10.20.2.10', 8000), 2)" 2>/dev/null && break
+  docker run --rm --net "container:$first_app" --entrypoint sh "$NODE" -c "ping -c1 -W1 10.20.2.10" >/dev/null 2>&1 && break
   sleep 2
 done
 docker exec core-rtr vtysh -c 'show ip ospf neighbor'
-echo "lab up: checkout -> payment now goes checkout - sw-app - core-rtr - sw-data - payment"
+echo "lab up: $first_app reaches 10.20.2.10 through sw-app - core-rtr - sw-data"
