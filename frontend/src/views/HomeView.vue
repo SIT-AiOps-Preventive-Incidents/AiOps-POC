@@ -65,20 +65,24 @@ const health = computed(() => {
 
 const kindLabel = (i) => INCIDENT_KIND[i.kind]?.label || i.title;
 const entityOf = (i) => i.entity_name || i.entity;
-const heroIcon = computed(() => (status.value.tone === "ok" ? "checkmark" : status.value.tone === "action" ? "person" : "sparkle"));
+const eyebrow = computed(() => (status.value.tone === "action" ? t("Action required", "ต้องดำเนินการ")
+  : status.value.tone === "info" ? t("AI investigating", "AI กำลังสืบสวน") : t("All systems normal", "ระบบทำงานปกติ")));
 </script>
 <template>
   <div class="page">
     <template v-if="app.overview">
-      <!-- hero: the state + the one next action -->
-      <section :class="['hero', `hero--${status.tone}`]" aria-live="polite">
-        <span class="hero__mark" aria-hidden="true"><UiIcon :name="heroIcon" :size="22" /></span>
-        <div class="hero__text"><h1>{{ status.title }}</h1><p>{{ status.sub }}</p></div>
-        <div class="hero__side">
-          <UiButton :variant="primary.variant" size="lg" :to="primary.to" :icon="primary.icon">{{ primary.label }}</UiButton>
-          <span class="hero__checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
+      <!-- page header: status eyebrow, headline, and the one next action -->
+      <header :class="['top', `top--${status.tone}`]" aria-live="polite">
+        <div class="top__l">
+          <span class="eyebrow"><span class="eyebrow__dot" />{{ eyebrow }}</span>
+          <h1>{{ status.title }}</h1>
+          <p class="sub">{{ status.sub }}</p>
         </div>
-      </section>
+        <div class="top__r">
+          <UiButton :variant="primary.variant" size="lg" :to="primary.to" :icon="primary.icon">{{ primary.label }}</UiButton>
+          <span class="checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
+        </div>
+      </header>
 
       <div class="cmd">
         <!-- left: what needs me -->
@@ -142,25 +146,21 @@ const heroIcon = computed(() => (status.value.tone === "ok" ? "checkmark" : stat
   </div>
 </template>
 <style scoped>
-/* ---- hero: the one focal banner ---- */
-.hero { display: flex; align-items: center; gap: 16px; padding: 18px 22px 18px 24px; margin: 8px 0 18px; position: relative; overflow: hidden;
-  border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
-.hero::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c-neutral); }
-.hero--action { background: var(--c-action-bg); border-color: color-mix(in srgb, var(--c-action) 35%, var(--c-border)); }
-.hero--action::before { background: var(--c-action); }
-.hero--info { background: var(--c-primary-tint); border-color: color-mix(in srgb, var(--c-primary) 30%, var(--c-border)); }
-.hero--info::before { background: var(--c-primary); }
-.hero--ok { background: var(--c-ok-bg); border-color: color-mix(in srgb, var(--c-ok) 30%, var(--c-border)); }
-.hero--ok::before { background: var(--c-ok); }
-.hero__mark { width: 40px; height: 40px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
-.hero--action .hero__mark { background: var(--c-action); color: var(--c-on-action); }
-.hero--info .hero__mark { background: var(--c-primary); }
-.hero--ok .hero__mark { background: var(--c-ok); }
-.hero__text { flex: 1; min-width: 0; }
-.hero__text h1 { font-size: var(--fs-2xl); line-height: 1.2; font-weight: var(--fw-semibold); }
-.hero__text p { color: var(--c-text-2); margin-top: 3px; }
-.hero__side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
-.hero__checked { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
+/* ---- page header: editorial, not a coloured alert box. Status reads from a small eyebrow dot + the CTA. ---- */
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 20px 0 20px; margin-bottom: 22px; border-bottom: 1px solid var(--c-border); }
+.top__l { min-width: 0; }
+.eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--c-text-3); margin-bottom: 11px; }
+.eyebrow__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-neutral); flex: none; }
+.top--action .eyebrow { color: var(--c-action-text); } .top--action .eyebrow__dot { background: var(--c-action); }
+.top--info .eyebrow { color: var(--c-primary); } .top--info .eyebrow__dot { background: var(--c-primary); animation: eb-pulse 2s var(--ease, ease-out) infinite; }
+.top--ok .eyebrow { color: var(--c-ok-text); } .top--ok .eyebrow__dot { background: var(--c-ok); }
+@keyframes eb-pulse { 0% { box-shadow: 0 0 0 0 var(--c-halo); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) { .top--info .eyebrow__dot { animation: none; } }
+.top h1 { font-size: var(--fs-3xl); line-height: 1.15; font-weight: var(--fw-bold); letter-spacing: -0.01em; }
+.sub { color: var(--c-text-2); margin-top: 6px; max-width: 72ch; }
+.top__r { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.checked { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
 
 /* ---- command grid ---- */
 .cmd { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
@@ -211,5 +211,5 @@ const heroIcon = computed(() => (status.value.tone === "ok" ? "checkmark" : stat
 .cov__cta { display: inline-flex; align-items: center; gap: 2px; color: var(--c-primary); font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
 
 @media (max-width: 1080px) { .cmd { grid-template-columns: 1fr; } .cmd__aside { position: static; } }
-@media (max-width: 760px) { .hero { flex-wrap: wrap; } .hero__text { flex-basis: 100%; } .hero__side { width: 100%; align-items: stretch; } .hero__text h1 { font-size: 20px; } .row__s { white-space: normal; } }
+@media (max-width: 760px) { .top { flex-direction: column; align-items: stretch; gap: 16px; } .top__r { align-items: stretch; } .top h1 { font-size: 23px; } .item__s { white-space: normal; } }
 </style>
