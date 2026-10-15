@@ -146,15 +146,16 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
         <UiButton v-if="picked.size" size="sm" icon="add" class="bulk-btn" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
       </div>
       <div class="rec-row">
-        <label v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', { checked: picked.has(r.ip) }]">
-          <input type="checkbox" :checked="picked.has(r.ip)" @change="toggle(r.ip)" />
+        <div v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', { checked: picked.has(r.ip) }]"
+             role="button" tabindex="0" :aria-pressed="picked.has(r.ip)" @click="toggle(r.ip)" @keydown.enter="toggle(r.ip)" @keydown.space.prevent="toggle(r.ip)">
+          <span class="rec-check"><UiIcon name="checkmark" :size="13" /></span>
           <div class="rec-top">
             <UiAppTile icon="server" color="var(--c-chart-4)" :size="30" />
             <div class="rec-name">{{ short(r.name) }}</div>
           </div>
           <div class="rec-why muted small">{{ r.reasons[0] }}</div>
-          <UiButton size="sm" variant="tint" icon="add" block @click.prevent="monitorIp(r.ip)">Monitor</UiButton>
-        </label>
+          <UiButton size="sm" variant="tint" icon="add" block @click.stop="monitorIp(r.ip)">Monitor now</UiButton>
+        </div>
       </div>
     </section>
     <div class="bar">
@@ -224,9 +225,13 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .bulk-btn { margin-left: auto; align-self: center; }
 .rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; align-items: stretch; }
 /* grid rows (name / reason / button) so the Monitor button sits on the same line across every card */
-.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 12px 12px 12px 32px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; position: relative; cursor: pointer; }
-.rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint); }
-.rec > input { position: absolute; left: 11px; top: 14px; width: 15px; height: 15px; cursor: pointer; }
+.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 12px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; position: relative; cursor: pointer; }
+.rec:hover { border-color: var(--c-text-3); }
+.rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint); box-shadow: inset 0 0 0 1px var(--c-primary); }
+/* a tick appears in the corner only when the card is selected for bulk monitoring */
+.rec-check { position: absolute; top: 9px; right: 9px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--c-primary); color: var(--c-on-primary); opacity: 0; transform: scale(0.6); transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+.rec.checked .rec-check { opacity: 1; transform: scale(1); }
 .rec-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; line-height: var(--lh-snug); }
 .rec-why { align-self: start; }
