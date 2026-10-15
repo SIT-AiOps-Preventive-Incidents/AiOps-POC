@@ -13,9 +13,11 @@ import { rollup } from "@/lib/insight";
 import { HEALTH_TONE, kindIcon, languageLogo, osLogo } from "@/lib/vocab";
 import { useAppStore } from "@/stores/app";
 import { useIncidentStore } from "@/stores/incidents";
+import { useI18n } from "@/lib/i18n";
 
 const app = useAppStore();
 const incidents = useIncidentStore();
+const { t, locale } = useI18n();
 usePolling(() => incidents.loadList(), 15000);
 
 // Fleet coverage: one clear next action — how much of the fleet AIOps watches, and what to connect next.
@@ -32,27 +34,27 @@ const queue = computed(() => [...app.awaiting, ...app.openProblems.filter((p) =>
 const lastResolved = computed(() => incidents.list.find((i) => i.status === "resolved"));
 const status = computed(() => {
   const n = app.awaiting.length, m = queue.value.length - n;
-  if (n) return { tone: "action", title: n > 1 ? `${n} fixes are waiting for your approval` : "A fix is waiting for your approval",
-    sub: "The AI has found the cause and tested each fix in a dry run. Nothing changes until you approve." };
-  if (m) return { tone: "info", title: m > 1 ? `The AI is investigating ${m} incidents` : "The AI is investigating an incident",
-    sub: "You will be asked to approve a fix as soon as one is ready." };
-  return { tone: "ok", title: "Everything is working normally",
-    sub: lastResolved.value ? `The last incident was resolved ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}.` : "No incidents so far." };
+  if (n) return { tone: "action", title: n > 1 ? t(`${n} fixes are waiting for your approval`, `มี ${n} การแก้ไขรอคุณอนุมัติ`) : t("A fix is waiting for your approval", "มีการแก้ไขรอคุณอนุมัติ"),
+    sub: t("The AI has found the cause and tested each fix in a dry run. Nothing changes until you approve.", "AI หาสาเหตุเจอและทดสอบการแก้ไขแต่ละอันแบบ dry run แล้ว ไม่มีอะไรเปลี่ยนจนกว่าคุณจะอนุมัติ") };
+  if (m) return { tone: "info", title: m > 1 ? t(`The AI is investigating ${m} incidents`, `AI กำลังสืบสวน ${m} เหตุการณ์`) : t("The AI is investigating an incident", "AI กำลังสืบสวนเหตุการณ์"),
+    sub: t("You will be asked to approve a fix as soon as one is ready.", "เมื่อการแก้ไขพร้อม ระบบจะให้คุณอนุมัติ") };
+  return { tone: "ok", title: t("Everything is working normally", "ทุกอย่างทำงานปกติ"),
+    sub: lastResolved.value ? t(`The last incident was resolved ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}.`, `เหตุการณ์ล่าสุดแก้ไขเสร็จ ${ago(lastResolved.value.resolved_at || lastResolved.value.detected_at)}`) : t("No incidents so far.", "ยังไม่มีเหตุการณ์") };
 });
 // "affected out of total", worst state first (Dynatrace / Carbon pattern); silence is counted, not hidden
 const health = computed(() => [
-  { label: "Services", ...rollup(app.services), to: "/services" },
-  { label: "Hosts", ...rollup(app.hosts), to: "/network" },
+  { label: t("services", "บริการ"), ...rollup(app.services), to: "/services" },
+  { label: t("hosts", "เครื่อง"), ...rollup(app.hosts), to: "/network" },
 ]);
 const historyFor = (name) => incidents.list.filter((i) => (i.entity_name || i.entity) === name);
-const healthLabel = { healthy: "Healthy", problem: "Problem", down: "Down", offline: "Offline", "no-data": "No data" };
+const healthLabel = computed(() => ({ healthy: t("Healthy", "ปกติ"), problem: t("Problem", "มีปัญหา"), down: t("Down", "ล่ม"), offline: t("Offline", "ออฟไลน์"), "no-data": t("No data", "ไม่มีข้อมูล") }));
 
 // How the platform handles an incident, with the real averages from this installation
 const FLOW = computed(() => [
-  { title: "Detect", icon: "search", value: dur(app.kpi.mttd_s), hint: "from the first bad signal" },
-  { title: "Investigate", icon: "sparkle", value: "AI", hint: "reads metrics, traces and logs" },
-  { title: "Approve", icon: "person", value: "You", hint: "nothing changes without you", you: true },
-  { title: "Fix and verify", icon: "checkmark_circle", value: dur(app.kpi.mttr_s), hint: "from detection to verified" },
+  { title: t("Detect", "ตรวจจับ"), icon: "search", value: dur(app.kpi.mttd_s), hint: t("from the first bad signal", "นับจากสัญญาณผิดปกติแรก") },
+  { title: t("Investigate", "สืบสวน"), icon: "sparkle", value: "AI", hint: t("reads metrics, traces and logs", "อ่าน metric, trace และ log") },
+  { title: t("Approve", "อนุมัติ"), icon: "person", value: t("You", "คุณ"), hint: t("nothing changes without you", "ไม่มีอะไรเปลี่ยนถ้าคุณไม่อนุมัติ"), you: true },
+  { title: t("Fix and verify", "แก้และตรวจสอบ"), icon: "checkmark_circle", value: dur(app.kpi.mttr_s), hint: t("from detection to verified", "นับจากตรวจพบจนยืนยันแก้สำเร็จ") },
 ]);
 </script>
 <template>
@@ -68,11 +70,11 @@ const FLOW = computed(() => [
           <ul class="roll" aria-label="Health summary">
             <li v-for="h in health" :key="h.label"><router-link :to="h.to">
               <UiStatusDot :tone="h.affected ? 'bad' : 'ok'" :size="8" />
-              <b>{{ h.affected }} of {{ h.total }}</b> {{ h.label.toLowerCase() }} affected<span v-if="h.quiet" class="dim"> · {{ h.quiet }} sending no data</span>
+              <b>{{ h.affected }} {{ t("of", "จาก") }} {{ h.total }}</b> {{ h.label }} {{ t("affected", "มีปัญหา") }}<span v-if="h.quiet" class="dim"> · {{ h.quiet }} {{ t("sending no data", "ไม่ส่งข้อมูล") }}</span>
             </router-link></li>
           </ul>
         </div>
-        <span class="status__checked">Checked {{ ago(app.overview.detector?.ts) }}</span>
+        <span class="status__checked">{{ t("Checked", "ตรวจเมื่อ") }} {{ ago(app.overview.detector?.ts) }}</span>
       </section>
 
       <ol class="flow" aria-label="How an incident is handled">
@@ -85,22 +87,22 @@ const FLOW = computed(() => [
 
       <router-link v-if="coverage && coverage.suggest" to="/network" class="coverage">
         <div class="coverage__text">
-          <b>Monitoring {{ coverage.monitored }} of {{ coverage.total }} machines</b>
-          <span>{{ coverage.suggest }} more worth connecting<template v-if="coverage.top">, starting with {{ coverage.top.name }} — {{ coverage.top.reasons[0] }}</template>.</span>
+          <b>{{ t("Monitoring", "เฝ้าดู") }} {{ coverage.monitored }} {{ t("of", "จาก") }} {{ coverage.total }} {{ t("machines", "เครื่อง") }}</b>
+          <span><template v-if="locale === 'th'">อีก {{ coverage.suggest }} เครื่องน่าเชื่อมต่อ<template v-if="coverage.top"> เริ่มจาก {{ coverage.top.name }} — {{ coverage.top.reasons[0] }}</template></template><template v-else>{{ coverage.suggest }} more worth connecting<template v-if="coverage.top">, starting with {{ coverage.top.name }} — {{ coverage.top.reasons[0] }}</template>.</template></span>
         </div>
-        <span class="coverage__cta">Review on the Fleet<UiIcon name="chevron_right" :size="16" /></span>
+        <span class="coverage__cta">{{ t("Review on the Fleet", "ดูในฟลีต") }}<UiIcon name="chevron_right" :size="16" /></span>
       </router-link>
 
       <section v-if="queue.length">
-        <h2 class="section-title"><span class="st-l"><UiIcon name="warning" :size="16" />Open incidents</span><router-link to="/problems">All incidents</router-link></h2>
+        <h2 class="section-title"><span class="st-l"><UiIcon name="warning" :size="16" />{{ t("Open incidents", "เหตุการณ์ที่เปิดอยู่") }}</span><router-link to="/problems">{{ t("All incidents", "เหตุการณ์ทั้งหมด") }}</router-link></h2>
         <div class="queue"><IncidentCard v-for="p in queue" :key="p.id" :incident="p" /></div>
       </section>
 
       <section>
-        <h2 class="section-title"><span class="st-l"><UiIcon name="cube" :size="16" />Services</span><router-link to="/map">Service map</router-link></h2>
+        <h2 class="section-title"><span class="st-l"><UiIcon name="cube" :size="16" />{{ t("Services", "บริการ") }}</span><router-link to="/map">{{ t("Service map", "แผนผังบริการ") }}</router-link></h2>
         <div class="table-wrap">
           <table class="tbl">
-            <thead><tr><th>Service</th><th>Status</th><th class="r">Requests</th><th class="r">Errors</th><th class="r">p95</th><th>Last 7 days</th></tr></thead>
+            <thead><tr><th>{{ t("Service", "บริการ") }}</th><th>{{ t("Status", "สถานะ") }}</th><th class="r">{{ t("Requests", "คำขอ") }}</th><th class="r">{{ t("Errors", "ข้อผิดพลาด") }}</th><th class="r">p95</th><th>{{ t("Last 7 days", "7 วันล่าสุด") }}</th></tr></thead>
             <tbody>
               <tr v-for="s in app.services" :key="s.service" @click="$router.push(`/services/${s.service}`)">
                 <td><div class="who"><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" />
@@ -118,10 +120,10 @@ const FLOW = computed(() => [
 
       <div class="cols">
         <section>
-          <h2 class="section-title"><span class="st-l"><UiIcon name="server" :size="16" />Hosts</span><router-link to="/computers">All hosts</router-link></h2>
+          <h2 class="section-title"><span class="st-l"><UiIcon name="server" :size="16" />{{ t("Hosts", "เครื่อง") }}</span><router-link to="/computers">{{ t("All hosts", "เครื่องทั้งหมด") }}</router-link></h2>
           <div class="table-wrap">
             <table class="tbl">
-              <thead><tr><th>Host</th><th>CPU</th><th>Memory</th><th>Disk</th><th>Last 7 days</th></tr></thead>
+              <thead><tr><th>{{ t("Host", "เครื่อง") }}</th><th>CPU</th><th>{{ t("Memory", "หน่วยความจำ") }}</th><th>{{ t("Disk", "ดิสก์") }}</th><th>{{ t("Last 7 days", "7 วันล่าสุด") }}</th></tr></thead>
               <tbody>
                 <tr v-for="h in app.hosts" :key="h.name" @click="$router.push(`/computers/${h.name}`)">
                   <td><div class="who"><UiAppTile :logo="osLogo(h.os)" :icon="h.kind === 'workstation' ? 'laptop' : 'server'" :status="HEALTH_TONE[h.status]" :size="24" />
@@ -136,22 +138,22 @@ const FLOW = computed(() => [
           </div>
         </section>
         <section v-if="app.discovered.length">
-          <h2 class="section-title"><span class="st-l"><UiIcon name="search" :size="16" />Found running on your hosts</span></h2>
+          <h2 class="section-title"><span class="st-l"><UiIcon name="search" :size="16" />{{ t("Found running on your hosts", "พบกำลังทำงานบนเครื่องของคุณ") }}</span></h2>
           <UiList>
             <UiListRow v-for="s in app.discovered.slice(0, 5)" :key="s.service" :to="`/services/${s.service}`" :title="s.name"
-                       :subtitle="`On ${s.hosts.join(', ')}, seen ${ago(s.last_seen)}`">
+                       :subtitle="locale === 'th' ? `บน ${s.hosts.join(', ')} · เห็นล่าสุด ${ago(s.last_seen)}` : `On ${s.hosts.join(', ')}, seen ${ago(s.last_seen)}`">
               <template #leading><UiAppTile :logo="languageLogo(s.language || s.service)" :icon="kindIcon(s.kind)" :size="24" /></template>
             </UiListRow>
           </UiList>
         </section>
       </div>
     </template>
-    <UiWait v-else title="Loading the overview" />
+    <UiWait v-else :title="t('Loading the overview', 'กำลังโหลดภาพรวม')" />
   </div>
 </template>
 <style scoped>
 .status { display: flex; align-items: center; gap: 14px; padding: 24px 0 18px; }
-.status__mark { width: 36px; height: 36px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
+.status__mark { width: 32px; height: 32px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; color: #fff; }
 .status--ok .status__mark { background: var(--c-ok); }
 .status--info .status__mark { background: var(--c-primary); position: relative; }
 /* AI at work: a soft blue ring breathing out of the mark */
@@ -163,7 +165,7 @@ const FLOW = computed(() => [
 .status--action .status__mark { background: var(--c-action); color: var(--c-on-action); }
 @media (prefers-reduced-motion: reduce) { .status--info .status__mark::after, .status--info .status__mark .ui-icon { animation: none; } }
 .status__text { flex: 1; min-width: 0; }
-.status h1 { font-size: var(--fs-3xl); line-height: 1.2; font-weight: var(--fw-semibold); }
+.status h1 { font-size: var(--fs-2xl); line-height: 1.2; font-weight: var(--fw-semibold); }
 .status p { color: var(--c-text-2); margin-top: 4px; }
 .roll { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; font-size: var(--fs-sm); }
 .roll a { display: inline-flex; align-items: center; gap: 6px; color: var(--c-text-2); text-decoration: none; }

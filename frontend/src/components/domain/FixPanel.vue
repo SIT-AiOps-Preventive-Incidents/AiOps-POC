@@ -79,6 +79,7 @@ async function decide(decision) {
           {{ canApprove ? "AIOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Turn on “I’m the owner” to enable approval." : "Enter your name to enable approval." }}
         </p>
         <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
+        <UiField v-model="comment" class="cmt" label="Comment (optional)" placeholder="Why approve or reject" />
       </div>
 
       <UiDisclosure v-if="cands.length > 1" :card="false" :title="`Other options (${cands.length - 1})`" class="mt-2">
@@ -88,7 +89,6 @@ async function decide(decision) {
             <span :class="['small', 'block', c.dry_run?.ok ? 'ok' : 'bad']">{{ c.dry_run?.ok ? "Dry run passed" : "Dry run failed: " + (c.dry_run?.checks || []).filter((x) => !x.ok).map((x) => x.name).join(", ") }}</span></span>
         </label>
       </UiDisclosure>
-      <UiField v-model="comment" label="Comment (optional)" placeholder="Why approve or reject" />
     </template>
 
     <template v-else>
@@ -130,6 +130,8 @@ async function decide(decision) {
 /* Reject: quiet, never competes with Approve */
 .reject { color: var(--c-text-2); }
 .reject:hover:not(:disabled) { background: var(--c-bad-bg); color: var(--c-bad-text); }
+.cmt { margin-top: 12px; }
+.cmt :deep(label) { color: var(--c-action-text); }
 /* phones: keep the decision in reach while scrolling the evidence */
 @media (max-width: 640px) { .decision { position: sticky; bottom: 0; z-index: 2; } }
 .alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; margin-top: 6px; background: var(--c-fill); }

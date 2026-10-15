@@ -2,8 +2,10 @@
 import { useAppStore } from "@/stores/app";
 import { computed } from "vue";
 import { THEMES, useUiStore } from "@/stores/ui";
+import { useI18n } from "@/lib/i18n";
 const app = useAppStore();
 const ui = useUiStore();
+const { locale, t, toggle } = useI18n();
 // one button cycles Auto -> Light -> Dark; the icon shows the current choice
 const THEME = { auto: { icon: "dark_theme", label: "Auto (follows your system)" }, light: { icon: "weather_sunny", label: "Light" },
   dark: { icon: "weather_moon", label: "Dark" } };
@@ -15,12 +17,14 @@ const nextTheme = () => ui.setTheme(THEMES[(THEMES.indexOf(mode.value) + 1) % TH
     <button class="topbar__menu" aria-label="Open menu" @click="ui.navOpen = !ui.navOpen"><UiIcon name="list" :size="22" /></button>
     <div class="status">
       <span class="status__item" :title="app.detectorLive ? 'The detector checked every service in the last minute' : 'The detector has not reported yet'">
-        <span :class="['beat', { live: app.detectorLive }]" />{{ app.detectorLive ? "Monitoring" : "Detector starting" }}</span>
-      <span class="status__item"><UiStatusDot :tone="app.llm.up ? 'ok' : 'bad'" :size="7" />AI {{ app.llm.up ? app.llm.active : "offline" }}</span>
+        <span :class="['beat', { live: app.detectorLive }]" />{{ app.detectorLive ? t("Monitoring", "กำลังเฝ้าระวัง") : t("Detector starting", "กำลังเริ่มตัวตรวจจับ") }}</span>
+      <span class="status__item"><UiStatusDot :tone="app.llm.up ? 'ok' : 'bad'" :size="7" />AI {{ app.llm.up ? app.llm.active : t("offline", "ออฟไลน์") }}</span>
     </div>
     <div class="tools">
       <UiButton variant="plain" size="sm" :href="app.grafanaUrl"><UiLogo name="grafana" :size="14" />Grafana</UiButton>
       <UiButton variant="plain" size="sm" href="/docs" icon="code">API</UiButton>
+      <button class="lang" type="button" :aria-label="t('Switch language', 'สลับภาษา')" :title="t('Language', 'ภาษา')" @click="toggle">
+        {{ locale === "th" ? "ไทย" : "EN" }}</button>
       <button class="theme" type="button" :aria-label="`Appearance: ${THEME[mode].label}. Switch appearance`" :title="`Appearance: ${THEME[mode].label}`"
               @click="nextTheme"><UiIcon :name="THEME[mode].icon" :size="18" /></button>
     </div>
@@ -36,8 +40,10 @@ const nextTheme = () => ui.setTheme(THEMES[(THEMES.indexOf(mode.value) + 1) % TH
 .beat.live { background: var(--c-ok); box-shadow: 0 0 0 0 var(--c-ok); animation: beat 2.4s var(--ease) infinite; }
 @keyframes beat { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-ok) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
 .tools { display: flex; gap: 4px; align-items: center; }
-.theme { display: grid; place-items: center; width: 30px; height: 30px; margin-left: 6px; border: 1px solid var(--c-border); border-radius: var(--radius-md);
+.theme, .lang { display: grid; place-items: center; height: 30px; border: 1px solid var(--c-border); border-radius: var(--radius-md);
   background: var(--c-surface); color: var(--c-text-2); cursor: pointer; touch-action: manipulation; }
-.theme:hover { background: var(--c-fill); color: var(--c-text); }
+.theme { width: 30px; margin-left: 6px; }
+.lang { min-width: 38px; padding: 0 8px; margin-left: 6px; font: var(--fw-semibold) var(--fs-sm)/1 var(--font); font-variant-numeric: tabular-nums; }
+.theme:hover, .lang:hover { background: var(--c-fill); color: var(--c-text); }
 @media (max-width: 760px) { .topbar { padding: 0 12px; } .topbar__menu { display: block; } .status__item:last-child { display: none; } }
 </style>

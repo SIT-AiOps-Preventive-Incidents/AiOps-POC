@@ -4,19 +4,21 @@
 import { computed } from "vue";
 import { ago } from "@/lib/format";
 import { INCIDENT_KIND } from "@/lib/vocab";
+import { useI18n } from "@/lib/i18n";
 import SeverityPill from "./SeverityPill.vue";
 
 const props = defineProps({ incident: { type: Object, required: true } });
+const { t } = useI18n();
 const i = computed(() => props.incident);
 const kind = computed(() => INCIDENT_KIND[i.value.kind] || { icon: "warning", label: "Problem" });
 const entity = computed(() => i.value.entity_name || i.value.entity);
 
-const STAGES = ["Detected", "AI investigated", "Your approval", "Fix applied", "Verified"];
+const STAGES = computed(() => [t("Detected", "ตรวจพบ"), t("AI investigated", "AI สืบสวน"), t("Your approval", "คุณอนุมัติ"), t("Fix applied", "แก้ไขแล้ว"), t("Verified", "ยืนยันแล้ว")]);
 const AT = { open: 1, analyzing: 1, awaiting_approval: 2, remediating: 3, verifying: 4, remediation_failed: 3 };
 const stages = computed(() => {
   const at = AT[i.value.status] ?? 1;
   const failed = i.value.status === "remediation_failed";
-  return STAGES.map((label, k) => ({
+  return STAGES.value.map((label, k) => ({
     label, state: k < at ? "done" : k === at ? (failed ? "failed" : at === 2 ? "you" : "now") : "todo",
   }));
 });
@@ -27,15 +29,15 @@ const waiting = computed(() => i.value.status === "awaiting_approval");
     <header class="inc__head">
       <span class="inc__kind"><UiIcon :name="kind.icon" :size="16" /></span>
       <div class="inc__title">
-        <router-link :to="`/problems/${i.id}`"><b>{{ kind.label || i.title }}</b> on {{ entity }}</router-link>
-        <span class="inc__meta">P-{{ i.id }} · detected {{ ago(i.detected_at) }}<template v-if="i.owner"> · owner {{ i.owner }}</template></span>
+        <router-link :to="`/problems/${i.id}`"><b>{{ kind.label || i.title }}</b> {{ t("on", "ที่") }} {{ entity }}</router-link>
+        <span class="inc__meta">P-{{ i.id }} · {{ t("detected", "ตรวจพบ") }} {{ ago(i.detected_at) }}<template v-if="i.owner"> · {{ t("owner", "เจ้าของ") }} {{ i.owner }}</template></span>
       </div>
       <SeverityPill :severity="i.severity" />
-      <UiButton v-if="waiting" variant="action" :to="`/problems/${i.id}`">Review fix</UiButton>
-      <UiButton v-else variant="tint" :to="`/problems/${i.id}`">Open</UiButton>
+      <UiButton v-if="waiting" variant="action" :to="`/problems/${i.id}`">{{ t("Review fix", "ดูการแก้ไข") }}</UiButton>
+      <UiButton v-else variant="tint" :to="`/problems/${i.id}`">{{ t("Open", "เปิด") }}</UiButton>
     </header>
-    <p v-if="i.root_cause" class="inc__rc"><span class="inc__ai">AI found</span>{{ i.root_cause }}</p>
-    <p v-else class="inc__rc inc__rc--wait"><UiSpinner :size="14" />The AI is reading the metrics, traces and logs for {{ entity }}.</p>
+    <p v-if="i.root_cause" class="inc__rc"><span class="inc__ai">{{ t("AI found", "AI พบ") }}</span>{{ i.root_cause }}</p>
+    <p v-else class="inc__rc inc__rc--wait"><UiSpinner :size="14" />{{ t("The AI is reading the metrics, traces and logs for", "AI กำลังอ่าน metric, trace และ log ของ") }} {{ entity }}.</p>
     <ol class="life" aria-label="Incident progress">
       <li v-for="s in stages" :key="s.label" :class="s.state" :aria-current="['now', 'you'].includes(s.state) ? 'step' : undefined">{{ s.label }}</li>
     </ol>
