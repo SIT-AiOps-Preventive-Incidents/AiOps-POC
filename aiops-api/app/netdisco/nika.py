@@ -6,7 +6,19 @@ import os
 
 import httpx
 
-URL = os.environ.get("NIKA_BRIDGE_URL", "http://host.docker.internal:18900").rstrip("/")
+def _gateway() -> str:
+    """This container's default gateway: on a Docker bridge network that is the host, where bridge.py listens."""
+    try:
+        for line in open("/proc/net/route").read().splitlines()[1:]:
+            f = line.split()
+            if f[1] == "00000000":
+                return ".".join(str(b) for b in bytes.fromhex(f[2])[::-1])
+    except (OSError, IndexError, ValueError):
+        pass
+    return "host.docker.internal"
+
+
+URL = (os.environ.get("NIKA_BRIDGE_URL") or f"http://{_gateway()}:18900").rstrip("/")
 PREFIX = "nika:"
 
 
