@@ -33,3 +33,14 @@ async def discovered(view: str = "network"):
     return {"view": view, "segments": segments, "groups": groups,
             "summary": {"segments": len({s["cidr"] for s in segments}), "machines": len(machines),
                         "listening_on": sorted({s["host"] for s in segments})}}
+
+
+@router.get("/graph", summary="3D topology: internet, gateways, network hubs, machines and the services on them")
+async def topology_graph():
+    from .. import health, repo
+    segments, neighbors, base = netseg.load()
+    live = {h["name"]: h["status"] for h in await health.hosts_health()}
+    for h in base:
+        h["status"] = live.get(h["name"])
+    svc = {s["service"]: s["status"] for s in await health.services_health()}
+    return netseg.graph(segments, neighbors, base, svc, repo.discovered_edges(3600))

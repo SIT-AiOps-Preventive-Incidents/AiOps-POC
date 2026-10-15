@@ -81,6 +81,7 @@ export const api = {
     get: () => get("/network"),
     scan: () => post("/network/scans"),
     events: () => get("/network/events"),
+    graph: () => get("/network/graph"),
     discovered: (view) => get(`/network/discovered${view ? `?view=${view}` : ""}`),
   },
 };
