@@ -33,7 +33,7 @@ const nodes = computed(() => topo.value?.nodes || []);
 const devices = computed(() => nodes.value.filter((n) => n.kind === "device"));
 const answering = computed(() => devices.value.filter((d) => !["unreachable", "not polled"].includes(d.status)));
 const hosts = computed(() => nodes.value.filter((n) => n.kind === "host"));
-const cablesDown = computed(() => (topo.value?.links || []).filter((l) => l.kind === "cable" && l.status === "down"));
+const cablesDown = computed(() => (topo.value?.links || []).filter((l) => l.kind !== "runs" && l.status === "down"));
 const unknown = computed(() => hosts.value.filter((h) => !h.known && h.status !== "missing"));
 const impacted = computed(() => topo.value?.impacted_services || []);
 const empty = computed(() => topo.value && !(topo.value.sources || []).length);
@@ -70,7 +70,8 @@ function subtitle(n) {
   if (n.kind === "device") {
     const ports = (n.ports || []).filter((p) => !p.mgmt);
     const down = ports.filter((p) => !p.up).length;
-    return `${n.ip || "-"} · ${down ? `${down}/${ports.length} down` : `${ports.length} ports`}`;
+    const ports_ = down ? `${down}/${ports.length} ports down` : `${ports.length} ports`;
+    return n.ip ? `${n.ip} · ${ports_}` : n.status === "routing down" ? "routing down" : ports_;
   }
   if (n.kind === "host") return `${n.ip} · ${n.attached || ""}`;
   return "service";
@@ -80,7 +81,7 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
 
 <template>
   <div class="page page--wide">
-    <UiPageHeader title="Network" subtitle="What the switches and routers see, from the core down to the services. Found over SNMP and LLDP every minute.">
+    <UiPageHeader title="Network" :subtitle="`What the switches and routers see, from the core down to the services. ${lab ? 'Read from the NIKA research lab' : 'Found over SNMP and LLDP'} every minute.`">
       <UiButton icon="arrow_sync" :loading="scanning" :disabled="empty" @click="scanNow">Scan now</UiButton>
     </UiPageHeader>
 
@@ -115,9 +116,9 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
         <div v-if="lab.error" class="small bad-text mt-2">{{ lab.error }}</div>
       </UiCard>
       <div class="grid grid--4 tiles">
-        <UiTile label="Network devices" :value="`${answering.length} / ${devices.length}`" hint="answering SNMP"
+        <UiTile label="Network devices" :value="`${answering.length} / ${devices.length}`" :hint="lab ? 'reporting state' : 'answering SNMP'"
                 :tone="devices.some((d) => d.status === 'unreachable') ? 'bad' : undefined" />
-        <UiTile label="Links down" :value="cablesDown.length" :hint="cablesDown.length ? short(cablesDown[0].id, 34) : 'every cable is up'"
+        <UiTile label="Links down" :value="cablesDown.length" :hint="cablesDown.length ? short(cablesDown[0].id.replace(/host:|dev:/g, ''), 40) : 'every cable is up'"
                 :tone="cablesDown.length ? 'bad' : undefined" />
         <UiTile label="Hosts on the network" :value="hosts.filter((h) => h.status !== 'missing').length"
                 :hint="unknown.length ? `${unknown.length} unknown` : 'all known to AIOps One'" :tone="unknown.length ? 'action' : undefined" />
@@ -127,7 +128,7 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
 
       <div class="toolbar">
         <UiSegmented v-model="tab" :options="tabs" label="Network view" />
-        <span class="small muted">Discovery: SNMP v2c (IF-MIB, IP-MIB, LLDP-MIB) · {{ (topo.sources || []).length }} devices polled · last scan {{ ago(topo.ts) }}</span>
+        <span class="small muted">{{ lab ? "Discovery: NIKA/Kathara topology, port state and FRR BGP, read inside each node" : "Discovery: SNMP v2c (IF-MIB, IP-MIB, LLDP-MIB)" }} · {{ (topo.sources || []).length }} devices · last scan {{ ago(topo.ts) }}</span>
       </div>
 
       <!-- ---------------- topology ---------------- -->
@@ -161,7 +162,7 @@ const tileIcon = (n) => (n.kind === "device" ? "developer_board" : n.kind === "h
             </svg>
           </div>
           <div class="legend">
-            <span><i class="lg lg--cable" />Cable (LLDP)</span><span><i class="lg lg--access" />Host on a switch port (ARP)</span>
+            <span><i class="lg lg--cable" />Cable between devices</span><span><i class="lg lg--access" />Host on a switch port (ARP)</span>
             <span><i class="lg lg--runs" />Service on a host</span><span><i class="lg lg--down" />Down</span>
             <span><i class="sw sw--ok" />Up</span><span><i class="sw sw--bad" />Down / cut off</span><span><i class="sw sw--action" />Unknown device</span>
             <span class="dim">Click a symbol for details</span>
