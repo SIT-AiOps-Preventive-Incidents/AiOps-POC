@@ -61,25 +61,25 @@ async function decide(decision) {
       </section>
       <DryRunChecklist class="mt" :dry-run="chosen.dry_run" :effects="false" />
 
-      <!-- the decision: one clear "your turn" block (orange). Fill the two fields, then the one bold action. -->
+      <!-- the decision: orange frames the one place that needs a person; the working area stays clean white -->
       <div class="decision">
-        <div class="decision__h"><UiIcon name="person" :size="15" />Your decision</div>
-        <div class="decision__form">
+        <div class="decision__h"><UiIcon name="person" :size="15" /><span>Your decision</span><span class="decision__tag">needs your approval</span></div>
+        <div class="decision__body">
           <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
           <label class="owner">
             <UiSwitch v-model="ownerOk" label="I am the owner" />
             <span><span class="b">I'm the owner of {{ inc.owner || "this service" }}</span><span class="small muted">and take responsibility for this fix</span></span>
           </label>
+          <UiButton variant="action" size="lg" block icon="checkmark" :class="{ 'is-waiting': !canApprove }"
+                    :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
+            {{ approveLabel(chosen) }}</UiButton>
+          <p :class="['caption', canApprove ? 'ok' : 'dim']">
+            <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
+            {{ canApprove ? "AIOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Turn on “I’m the owner” to enable approval." : "Enter your name to enable approval." }}
+          </p>
+          <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
+          <UiField v-model="comment" class="cmt" label="Comment (optional)" placeholder="Why approve or reject" />
         </div>
-        <UiButton variant="action" size="lg" block icon="checkmark" :class="{ 'is-waiting': !canApprove }"
-                  :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
-          {{ approveLabel(chosen) }}</UiButton>
-        <p :class="['caption', canApprove ? 'ok' : 'dim']">
-          <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
-          {{ canApprove ? "AIOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Turn on “I’m the owner” to enable approval." : "Enter your name to enable approval." }}
-        </p>
-        <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
-        <UiField v-model="comment" class="cmt" label="Comment (optional)" placeholder="Why approve or reject" />
       </div>
 
       <UiDisclosure v-if="cands.length > 1" :card="false" :title="`Other options (${cands.length - 1})`" class="mt-2">
@@ -113,25 +113,26 @@ async function decide(decision) {
 .will p { margin: 4px 0; }
 .will__cmd { background: var(--c-fill); border-radius: 8px; padding: 8px 10px; font: 12px/1.5 var(--font-mono); white-space: pre-wrap; margin: 4px 0; }
 
-/* the decision: the one place that needs a person. Grouped and tinted so the action reads as "your turn". */
-.decision { margin-top: 16px; padding: 14px; border: 1px solid var(--c-action); border-radius: var(--radius-lg); background: var(--c-action-bg); }
-.decision__h { display: flex; align-items: center; gap: 7px; font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-action-text); margin-bottom: 10px; }
+/* the decision: orange frames the one place that needs a person; a clean white body does the work */
+.decision { margin-top: 16px; border: 1.5px solid var(--c-action); border-radius: var(--radius-lg); overflow: hidden; background: var(--c-surface); }
+.decision__h { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: var(--c-action-bg); color: var(--c-action-text);
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold); border-bottom: 1px solid color-mix(in srgb, var(--c-action) 25%, transparent); }
 .decision__h .ui-icon { color: var(--c-action); }
-/* name + owner grouped in one clean white panel */
-.decision__form { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 12px 12px 4px; margin-bottom: 12px; }
-.decision__form :deep(.ui-field) { margin-bottom: 12px; }
-.owner { display: flex; align-items: flex-start; gap: 10px; padding-top: 10px; border-top: 1px solid var(--c-separator); cursor: pointer; }
+.decision__tag { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-on-action); background: var(--c-action);
+  padding: 1px 9px; border-radius: var(--radius-pill); }
+.decision__body { padding: 14px; }
+.decision__body :deep(.ui-field) { margin-bottom: 0; }
+.owner { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; padding-top: 14px; border-top: 1px solid var(--c-separator); cursor: pointer; }
 .owner .b { display: block; } .owner .small { display: block; }
 /* the Approve button, not yet enabled: a faded version of itself, not dead grey */
-.decision .ui-btn.is-waiting:disabled { background: color-mix(in srgb, var(--c-action) 14%, var(--c-surface)); color: var(--c-action-text); box-shadow: none; }
-.caption { display: flex; align-items: center; gap: 6px; margin: 8px 2px 12px; font-size: var(--fs-xs); }
+.decision .ui-btn.is-waiting:disabled { background: color-mix(in srgb, var(--c-action) 12%, var(--c-surface)); color: var(--c-action-text); box-shadow: none; }
+.caption { display: flex; align-items: center; gap: 6px; margin: 9px 2px 12px; font-size: var(--fs-xs); }
 .caption.ok { color: var(--c-ok-text); } .caption.ok .ui-icon { color: var(--c-ok); }
 .caption.dim { color: var(--c-text-3); } .caption.dim .ui-icon { color: var(--c-text-3); }
 /* Reject: quiet, never competes with Approve */
 .reject { color: var(--c-text-2); }
 .reject:hover:not(:disabled) { background: var(--c-bad-bg); color: var(--c-bad-text); }
-.cmt { margin-top: 12px; }
-.cmt :deep(label) { color: var(--c-action-text); }
+.cmt { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--c-separator); }
 /* phones: keep the decision in reach while scrolling the evidence */
 @media (max-width: 640px) { .decision { position: sticky; bottom: 0; z-index: 2; } }
 .alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; margin-top: 6px; background: var(--c-fill); }
