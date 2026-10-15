@@ -75,7 +75,7 @@ def build(nodes: list[dict]) -> tuple[list[Device], dict[str, dict]]:
         for eth, p in n["probe"]["ports"].items():
             for ip in p["ips"]:
                 endpoints[ip.split("/")[0]] = {"name": n["name"], "kind": "nika", "services": n["probe"]["services"],
-                                               "link_up": p["up"]}
+                                               "link_up": p["up"], "stable_name": True}
     for n in nodes:
         name = n["name"]
         if not is_router[name]:
