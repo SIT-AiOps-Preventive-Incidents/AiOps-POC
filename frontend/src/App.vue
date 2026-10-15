@@ -1,6 +1,7 @@
 <script setup>
 import AppSidebar from "@/components/layout/AppSidebar.vue";
 import AppTopBar from "@/components/layout/AppTopBar.vue";
+import CommandPalette from "@/components/layout/CommandPalette.vue";
 import { usePolling } from "@/composables/usePolling";
 import { useAppStore } from "@/stores/app";
 
@@ -17,6 +18,7 @@ usePolling(() => app.load(), 15000); // global status for sidebar badge + top ba
       </router-view>
     </div>
   </main>
+  <CommandPalette />
   <UiToastHost />
 </template>
 <style>
