@@ -14,6 +14,7 @@ export { default as UiLogo } from "./UiLogo.vue";
 export { default as UiMeter } from "./UiMeter.vue";
 export { default as UiPageHeader } from "./UiPageHeader.vue";
 export { default as UiPill } from "./UiPill.vue";
+export { default as UiProgressRing } from "./UiProgressRing.vue";
 export { default as UiSegmented } from "./UiSegmented.vue";
 export { default as UiSheet } from "./UiSheet.vue";
 export { default as UiSpinner } from "./UiSpinner.vue";
