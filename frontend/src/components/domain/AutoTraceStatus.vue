@@ -7,9 +7,17 @@ const st = computed(() => props.host.auto_instrument || null);
 const traced = computed(() => props.services.filter((s) => s.instrumentation === "ebpf"));
 const waiting = computed(() => (st.value?.services || []).filter((n) => !traced.value.some((s) => s.service === n)));
 const mac = computed(() => /darwin|mac/i.test(props.host.os || ""));
+const col = computed(() => st.value?.collector || null);
 </script>
 <template>
   <div class="auto" aria-live="polite">
+    <UiWait v-if="col?.state === 'running'" done title="Logs and container metrics are collected" class="mb">
+      Every container's log is read under its service name, with its CPU, memory and network (OpenTelemetry Collector).
+    </UiWait>
+    <UiWait v-else-if="col?.state === 'starting'" title="Starting log and metric collection…" class="mb">
+      OpenTelemetry Collector is starting on this server.
+    </UiWait>
+    <p v-else-if="col?.error" class="small muted mb">Logs: {{ col.error }}</p>
     <UiWait v-if="st?.state === 'running' && !waiting.length && traced.length" done title="Traced automatically">
       {{ traced.length }} service{{ traced.length === 1 ? "" : "s" }} on this computer send traces with no code change (eBPF).
     </UiWait>
@@ -29,6 +37,7 @@ const mac = computed(() => /darwin|mac/i.test(props.host.os || ""));
   </div>
 </template>
 <style scoped>
+.mb { margin-bottom: 10px; }
 .note { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: var(--c-fill); color: var(--c-text-2); }
 .note b { color: var(--c-text); }
 .note p { margin: 2px 0 0; }

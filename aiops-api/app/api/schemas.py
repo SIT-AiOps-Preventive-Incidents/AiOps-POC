@@ -56,6 +56,7 @@ class Inventory(BaseModel):
     connections: list[dict] = []
     containers: list[dict] = []
     ebpf: dict | None = None  # {state: running|starting|unavailable|disabled|error, services, error, version}
+    collector: dict | None = None  # OpenTelemetry Collector for logs + container metrics: {state, logs, error, version}
 
 
 class DeploymentIn(BaseModel):

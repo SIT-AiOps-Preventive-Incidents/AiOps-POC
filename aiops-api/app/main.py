@@ -19,6 +19,7 @@ from .api.schemas import HostRegistration
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("asyncssh").setLevel(logging.WARNING)  # one line per forwarded connection otherwise
 APP_DIR = os.path.dirname(__file__)
 WEB_DIST = os.environ.get("WEB_DIST", os.path.join(APP_DIR, "web"))
 AGENT_DIST = os.path.join(APP_DIR, "agent_dist")
