@@ -46,9 +46,9 @@ def test_type_comes_from_the_image_not_the_name():
 
 def test_two_apps_on_the_same_port_are_told_apart_by_their_program():
     t = {x["service"]: x for x in collector.trace_targets(ESG)}
-    assert t["one-esg-360"] == {"service": "one-esg-360", "port": 3000, "exe": "(^|/)node$"}
-    assert t["metabase"] == {"service": "metabase", "port": 3000, "exe": "(^|/)java$"}
-    assert t["esg-nginx"]["exe"] == "(^|/)nginx$"
+    assert t["one-esg-360"] == {"service": "one-esg-360", "port": 3000, "exe": "*/node"}
+    assert t["metabase"] == {"service": "metabase", "port": 3000, "exe": "*/java"}
+    assert t["esg-nginx"]["exe"] == "*/nginx"
     assert "b3-postgres-v2" not in t                             # databases give no request spans
     assert "icomp-app" not in t                                  # port 80 is shared and its program is unknown
     assert "aiops-ebpf" not in t
