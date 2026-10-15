@@ -7,7 +7,7 @@
  *  - Test request playback: a dot travels each hop of a real trace, in order, and stamps the time spent there.
  */
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { ms, num, pct } from "@/lib/format";
+import { ms, num, pct, rate } from "@/lib/format";
 import { languageLogo, osLogo } from "@/lib/vocab";
 import { useMapStore } from "@/stores/map";
 
@@ -118,7 +118,7 @@ function chipLabel(n, inst) {
 
 const kindText = (n) => n.kind === "client" ? "Users on the internet" : n.kind === "network" ? (n.id.includes("firewall") ? "Firewall" : "Load balancer")
   : n.kind === "process" ? `Discovered on ${n.hosts?.[0] || "-"}` : n.kind === "external" ? "External dependency" : `Service · ${n.owner || "no owner"}`;
-const metric = (n) => n.kind === "client" ? "" : n.rps != null ? `${num(n.rps)} req/s · ${pct(n.error_rate)} errors`
+const metric = (n) => n.kind === "client" ? "" : n.rps != null ? `${rate(n.rps)} · ${pct(n.error_rate)} errors`
   : n.kind === "process" || n.kind === "external" ? (n.seen_recently ? "running · not traced" : "not seen recently") : "no traffic yet";
 const logoOf = (n) => n.kind === "client" ? null : languageLogo(n.kind === "network" ? "nginx" : n.language || n.id);
 
@@ -178,7 +178,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <!-- edges -->
       <g v-for="e in edgeViews" :key="e.key">
         <path :d="e.d" :class="['edge', { bad: e.bad, sel: e.sel, faded: e.faded, net: e.type === 'network' }]" :marker-end="`url(#m-${e.bad ? 'ab' : e.sel ? 'as' : 'a'})`">
-          <title>{{ e.from }} to {{ e.to }}{{ e.rps != null ? `: ${num(e.rps, 2)} req/s` : " (seen on the network)" }}</title>
+          <title>{{ e.from }} to {{ e.to }}{{ e.rps != null ? `: ${rate(e.rps)}` : " (seen on the network)" }}</title>
         </path>
         <text v-if="(e.sel || e.bad) && !e.faded && e.rps != null" :x="e.mx" :y="(e.y1 + e.y2) / 2 - 7" text-anchor="middle" :class="['edge-label', { bad: e.bad }]">{{ num(e.rps) }}/s{{ e.bad ? ` · ${pct(e.error_rate, 0)}` : "" }}</text>
       </g>

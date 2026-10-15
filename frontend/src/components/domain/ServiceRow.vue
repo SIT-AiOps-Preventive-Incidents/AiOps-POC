@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { ago, ms, num, pct } from "@/lib/format";
+import { ago, ms, num, pct, rate } from "@/lib/format";
 import { HEALTH_TONE, kindIcon, languageLogo } from "@/lib/vocab";
 const props = defineProps({ service: { type: Object, required: true } });
 const s = computed(() => props.service);
@@ -9,7 +9,7 @@ const subtitle = computed(() => {
     return `${s.value.kind === "external" ? "External" : "Discovered"} on ${s.value.hosts.join(", ") || "-"} · seen ${ago(s.value.last_seen)}`;
   const auto = s.value.instrumentation === "ebpf" ? "Traced automatically · " : "";
   if (s.value.status === "no-data") return `${auto}Waiting for data`;
-  return `${auto}${s.value.version ? `v${s.value.version} · ` : ""}${num(s.value.rps)} req/s · p95 ${ms(s.value.p95_ms)}`;
+  return `${auto}${s.value.version ? `v${s.value.version} · ` : ""}${rate(s.value.rps)} · p95 ${ms(s.value.p95_ms)}`;
 });
 </script>
 <template>
