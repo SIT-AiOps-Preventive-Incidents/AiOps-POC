@@ -6,14 +6,17 @@ import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { connectBody, hostName, installCommand, missing, progress } from "@/lib/connect";
 import { slug } from "@/lib/format";
+import { useRoute } from "vue-router";
 import { useCatalogStore } from "@/stores/catalog";
 import { useUiStore } from "@/stores/ui";
 
 const ui = useUiStore();
 const cat = useCatalogStore();
+const route = useRoute();
 
 // ---- connect a server from AIOps: sign in once on this page, AIOps does the rest ----
-const form = ref({ name: "", address: "", port: "22", user: "", auth: "password", password: "", key: "", keyFile: "", passphrase: "", ebpf: true });
+// address can be pre-filled from the Fleet map ("Monitor this machine" on a discovered VM)
+const form = ref({ name: "", address: route.query.address ? String(route.query.address) : "", port: "22", user: "", auth: "password", password: "", key: "", keyFile: "", passphrase: "", ebpf: true });
 const suggested = computed(() => hostName("", form.value.address) || "server-name");
 const job = ref(null);
 const target = ref("");
@@ -54,6 +57,23 @@ usePolling(async () => {
   if (host.value && ["healthy", "problem"].includes(host.value.status)) services.value = (await api.hosts.get(watching.value)).services;
 }, 1500);
 const connected = computed(() => host.value && ["healthy", "problem"].includes(host.value.status));
+
+// ---- optional step: map the server's own network segment (needs the operator's authorisation) ----
+const scanAuthorised = ref(false);
+const scanning = ref(false);
+const scanDone = ref(false);
+async function scanSegment() {
+  scanning.value = true;
+  try {
+    await api.hosts.netscan(target.value);
+    scanDone.value = true;
+    ui.toast("Scan requested. Machines that reply appear in Your network within a minute.");
+  } catch (e) {
+    ui.toast(e.message);
+  } finally {
+    scanning.value = false;
+  }
+}
 
 const ne = ref({ name: "", address: "" });
 async function addNodeExporter() {
@@ -113,7 +133,10 @@ async function addNodeExporter() {
         <div class="section-label">Services found on {{ target }} ({{ services.length }})</div>
         <UiList><ServiceRow v-for="s in services" :key="s.service" :service="s" /></UiList>
         <AutoTraceStatus class="mt" :host="host" :services="services" />
-        <div class="row mt"><UiButton :to="`/computers/${target}`">View {{ target }}</UiButton><UiButton variant="tint" to="/map">See it on the map</UiButton></div>
+        <div class="section-label">Map its network <span class="muted">(optional)</span></div>
+        <p class="small muted">AIOps already lists the machines this server hears on its network. To also find machines that stay quiet, it can send one round of ARP requests across the server's own segment — it never touches another network or any service port. Only on a network you are authorised to scan; on a shared network, ask the owner first.</p>
+        <div class="row mt-2"><UiSwitch v-model="scanAuthorised" label="I am authorised to scan this server's network" /><span>I am authorised to scan this server's network</span></div>
+        <div class="row mt"><UiButton :disabled="!scanAuthorised || scanning || scanDone" @click="scanSegment">{{ scanDone ? "Scan requested" : scanning ? "Requesting…" : "Scan its segment once" }}</UiButton><UiButton variant="tint" :to="`/computers/${target}`">View {{ target }}</UiButton><UiButton variant="tint" to="/network">Fleet map</UiButton></div>
       </template>
     </section>
 

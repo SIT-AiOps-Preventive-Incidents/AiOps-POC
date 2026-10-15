@@ -51,6 +51,7 @@ export const api = {
     create: (body) => post("/hosts", body),
     remove: (name) => del(`/hosts/${enc(name)}`),
     uninstall: (name) => post(`/hosts/${enc(name)}/uninstall`),
+    netscan: (name) => post(`/hosts/${enc(name)}/netscan`),
   },
 
   map: {

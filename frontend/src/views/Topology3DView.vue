@@ -27,7 +27,7 @@ const counts = computed(() => {
   return c;
 });
 
-let renderer, labels, scene, camera, controls, raf, ro, objects = [], pickables = [], packets = [], hovered = null, flyTo = null;
+let renderer, labels, scene, camera, controls, raf, ro, hoverLabel, objects = [], pickables = [], packets = [], hovered = null, flyTo = null;
 const css = (name, fb) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb;
 
 function colors() {
@@ -88,12 +88,17 @@ function build() {
   const pos = layout(g);
   const shown = (n) => showServices.value || n.kind !== "service";
   const add = (o) => { scene.add(o); objects.push(o); };
+  // With many machines, a label on every one is a wall of text. Keep labels on the structural nodes
+  // (internet, gateways, hubs, our own servers) and show a discovered machine's name on hover instead.
+  const dense = g.nodes.length > 30;
+  const structural = (k) => ["internet", "gateway", "hub", "connected"].includes(k);
   for (const n of g.nodes) {
     if (!shown(n)) continue;
     const o = mesh(n, c);
     const p = pos[n.id];
     o.position.set(p.x, p.y, p.z);
-    if (n.kind !== "service" || g.nodes.length < 40) {
+    const labelled = structural(n.kind) || (!dense && (n.kind !== "service" || g.nodes.length < 40));
+    if (labelled) {
       const l = label(n.label, n.kind);
       l.position.set(0, n.kind === "service" ? 6 : n.kind === "hub" ? 9 : n.kind === "internet" ? 21 : 22 * (n.kind === "connected" ? 1 : 0.72), 0);
       o.add(l);
@@ -136,6 +141,16 @@ function onMove(ev) {
   hovered = o;
   if (o) o.scale.setScalar(1.18);
   renderer.domElement.style.cursor = o ? "pointer" : "grab";
+  if (hoverLabel) {   // name-on-hover, so a crowded segment stays readable without a label on every node
+    const n = o?.userData.node;
+    if (n) {
+      hoverLabel.element.textContent = n.ip && n.ip !== n.label ? `${n.label} · ${n.ip}` : n.label;
+      hoverLabel.position.copy(o.position).add(new THREE.Vector3(0, 16, 0));
+      hoverLabel.visible = true;
+    } else {
+      hoverLabel.visible = false;
+    }
+  }
 }
 function onClick(ev) { const o = pick(ev); selected.value = o ? o.userData.node : null; }
 function onDouble(ev) {
@@ -178,6 +193,23 @@ function size() {
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 
+const query = ref("");
+function goTo() {
+  const q = query.value.trim().toLowerCase();
+  if (!q) return;
+  const o = pickables.find((o) => {
+    const n = o.userData.node;
+    return (n.label || "").toLowerCase().includes(q) || (n.ip || "").includes(q);
+  });
+  if (!o) { error.value = `No machine matches "${query.value}"`; return; }
+  error.value = "";
+  selected.value = o.userData.node;
+  if (hovered) hovered.scale.setScalar(1);
+  o.scale.setScalar(1.35); hovered = o;
+  const p = o.position.clone();
+  flyTo = { target: p, cam: p.clone().add(new THREE.Vector3(0, 28, 66)) };
+}
+
 let framed = false;
 async function load() {
   try {
@@ -210,6 +242,8 @@ onMounted(async () => {
   const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(120, 300, 200); scene.add(sun);
   const floor = new THREE.GridHelper(900, 36, 0xc9cfdb, 0xe4e8ef); floor.position.y = -46; floor.material.transparent = true; floor.material.opacity = 0.5;
   scene.add(floor);
+  const hl = document.createElement("div"); hl.className = "t3-label t3-hover";
+  hoverLabel = new CSS2DObject(hl); hoverLabel.visible = false; scene.add(hoverLabel);
   renderer.domElement.addEventListener("pointermove", onMove);
   renderer.domElement.addEventListener("click", onClick);
   renderer.domElement.addEventListener("dblclick", onDouble);
@@ -226,11 +260,12 @@ const open = () => selected.value?.link && router.push(selected.value.link);
 </script>
 <template>
   <div class="page page--wide">
-    <UiPageHeader title="Network in 3D" subtitle="Internet, gateways, one hub per network, the machines on it and the services they run. Drag to turn, scroll to zoom, click for details, double-click to fly in.">
-      <UiButton variant="tint" icon="list" to="/network/yours">List</UiButton>
-      <UiButton variant="tint" icon="flowchart" to="/network">Research lab (NIKA)</UiButton>
+    <UiPageHeader title="Fleet in 3D" subtitle="Internet, gateways, one hub per network, and the machines on it. Drag to turn, scroll to zoom, click for details, double-click to fly in.">
+      <UiButton variant="tint" icon="flowchart" to="/network">Map</UiButton>
+      <UiButton variant="tint" icon="list" to="/network/list">List</UiButton>
     </UiPageHeader>
     <div class="bar">
+      <div class="search"><UiField v-model="query" placeholder="Find a machine by name or IP" @enter="goTo" /><UiButton size="sm" icon="search" @click="goTo">Find</UiButton></div>
       <div class="row"><UiSwitch :model-value="showServices" label="Show services" @update:model-value="toggleServices" /><span>Services</span></div>
       <div class="row"><UiSwitch v-model="spin" label="Turn slowly" /><span>Turn slowly</span></div>
       <UiButton variant="plain" size="sm" icon="arrow_sync" @click="resetView">Reset view</UiButton>
@@ -242,7 +277,7 @@ const open = () => selected.value?.link && router.push(selected.value.link);
     <div class="stage">
       <div ref="box" class="canvas" />
       <div v-if="noGl" class="nogl"><b>This browser cannot draw 3D</b><span class="muted small">WebGL is turned off or not supported. The same machines are listed on the List page.</span>
-        <UiButton size="sm" to="/network/yours">Open the list</UiButton></div>
+        <UiButton size="sm" to="/network/list">Open the list</UiButton></div>
       <aside v-if="selected" class="panel">
         <div class="ptitle"><b>{{ selected.label }}</b><UiButton variant="plain" size="sm" icon="dismiss" aria-label="Close" @click="selected = null" /></div>
         <div class="muted small">{{ KIND[selected.kind] || selected.kind }}<template v-if="selected.estimated"> · estimated from an IP address</template></div>
@@ -274,6 +309,9 @@ const open = () => selected.value?.link && router.push(selected.value.link);
   border-radius: 6px; box-shadow: var(--shadow-1); white-space: nowrap; }
 .canvas :deep(.t3-label.service) { font-weight: 500; font-size: 11px; color: var(--c-text-2); }
 .canvas :deep(.t3-label.hub) { background: #f59e0b; color: #1b1300; }
+.canvas :deep(.t3-label.t3-hover) { background: var(--c-text, #111827); color: #fff; font-weight: 600; }
+.bar .search { display: flex; align-items: center; gap: 8px; min-width: 260px; }
+.bar .search :deep(.ui-field) { margin: 0; flex: 1; } .bar .search :deep(label) { display: none; }
 .nogl { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; }
 .panel { position: absolute; top: 14px; right: 14px; width: 280px; background: var(--c-surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2, var(--shadow-1)); padding: 14px 16px; }

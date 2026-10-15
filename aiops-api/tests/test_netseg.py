@@ -24,6 +24,19 @@ def arp_frame(sender_mac: str, sender_ip: str, op: int = 1, vlan: int | None = N
     return eth + arp
 
 
+def test_active_sweep_asks_only_who_has_on_our_own_segment():
+    import socket
+    own_ip = struct.unpack("!I", socket.inet_aton("10.4.82.20"))[0]
+    target = struct.unpack("!I", socket.inet_aton("10.4.82.31"))[0]
+    f = netwatch._arp_request(own_ip, bytes.fromhex("001122334455"), target)
+    assert f[:6] == b"\xff" * 6                                   # broadcast on the local segment, not a routed packet
+    assert f[12:14] == b"\x08\x06"                                # ARP, never a TCP/UDP service probe
+    htype, ptype, hlen, plen, op = struct.unpack("!HHBBH", f[14:24])
+    assert op == 1 and ptype == 0x0800                           # "who has", a request, not a reply or anything else
+    assert f[14 + 8 + 6 + 6:14 + 8 + 6 + 6 + 4] == socket.inet_aton("10.4.82.31")
+    assert netwatch.SWEEP_MAX <= 1024 and netwatch.SWEEP_RATE <= 100   # bounded: at most a /22, rate-limited
+
+
 def test_arp_gives_who_is_where_and_nothing_else():
     assert netwatch.parse_arp(arp_frame("bc:24:11:12:34:56", "10.4.82.31")) == ("10.4.82.31", "bc:24:11:12:34:56")
     assert netwatch.parse_arp(arp_frame("bc:24:11:12:34:56", "10.4.82.31", op=2, vlan=82)) == ("10.4.82.31", "bc:24:11:12:34:56")

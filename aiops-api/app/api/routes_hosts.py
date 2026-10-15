@@ -54,7 +54,15 @@ async def post_inventory(name: str, body: Inventory):
     except KeyError:
         raise not_found("host", name)
     out["promoted"] = await inventory.promote_traced(out["instrument"])
-    return inventory.with_uninstall(out, repo.host(name) or {})
+    out = inventory.with_uninstall(out, repo.host(name) or {})
+    if name in _PENDING_SCAN:  # one active sweep of its own segment was asked for; tell the agent exactly once
+        _PENDING_SCAN.discard(name)
+        out["netscan"] = True
+    return out
+
+
+# Hosts the operator asked to sweep once, cleared when the agent next reports (so it sweeps exactly once).
+_PENDING_SCAN: set[str] = set()
 
 
 @router.get("/{name}", summary="Host detail: charts, services on it, busiest processes / containers")
@@ -104,6 +112,18 @@ async def request_uninstall(name: str):
         return {"state": "removed"}
     db.ex("UPDATE hosts SET uninstall_requested_at=COALESCE(uninstall_requested_at, now()) WHERE name=%s", (name,))
     return {"state": "requested", "requested_at": (repo.host(name) or {}).get("uninstall_requested_at")}
+
+
+@router.post("/{name}/netscan", status_code=202,
+             summary="Ask the agent to do ONE active ARP sweep of its own segment (authorised networks only)")
+async def request_netscan(name: str):
+    h = repo.host(name)
+    if not h:
+        raise not_found("host", name)
+    if h["agent"] != "aiops-agent":
+        raise ApiError(409, "only a host running the AIOps agent can sweep its own segment")
+    _PENDING_SCAN.add(name)   # the agent picks this up on its next report (within a minute) and sweeps once
+    return {"state": "requested"}
 
 
 @router.post("/{name}/uninstalled", status_code=204, summary="Agent: I removed myself - forget this host")
