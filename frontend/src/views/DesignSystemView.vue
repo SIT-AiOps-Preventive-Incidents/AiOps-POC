@@ -32,15 +32,15 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
       <UiButton variant="ghost" icon="play">With icon</UiButton><UiButton loading>Loading</UiButton><UiButton disabled>Disabled</UiButton><UiButton size="sm">Small</UiButton></div>
       <UiButton size="lg" block class="mt">Large · full width (primary decision)</UiButton></UiCard>
     <div class="section-label">Status</div>
-    <UiCard><div class="row row--wrap"><UiPill tone="ok">Resolved</UiPill><UiPill tone="bad">Fix didn't work</UiPill><UiPill tone="warn">New</UiPill><UiPill tone="ai">Needs approval</UiPill>
+    <UiCard><div class="row row--wrap"><UiPill tone="ok">Resolved</UiPill><UiPill tone="bad">Fix didn't work</UiPill><UiPill tone="warn">New</UiPill><UiPill tone="action">Waiting for you</UiPill>
       <UiPill tone="info">Checking fix</UiPill><UiPill>Closed</UiPill><UiPill tone="solid-bad">Critical</UiPill><UiPill tone="solid-warn">Major</UiPill>
       <UiStatusDot tone="ok" /><UiStatusDot tone="bad" /><UiStatusDot tone="warn" /><UiStatusDot /></div>
-      <UiStepper :steps="steps" class="mt" /></UiCard>
+      <div class="mt"><UiStepper :steps="steps" /></div></UiCard>
     <div class="section-label">Lists, tiles and logos</div>
     <UiList>
       <UiListRow to="/design" title="Payment Service" subtitle="v1.2.0 · 2.4 req/s · p95 95 ms"><template #leading><UiAppTile logo="python" status="ok" /></template><template #accessory>0.0% errors</template></UiListRow>
       <UiListRow to="/design" title="napat-mac" subtitle="CPU 17% · Memory 73% · Disk 92%"><template #leading><UiAppTile logo="apple" status="bad" /></template><template #accessory><UiPill tone="bad">Problem</UiPill></template></UiListRow>
-      <UiListRow title="Failure rate increase" subtitle="P-12 · payment · 2 min ago" detail="Deployment v1.3.0 (commit d38c590) of payment introduced a regression"><template #leading><UiAppTile icon="warning" color="var(--c-bad)" /></template><template #accessory><UiPill tone="ai">Needs approval</UiPill></template></UiListRow>
+      <UiListRow title="Failure rate increase" subtitle="P-12 · payment · 2 min ago" detail="Deployment v1.3.0 (commit d38c590) of payment introduced a regression"><template #leading><UiAppTile icon="warning" color="var(--c-bad)" /></template><template #accessory><UiPill tone="action">Waiting for you</UiPill></template></UiListRow>
     </UiList>
     <div class="grid grid--4 mt"><UiTile label="Open problems" :value="1" hint="14 in total" tone="bad" /><UiTile label="Time to detect" value="42 s" hint="average" />
       <UiMeter label="CPU" :value="42" /><UiMeter label="Disk" :value="92" /></div>
