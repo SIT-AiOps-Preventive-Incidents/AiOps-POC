@@ -162,3 +162,77 @@ def load() -> tuple[list[dict], list[dict], list[dict]]:
         svc.setdefault(r["host"], []).append(r["service_name"])
     hosts = [{**h, "services": sorted(svc.get(h["name"], []))} for h in repo.list_hosts()]
     return segments, neighbors, hosts
+
+
+# ---------------- 3D topology: internet -> gateways -> hubs -> machines -> services ----------------
+import re as _re
+
+_BRIDGE = _re.compile(r"^(127\.|169\.254\.|172\.(1[7-9]|2\d|3[01])\.0\.1$)")   # loopback, link-local, Docker bridges
+
+
+def estimated_segments(hosts: list[dict], segments: list[dict]) -> list[dict]:
+    """A connected host that has not reported its interfaces yet: its network guessed from its first real IP."""
+    out, known = [], {s["cidr"] for s in segments}
+    for h in hosts:
+        if any(segment_of(ip, segments) for ip in h.get("ip_addresses") or []):
+            continue
+        ip = next((i for i in h.get("ip_addresses") or [] if not _BRIDGE.match(i)), None)
+        if not ip:
+            continue
+        cidr = str(ipaddress.ip_network(f"{ip}/24", strict=False))
+        if cidr not in known:
+            known.add(cidr)
+            out.append({"cidr": cidr, "gateway": None, "host": h["name"], "estimated": True})
+    return out
+
+
+def graph(segments: list[dict], neighbors: list[dict], hosts: list[dict], svc_status: dict, edges: list[dict]) -> dict:
+    segs = list({s["cidr"]: s for s in segments}.values())
+    segs += estimated_segments(hosts, segs)
+    status = {h["name"]: h.get("status") for h in hosts}
+    nodes, links, seen = [], [], set()
+
+    def node(n):
+        if n["id"] not in seen:
+            seen.add(n["id"])
+            nodes.append(n)
+
+    def link(a, b, kind="cable"):
+        if (a, b, kind) not in {(l["source"], l["target"], l["kind"]) for l in links}:
+            links.append({"source": a, "target": b, "kind": kind})
+
+    node({"id": "internet", "kind": "internet", "label": "Internet", "status": "ok"})
+    items = _items(segs, neighbors, hosts)
+    for s in segs:
+        hub = f"hub:{s['cidr']}"
+        node({"id": hub, "kind": "hub", "label": s["cidr"], "status": "ok", "estimated": bool(s.get("estimated"))})
+        if s.get("gateway"):
+            gw = next((i for i in items if i["ip"] == s["gateway"]), {})
+            node({"id": f"gw:{s['gateway']}", "kind": "gateway", "label": s["gateway"], "status": "ok", "ip": s["gateway"],
+                  "mac": gw.get("mac"), "vendor": gw.get("vendor")})
+            link(hub, f"gw:{s['gateway']}")
+            link(f"gw:{s['gateway']}", "internet")
+        else:
+            link(hub, "internet")
+    for i in items:
+        if i["kind"] == "gateway":
+            continue
+        hub = f"hub:{i['cidr']}"
+        if i["aiops_host"]:
+            nid = f"host:{i['aiops_host']}"
+            node({"id": nid, "kind": "connected", "label": i["aiops_host"], "status": status.get(i["aiops_host"]) or "ok",
+                  "ip": i["ip"], "owner": i["owner"], "link": f"/computers/{i['aiops_host']}"})
+            for svc in i["services"]:
+                node({"id": f"svc:{svc}", "kind": "service", "label": svc, "status": svc_status.get(svc) or "no-data",
+                      "link": f"/services/{svc}"})
+                link(f"svc:{svc}", nid, "runs")
+        else:
+            nid = f"ip:{i['ip']}"
+            node({"id": nid, "kind": i["kind"], "label": i["name"] or i["ip"], "status": "heard", "ip": i["ip"],
+                  "mac": i["mac"], "vendor": i["vendor"]})
+        link(nid, hub)
+    for e in edges:
+        a, b = f"svc:{e['from']}", f"svc:{e['to']}"
+        if a in seen and b in seen and a != b:
+            link(a, b, "talks")
+    return {"nodes": nodes, "links": links}

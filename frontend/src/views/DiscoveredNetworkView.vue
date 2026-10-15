@@ -28,6 +28,7 @@ const empty = computed(() => d.value && !d.value.groups.length);
   <div class="page">
     <UiPageHeader title="Your network"
                   subtitle="Every machine your connected servers hear on their own network segment, grouped for you. Nothing is scanned: the agent only listens to the announcements every machine makes anyway.">
+      <UiButton icon="cube" to="/network/3d">View in 3D</UiButton>
       <UiButton variant="tint" icon="flowchart" to="/network">Research lab (NIKA)</UiButton>
     </UiPageHeader>
     <div class="bar">

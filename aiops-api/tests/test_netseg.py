@@ -88,3 +88,26 @@ def test_service_view_puts_machines_under_the_services_that_use_them():
     assert g["aiops-api"] == ["10.4.82.20"]
     assert g["postgres"] == ["10.4.82.20", "10.4.82.12"]                  # runs here, and talks to .12
     assert g["No known service"] == ["10.4.82.254", "10.4.82.31"]
+
+
+def test_graph_is_internet_gateway_hub_machines_services():
+    hosts = HOSTS + [{"name": "esg360-prod", "ip_addresses": ["10.148.0.4", "172.17.0.1"], "owner": "team-esg",
+                      "services": ["one-esg-360"], "status": "healthy"}]
+    g = netseg.graph(SEGS, NEIGH, hosts, {"postgres": "problem", "aiops-api": "healthy"},
+                     [{"from": "aiops-api", "to": "postgres"}])
+    ids = [n["id"] for n in g["nodes"]]
+    assert len(ids) == len(set(ids))                                           # every object once
+    kinds = {n["id"]: n["kind"] for n in g["nodes"]}
+    assert kinds["internet"] == "internet" and kinds["hub:10.4.82.0/24"] == "hub"
+    assert kinds["gw:10.4.82.254"] == "gateway" and kinds["host:cp26pt1"] == "connected"
+    assert kinds["ip:10.4.82.31"] == "virtual machine" and kinds["svc:postgres"] == "service"
+    links = {(l["source"], l["target"]) for l in g["links"]}
+    assert ("gw:10.4.82.254", "internet") in links and ("hub:10.4.82.0/24", "gw:10.4.82.254") in links
+    assert ("host:cp26pt1", "hub:10.4.82.0/24") in links and ("ip:10.4.82.31", "hub:10.4.82.0/24") in links
+    assert ("svc:postgres", "host:cp26pt1") in links
+    assert ("svc:aiops-api", "svc:postgres") in links                         # who talks to whom
+    est = next(n for n in g["nodes"] if n["id"] == "hub:10.148.0.0/24")       # no segment reported: from its IP
+    assert est["estimated"] is True and ("hub:10.148.0.0/24", "internet") in links
+    assert ("host:esg360-prod", "hub:10.148.0.0/24") in links
+    assert not any(n["id"].startswith("hub:172.17") for n in g["nodes"])      # Docker bridges are not networks
+    assert next(n for n in g["nodes"] if n["id"] == "svc:postgres")["status"] == "problem"
