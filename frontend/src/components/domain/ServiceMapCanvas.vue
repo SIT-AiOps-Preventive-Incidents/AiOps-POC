@@ -191,7 +191,10 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
         <path :d="e.d" :class="['edge', { bad: e.bad, sel: e.sel, faded: e.faded, net: e.type === 'network' }]" :marker-end="`url(#m-${e.bad ? 'ab' : e.sel ? 'as' : 'a'})`">
           <title>{{ e.from }} to {{ e.to }}{{ e.rps != null ? `: ${rate(e.rps)}` : " (seen on the network)" }}</title>
         </path>
-        <text v-if="(e.sel || e.bad) && !e.faded && e.rps != null" :x="e.mx" :y="(e.y1 + e.y2) / 2 - 7" text-anchor="middle" :class="['edge-label', { bad: e.bad }]">{{ num(e.rps) }}/s{{ e.bad ? ` · ${pct(e.error_rate, 0)}` : "" }}</text>
+        <!-- Only label an edge that actually carries traffic (or is failing). Stamping "0.0/s" on every
+             edge of a selected hub just stacks up into unreadable clutter - the rate per caller/callee is
+             in the side panel's Calls / Called by lists anyway. -->
+        <text v-if="(e.sel || e.bad) && !e.faded && e.rps != null && (e.bad || e.rps >= 0.05)" :x="e.mx" :y="(e.y1 + e.y2) / 2 - 7" text-anchor="middle" :class="['edge-label', { bad: e.bad }]">{{ num(e.rps) }}/s{{ e.bad ? ` · ${pct(e.error_rate, 0)}` : "" }}</text>
       </g>
 
       <!-- nodes -->
