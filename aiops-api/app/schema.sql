@@ -273,3 +273,7 @@ CREATE TABLE IF NOT EXISTS ssh_links (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_connected_at TIMESTAMPTZ
 );
+
+-- Release 1.3: "Remove agent" from the web page. Set when someone asks; the agent removes itself on its next
+-- report (collector, eBPF tracer, autostart, the platform key) and then the host row is deleted.
+ALTER TABLE hosts ADD COLUMN IF NOT EXISTS uninstall_requested_at TIMESTAMPTZ;

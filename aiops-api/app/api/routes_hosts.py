@@ -2,7 +2,7 @@
 import asyncio
 from fastapi import APIRouter, Response
 
-from .. import agent, health, inventory, repo
+from .. import agent, db, health, inventory, remote, repo
 from .. import telemetry as tm
 from .. import detector
 from ..detector import PLATFORM_HOST
@@ -54,7 +54,7 @@ async def post_inventory(name: str, body: Inventory):
     except KeyError:
         raise not_found("host", name)
     out["promoted"] = await inventory.promote_traced(out["instrument"])
-    return out
+    return inventory.with_uninstall(out, repo.host(name) or {})
 
 
 @router.get("/{name}", summary="Host detail: charts, services on it, busiest processes / containers")
@@ -79,9 +79,39 @@ async def get_host(name: str):
             "incidents": [i for i in repo.list_incidents(limit=200) if i["entity"] == name][:10]}
 
 
-@router.delete("/{name}", status_code=204, summary="Stop watching a host")
+@router.delete("/{name}", status_code=204, summary="Stop watching a host (the agent, if any, keeps running)")
 async def delete_host(name: str):
     if not repo.delete_host(name):
         raise not_found("host", name)
+    await _forget_link(name)
+    write_targets()
+    return Response(status_code=204)
+
+
+async def _forget_link(name: str):
+    if repo.ssh_link(name):
+        await remote.stop_link(name)
+        repo.delete_ssh_link(name)
+
+
+@router.post("/{name}/uninstall", status_code=202, summary="Remove agent: the agent removes itself on its next report")
+async def request_uninstall(name: str):
+    h = repo.host(name)
+    if not h:
+        raise not_found("host", name)
+    if h["agent"] != "aiops-agent":  # nothing runs there that belongs to AIOps
+        await delete_host(name)
+        return {"state": "removed"}
+    db.ex("UPDATE hosts SET uninstall_requested_at=COALESCE(uninstall_requested_at, now()) WHERE name=%s", (name,))
+    return {"state": "requested", "requested_at": (repo.host(name) or {}).get("uninstall_requested_at")}
+
+
+@router.post("/{name}/uninstalled", status_code=204, summary="Agent: I removed myself - forget this host")
+async def uninstalled(name: str):
+    h = repo.host(name)
+    if not h or not h.get("uninstall_requested_at"):  # only after someone pressed Remove agent
+        raise not_found("pending removal of host", name)
+    repo.delete_host(name)
+    await _forget_link(name)
     write_targets()
     return Response(status_code=204)
