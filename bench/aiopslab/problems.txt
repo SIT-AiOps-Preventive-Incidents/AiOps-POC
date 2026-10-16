@@ -1,0 +1,15 @@
+# Hotel Reservation problems that need no Chaos Mesh (lighter on a 4-vCPU / 7 GB VM). One id per line.
+# All four task types for three different faults, plus a no-fault case to catch false alarms.
+noop_detection_hotel_reservation-1
+misconfig_app_hotel_res-detection-1
+misconfig_app_hotel_res-localization-1
+misconfig_app_hotel_res-analysis-1
+misconfig_app_hotel_res-mitigation-1
+revoke_auth_mongodb-detection-1
+revoke_auth_mongodb-localization-1
+revoke_auth_mongodb-analysis-1
+revoke_auth_mongodb-mitigation-1
+user_unregistered_mongodb-detection-1
+user_unregistered_mongodb-localization-1
+user_unregistered_mongodb-analysis-1
+user_unregistered_mongodb-mitigation-1

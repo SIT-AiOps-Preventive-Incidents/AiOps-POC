@@ -1,0 +1,107 @@
+{
+ "agent": "aiopsone",
+ "problem": "misconfig_app_hotel_res-detection-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "Detection Accuracy": "Correct",
+  "TTD": 1.9708311557769775,
+  "steps": 4,
+  "in_tokens": 4515,
+  "out_tokens": 167
+ },
+ "steps": 8,
+ "wall_s": 149.8,
+ "trace": [
+  {
+   "kind": "start",
+   "task": "detection",
+   "namespace": "test-hotel-reservation",
+   "llm": "qwen2.5:1.5b-16k"
+  },
+  {
+   "kind": "tool",
+   "tool": "pods",
+   "cmd": "kubectl get pods -n test-hotel-reservation -o wide"
+  },
+  {
+   "kind": "tool",
+   "tool": "events",
+   "cmd": "kubectl get events -n test-hotel-reservation --sort-by=.lastTimestamp | tail -n 40"
+  },
+  {
+   "kind": "tool",
+   "tool": "logs",
+   "cmd": "for p in $(kubectl get pods -n test-hotel-reservation -o name); do echo '== '$p; kubectl logs $p -n test-hotel-reservation --all-containers --tail=200 2>&1 | grep -iE 'error|fail|refused|denied|unauthori|not authori|panic|fatal|timeout|no such host|invalid|cannot' | tail -n 4; done"
+  },
+  {
+   "kind": "analysis",
+   "evidence_ok": true,
+   "pods": 19,
+   "findings": [
+    {
+     "component": "geo",
+     "kind": "unhealthy",
+     "line": "geo-c47ff745-w4cpz 1/1 Running restarts=1",
+     "source": "pods"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 07:07:58 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-profile?passing=1\": dial tcp 10.96.167.16:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 07:07:58 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-search?passing=1\": dial tcp 10.96.167.16:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 07:07:58 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-recommendation?passing=1\": dial tcp 10.96.167.16:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 07:07:59 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-profile?passing=1\": dial tcp 10.96.167.16:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "annel #10]Subchannel Connectivity change to TRANSIENT_FAILURE, last error: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "nnel #4 SubChannel #10]Subchannel Connectivity change to IDLE, last error: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "onnect to {Addr: \\\"[::1]:14250\\\", ServerName: \\\"localhost:14250\\\", }. Err: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "annel #10]Subchannel Connectivity change to TRANSIENT_FAILURE, last error: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    }
+   ],
+   "verdict": {
+    "anomaly": true,
+    "culprits": [
+     "geo"
+    ],
+    "fault_kind": null,
+    "confident": false,
+    "reason": "unhealthy without a clear cause: geo"
+   }
+  }
+ ]
+}
