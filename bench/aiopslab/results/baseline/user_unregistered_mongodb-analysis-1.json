@@ -1,0 +1,17 @@
+{
+ "agent": "baseline",
+ "problem": "user_unregistered_mongodb-analysis-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "system_level_correct": false,
+  "fault_type_correct": false,
+  "success": false,
+  "TTA": 0.10909366607666016,
+  "steps": 2,
+  "in_tokens": 23,
+  "out_tokens": 44
+ },
+ "steps": 4,
+ "wall_s": 140.9,
+ "trace": null
+}

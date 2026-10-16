@@ -1,0 +1,15 @@
+{
+ "agent": "baseline",
+ "problem": "user_unregistered_mongodb-detection-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "Detection Accuracy": "Incorrect",
+  "TTD": 0.1002647876739502,
+  "steps": 2,
+  "in_tokens": 23,
+  "out_tokens": 66
+ },
+ "steps": 4,
+ "wall_s": 144.7,
+ "trace": null
+}

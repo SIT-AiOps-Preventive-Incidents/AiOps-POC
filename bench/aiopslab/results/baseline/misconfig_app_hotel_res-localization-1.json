@@ -1,0 +1,17 @@
+{
+ "agent": "baseline",
+ "problem": "misconfig_app_hotel_res-localization-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "Localization Accuracy": 0.0,
+  "success": false,
+  "is_subset": false,
+  "TTL": 2609.4679732322693,
+  "steps": 15,
+  "in_tokens": 17191,
+  "out_tokens": 977
+ },
+ "steps": 30,
+ "wall_s": 2758.2,
+ "trace": null
+}

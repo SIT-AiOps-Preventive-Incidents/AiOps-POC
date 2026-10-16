@@ -1,0 +1,15 @@
+{
+ "agent": "baseline",
+ "problem": "misconfig_app_hotel_res-detection-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "Detection Accuracy": "Incorrect",
+  "TTD": 0.09635400772094727,
+  "steps": 2,
+  "in_tokens": 23,
+  "out_tokens": 66
+ },
+ "steps": 4,
+ "wall_s": 144.5,
+ "trace": null
+}

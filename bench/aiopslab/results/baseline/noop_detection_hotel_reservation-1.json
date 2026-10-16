@@ -1,0 +1,15 @@
+{
+ "agent": "baseline",
+ "problem": "noop_detection_hotel_reservation-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "Detection Accuracy": "Correct",
+  "TTD": 76.89518976211548,
+  "steps": 2,
+  "in_tokens": 23,
+  "out_tokens": 66
+ },
+ "steps": 4,
+ "wall_s": 217.1,
+ "trace": null
+}

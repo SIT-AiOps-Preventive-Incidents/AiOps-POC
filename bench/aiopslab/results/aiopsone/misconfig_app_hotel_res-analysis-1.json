@@ -1,0 +1,134 @@
+{
+ "agent": "aiopsone",
+ "problem": "misconfig_app_hotel_res-analysis-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "system_level_correct": true,
+  "fault_type_correct": false,
+  "success": false,
+  "TTA": 133.20186114311218,
+  "steps": 4,
+  "in_tokens": 4906,
+  "out_tokens": 180
+ },
+ "steps": 8,
+ "wall_s": 281.9,
+ "trace": [
+  {
+   "kind": "start",
+   "task": "analysis",
+   "namespace": "test-hotel-reservation",
+   "llm": "qwen2.5:1.5b-16k"
+  },
+  {
+   "kind": "tool",
+   "tool": "pods",
+   "cmd": "kubectl get pods -n test-hotel-reservation -o wide"
+  },
+  {
+   "kind": "tool",
+   "tool": "events",
+   "cmd": "kubectl get events -n test-hotel-reservation --sort-by=.lastTimestamp | tail -n 40"
+  },
+  {
+   "kind": "tool",
+   "tool": "logs",
+   "cmd": "for p in $(kubectl get pods -n test-hotel-reservation -o name); do echo '== '$p; kubectl logs $p -n test-hotel-reservation --all-containers --tail=200 2>&1 | grep -iE 'error|fail|refused|denied|unauthori|not authori|panic|fatal|timeout|no such host|invalid|cannot' | tail -n 4; done"
+  },
+  {
+   "kind": "analysis",
+   "evidence_ok": true,
+   "pods": 19,
+   "findings": [
+    {
+     "component": "geo",
+     "kind": "unhealthy",
+     "line": "geo-c47ff745-kgktz 0/1 Error restarts=1",
+     "source": "pods"
+    },
+    {
+     "component": "reservation",
+     "kind": "crash",
+     "line": "4s          Warning   BackOff                 pod/geo-c47ff745-kgktz                         Back-off restarting failed container hotel-reserv-geo in pod geo-c47ff745-kgktz_test-hotel-reservation(b0444c25-6712-4f11-87c5-909d0a727f61)",
+     "source": "events"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 08:02:51 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-recommendation?passing=1\": dial tcp 10.96.40.195:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 08:02:51 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-search?passing=1\": dial tcp 10.96.40.195:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 08:02:51 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-profile?passing=1\": dial tcp 10.96.40.195:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "frontend",
+     "kind": "network",
+     "line": "2026/10/14 08:02:52 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-user?passing=1\": dial tcp 10.96.40.195:8500: connect: connection refused",
+     "source": "logs"
+    },
+    {
+     "component": "geo",
+     "kind": "crash",
+     "line": "panic: no reachable servers",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "annel #10]Subchannel Connectivity change to TRANSIENT_FAILURE, last error: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "nnel #4 SubChannel #10]Subchannel Connectivity change to IDLE, last error: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "onnect to {Addr: \\\"[::1]:14250\\\", ServerName: \\\"localhost:14250\\\", }. Err: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "jaeger",
+     "kind": "network",
+     "line": "annel #10]Subchannel Connectivity change to TRANSIENT_FAILURE, last error: connection error: desc = \\\"transport: Error while dialing: dial tcp [::1]:14250: socket: address family not supported by protocol\\\"\",\"system\":\"grpc\",\"grpc_log\":true}",
+     "source": "logs"
+    },
+    {
+     "component": "search",
+     "kind": "network",
+     "line": "2026/10/14 08:02:52 grpc/lb/consul: error retrieving instances from Consul: Get \"http://consul:8500/v1/health/service/srv-geo?passing=1\": dial tcp 10.96.40.195:8500: connect: connection refused",
+     "source": "logs"
+    }
+   ],
+   "verdict": {
+    "anomaly": true,
+    "culprits": [
+     "geo",
+     "reservation"
+    ],
+    "fault_kind": "crash",
+    "confident": false,
+    "reason": "2 crash sign(s), e.g. 4s          Warning   BackOff                 pod/geo-c47ff745-kgktz                         Back-off restarting failed "
+   }
+  },
+  {
+   "kind": "llm",
+   "ask": "analysis",
+   "raw": "```json\n{\n  \"system_level\": \"Network/Storage Issue\",\n  \"fault_type\": \"Network/Storage Issue\"\n}\n```",
+   "guard": "rejected: not one of the allowed values"
+  }
+ ]
+}
