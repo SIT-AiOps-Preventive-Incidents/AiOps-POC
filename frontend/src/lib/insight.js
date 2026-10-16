@@ -42,3 +42,12 @@ export function rollup(items) {
   const quiet = items.filter((s) => ["no-data", "offline"].includes(s.status)).length;
   return { affected, total: items.length, quiet };
 }
+
+// Overview speed: what the AI does on its own vs. how fast a fix lands once a person approves it.
+// Never the end-to-end time: most of that is waiting for the owner, which says nothing about the AI.
+export function speedVitals(kpi) {
+  return [
+    { key: "investigate", seconds: kpi?.investigate_s ?? null },
+    { key: "fix", seconds: kpi?.fix_s ?? null },
+  ];
+}

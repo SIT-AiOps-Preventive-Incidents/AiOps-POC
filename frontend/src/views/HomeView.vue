@@ -7,7 +7,7 @@ import { computed, ref } from "vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { ago, dur } from "@/lib/format";
-import { rollup } from "@/lib/insight";
+import { rollup, speedVitals } from "@/lib/insight";
 import { INCIDENT_KIND } from "@/lib/vocab";
 import { useAppStore } from "@/stores/app";
 import { useIncidentStore } from "@/stores/incidents";
@@ -50,6 +50,8 @@ const primary = computed(() => {
   return { to: "/network", label: t("Open the Fleet", "เปิดฟลีต"), icon: "server", variant: "tint" };
 });
 
+const speed = computed(() => speedVitals(app.kpi));
+
 // a dense vital-signs strip: tight metric cells, a deliberate contrast to the roomy hero above it
 const vitals = computed(() => {
   const s = rollup(app.services), h = rollup(app.hosts);
@@ -59,7 +61,8 @@ const vitals = computed(() => {
     { k: t("Investigating", "กำลังสืบสวน"), v: m, sub: t("AI working", "AI ทำงาน"), tone: m ? "info" : "muted", to: "/problems" },
     { k: t("Services", "บริการ"), v: `${s.total - s.affected}/${s.total}`, sub: s.affected ? t(`${s.affected} with problems`, `มีปัญหา ${s.affected}`) : t("all healthy", "ปกติ"), tone: s.affected ? "bad" : "ok", to: "/services" },
     { k: t("Hosts", "เครื่อง"), v: `${h.total - h.affected}/${h.total}`, sub: h.affected ? t(`${h.affected} to check`, `ต้องดู ${h.affected}`) : t("all healthy", "ปกติ"), tone: h.affected ? "bad" : "ok", to: "/network" },
-    { k: t("Avg fix", "เวลาแก้เฉลี่ย"), v: dur(app.kpi.mttr_s), sub: t("detect → verified", "ตรวจพบ → ยืนยัน"), tone: "none", to: "/problems" },
+    { k: t("AI investigate", "AI สืบสวน"), v: dur(speed.value[0].seconds), sub: t("avg, detect → root cause", "เฉลี่ย ตรวจพบ → หาสาเหตุ"), tone: "none", to: "/problems" },
+    { k: t("Fix", "แก้ไข"), v: dur(speed.value[1].seconds), sub: t("avg, approve → verified", "เฉลี่ย อนุมัติ → ยืนยัน"), tone: "none", to: "/problems" },
     { k: t("Coverage", "ครอบคลุม"), v: coverage.value ? `${coverage.value.monitored}/${coverage.value.total}` : "—",
       sub: coverage.value?.suggest ? t(`connect ${coverage.value.suggest} more`, `เชื่อมอีก ${coverage.value.suggest}`) : t("machines", "เครื่อง"), tone: "none", to: "/network" },
   ];
