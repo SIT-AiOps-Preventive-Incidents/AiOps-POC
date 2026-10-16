@@ -1,7 +1,7 @@
 // Run with: npm test (node --test, no extra dependencies)
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { approveLabel, confidenceLevel, consequence, evidenceSource, rollup } from "./insight.js";
+import { approveLabel, confidenceLevel, consequence, evidenceSource, rollup, speedVitals } from "./insight.js";
 
 test("confidence is shown as a level with what to do, not a bare percentage", () => {
   assert.equal(confidenceLevel(0.93).level, "high");
@@ -58,4 +58,19 @@ test("health rolls up as affected out of total", () => {
   const r = rollup([{ status: "healthy" }, { status: "problem" }, { status: "down" }, { status: "no-data" }]);
   assert.deepEqual(r, { affected: 2, total: 4, quiet: 1 });
   assert.deepEqual(rollup([]), { affected: 0, total: 0, quiet: 0 });
+});
+
+test("speed is split: the AI's own investigation time apart from the fix after approval", () => {
+  const [inv, fix] = speedVitals({ investigate_s: 82, fix_s: 66, mttr_s: 52560 });
+  assert.equal(inv.key, "investigate");
+  assert.equal(inv.seconds, 82);
+  assert.equal(fix.key, "fix");
+  assert.equal(fix.seconds, 66);
+});
+
+test("speed never falls back to the end-to-end time, which is mostly waiting for a person", () => {
+  const [inv, fix] = speedVitals({ mttr_s: 52560 });
+  assert.equal(inv.seconds, null);
+  assert.equal(fix.seconds, null);
+  assert.deepEqual(speedVitals(undefined).map((v) => v.seconds), [null, null]);
 });

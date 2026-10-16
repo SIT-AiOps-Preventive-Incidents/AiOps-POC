@@ -412,7 +412,11 @@ def kpis() -> dict:
         count(*) AS total, count(*) FILTER (WHERE status='awaiting_approval') AS awaiting_approval,
         avg(extract(epoch FROM detected_at - started_at)) AS mttd_s,
         avg(extract(epoch FROM analyzed_at - detected_at)) AS mtta_s,
-        avg(extract(epoch FROM resolved_at - detected_at)) FILTER (WHERE status='resolved') AS mttr_s FROM incidents""",
+        avg(extract(epoch FROM resolved_at - detected_at)) FILTER (WHERE status='resolved') AS mttr_s,
+        avg(analysis_ms) / 1000.0 AS investigate_s,
+        (SELECT avg(extract(epoch FROM e.verified_at - a.decided_at)) FROM approvals a
+           JOIN executions e ON e.approval_id = a.id
+          WHERE a.decision = 'approved' AND e.verified) AS fix_s FROM incidents""",
                (list(CLOSED),))
     r["avg_score"] = db.val("SELECT round(avg(score)::numeric, 1) FROM feedback")
     return {k: (round(v, 1) if isinstance(v, float) else v) for k, v in r.items()}
