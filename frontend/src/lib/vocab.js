@@ -22,6 +22,10 @@ export const INCIDENT_KIND = {
   host_disk: { icon: "hard_drive", color: "var(--c-chart-4)", label: "Low disk space" },
   host_down: { icon: "server", color: "var(--c-bad)", label: "Host unavailable" },
   auth_bruteforce: { icon: "shield", color: "var(--c-chart-5)", label: "Password attack" },
+  log_errors: { icon: "list", color: "var(--c-bad)", label: "Error logs increase" },
+  container_cpu: { icon: "cube", color: "var(--c-chart-4)", label: "Container CPU saturation" },
+  container_mem: { icon: "cube", color: "var(--c-chart-4)", label: "Container memory saturation" },
+  container_down: { icon: "cube", color: "var(--c-bad)", label: "Container stopped" },
 };
 
 export const STEP_KIND = {

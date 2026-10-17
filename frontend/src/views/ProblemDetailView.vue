@@ -54,7 +54,8 @@ const steps = computed(() => {
 });
 // what tripped the detector, said against this entity's own normal range
 const METRIC = { error_rate: "Error rate", latency: "Response time (p95)", traffic_drop: "Traffic", host_cpu: "CPU", host_mem: "Memory",
-  host_disk: "Disk", auth_bruteforce: "Failed logins", host_down: "Heartbeat" };
+  host_disk: "Disk", auth_bruteforce: "Failed logins", host_down: "Heartbeat", log_errors: "Error logs",
+  container_cpu: "Container CPU", container_mem: "Container memory", container_down: "Container" };
 const fmtUnit = (v, u) => (v == null ? "-" : u === "ratio" ? `${(v * 100).toFixed(1)}%` : u === "%" ? `${Math.round(v)}%`
   : u === "ms" ? `${Math.round(v)} ms` : u === "req/s" ? `${Number(v).toFixed(2)} req/s` : `${v} ${u || ""}`.trim());
 const trigger = computed(() => {
