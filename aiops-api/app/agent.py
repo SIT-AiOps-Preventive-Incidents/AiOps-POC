@@ -10,12 +10,15 @@
 """
 import asyncio
 import json
+import os
 import re
 import time
 from collections import Counter
 
 from . import db, llm, notify, remediation, repo, servicemap
 from . import telemetry as tm
+
+PLATFORM_HOST = os.environ.get("PLATFORM_HOST", "cp26pt1")
 
 SKILLS = {
     "service-error-analysis": {
@@ -32,6 +35,11 @@ SKILLS = {
         "kinds": ["host_cpu", "host_mem", "host_disk", "host_down"],
         "description": "Host saturation or outage: host metrics, per-container usage, logs of the busiest workload.",
         "tools": ["getHostMetrics", "getContainerStats", "getTopProcesses", "searchLogs", "getDeployHistory"]},
+    "workload-analysis": {
+        "category": "Service", "name": "Logs & container analysis",
+        "kinds": ["log_errors", "container_cpu", "container_mem", "container_down"],
+        "description": "Any app, traced or not: error-log bursts, its container's CPU/memory or the container stopping.",
+        "tools": ["searchLogs", "getContainerStats", "getHostMetrics", "searchTraces", "getDeployHistory"]},
     "security-auth-analysis": {
         "category": "Security", "name": "Security / authentication analysis", "kinds": ["auth_bruteforce"],
         "description": "Suspicious authentication activity: firewall + app logs, failed-login bursts, source IP concentration.",
@@ -41,7 +49,9 @@ SKILLS = {
 KIND_LABEL = {"error_rate": "Failure rate increase", "latency": "Response time degradation",
               "host_cpu": "CPU saturation", "host_mem": "Memory saturation", "host_disk": "Low disk space",
               "host_down": "Host unavailable", "auth_bruteforce": "Suspicious login activity",
-              "traffic_drop": "Traffic dropped"}
+              "traffic_drop": "Traffic dropped", "log_errors": "Error logs increase",
+              "container_cpu": "Container CPU saturation", "container_mem": "Container memory saturation",
+              "container_down": "Container stopped"}
 
 APP_CONTAINERS_EXCLUDE = {"ollama", "aiops-api", "prometheus", "loki", "tempo", "grafana", "otel-collector",
                           "node-exporter", "edge-fw", "edge-lb", "loadgen"}
@@ -150,8 +160,8 @@ async def t_whoAnswers(call: str, minutes: int = 60):
 async def t_searchLogs(service: str, levels: str = "ERROR|WARN.*", contains: str = "", minutes: int = 10):
     lf = f'|= "{contains}"' if contains else ""
     sel = f'{{service_name="{service}"}}'
-    if levels:
-        lf = (lf + f' | severity_text=~"{levels}"').strip()
+    if levels:  # apps writing plain text have no severity field; Loki's detected_level covers them
+        lf = (lf + f' | severity_text=~"(?i)({levels})" or detected_level=~"(?i)({levels})"').strip()
     logs = await tm.loki_logs(sel, minutes=minutes, limit=200, line_filter=lf)
     return {"service": service, "filter": lf, "count": len(logs), "top_patterns": tm.top_messages(logs, 4),
             "latest": [{"ts": l["ts"], "level": l["level"], "line": l["line"], "trace_id": l["trace_id"]}
@@ -240,9 +250,34 @@ async def t_getTopProcesses(host: str):
     return {"host": host, "processes": [], "note": "no process data in the last 3 minutes"}
 
 
-async def t_getContainerStats():
+async def t_getContainerStats(host: str | None = None):
+    """Per-container CPU/memory on `host` - from that server's own collector when it is connected, otherwise the
+    platform machine's Docker."""
+    if host:
+        rows = await tm.container_usage(host)
+        if rows:
+            return {"host": host, "source": "server collector (docker_stats)", "top_by_cpu": rows[:8]}
     stats = await tm.containers(with_stats=True)
-    return {"top_by_cpu": stats[:8]}
+    return {"host": host or PLATFORM_HOST, "source": "platform docker", "top_by_cpu": stats[:8]}
+
+
+def placement(service: str) -> tuple[str | None, str | None]:
+    """(host, container) a service runs in, if an agent found it in a container on a connected server."""
+    for i in (repo.service(service) or {}).get("instances") or []:
+        if i.get("host") and i.get("container"):
+            return i["host"], i["container"]
+    return None, None
+
+
+async def container_facts(run: "Run", service: str) -> dict | None:
+    """CPU/memory of the service's own container, or None when it does not run in one we can see."""
+    host, c = placement(service)
+    if not host:
+        return None
+    cs = await run.tool("getContainerStats", host=host)
+    row = next((r for r in cs.get("top_by_cpu", []) if r.get("name") == c), None)
+    return {"host": host, "container": c, "running": row is not None,
+            "cpu_pct": (row or {}).get("cpu_pct"), "mem_pct": (row or {}).get("mem_pct")}
 
 
 TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVersion, "findSilentServices": t_findSilentServices, "whoAnswers": t_whoAnswers,
@@ -345,6 +380,7 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
         "lb_by_upstream": lb and lb.get("by_upstream"),
         "lb_hot_instance": hot_inst if instance_specific else None, "lb_hot_share": round(hot_share, 2),
         "silent_services": silent, "unanswered_calls": unanswered, "unanswered_callee": callee,
+        "origin_container": await container_facts(run, origin),
     }
     cands = []
     if instance_specific:
@@ -377,7 +413,8 @@ async def play_service_latency(run: Run, sig: dict) -> tuple[dict, list]:
              "top_warning_log": top_log.get("example"), "top_warning_log_count": top_log.get("count"),
              "recent_deploys": [{k: d[k] for k in ("version", "commit_hash", "message", "ts")}
                                 for d in dep.get("deployments", [])[:3]],
-             "lb_by_upstream": lb and lb.get("by_upstream")}
+             "lb_by_upstream": lb and lb.get("by_upstream"),
+             "origin_container": await container_facts(run, origin)}
     cands = [{"type": "restart_service", "params": {"service": origin}}]
     facts["evidence_confidence"] = round(0.5 + (0.25 if st else 0) + (0.15 if top_log else 0), 2)
     return facts, cands
@@ -390,10 +427,19 @@ async def play_infra(run: Run, sig: dict) -> tuple[dict, list]:
         tp = await run.tool("getTopProcesses", host=host)
         procs = tp.get("processes") or []
         hog = procs[0] if procs else None
+        cs = await run.tool("getContainerStats", host=host)
+        conts = cs.get("top_by_cpu", []) if cs.get("source", "").startswith("server") else []
+        key = "mem_pct" if sig["kind"] == "host_mem" else "cpu_pct"
+        top_c = max(conts, key=lambda c: c.get(key) or 0) if conts else None
         facts = {"host": host, "host_metrics": hm, "top_processes": procs[:5],
                  "busiest_workload": hog and {"name": hog["name"], "cpu_pct": hog["cpu"], "mem_pct": hog["mem"]},
-                 "remote_host": True}
-        facts["evidence_confidence"] = 0.7 if hog else 0.5
+                 "top_containers": conts[:5], "busiest_container": top_c, "remote_host": True}
+        apps = {i["container"]: a["service_name"] for a in repo.list_services(("service", "process"))
+                for i in a["instances"] if i.get("container") and i.get("host") == host}
+        if top_c and top_c["name"] in apps:
+            logs = await run.tool("searchLogs", service=apps[top_c["name"]], levels="WARN.*|ERROR")
+            facts["busiest_workload_logs"] = [x["example"] for x in logs.get("top_patterns", [])[:3]]
+        facts["evidence_confidence"] = 0.8 if top_c or hog else 0.5
         # Remote machines are observe-only: the platform never executes anything on them.
         return facts, [{"type": "manual", "params": {}}]
     cs = await run.tool("getContainerStats")
@@ -414,6 +460,36 @@ async def play_infra(run: Run, sig: dict) -> tuple[dict, list]:
                 cands.append({"type": "restart_service", "params": {"service": svc}})
     cands.append({"type": "manual", "params": {}})
     facts["evidence_confidence"] = 0.8 if len(cands) > 1 else 0.5
+    return facts, cands
+
+
+async def play_workload(run: Run, sig: dict) -> tuple[dict, list]:
+    """Error logs or the container of any app - including ones that send no traces."""
+    svc, kind = sig["entity"], sig["kind"]
+    host, c = sig.get("host"), sig.get("container")
+    if not host:
+        host, c = placement(svc)
+    logs = await run.tool("searchLogs", service=svc, levels="ERROR|FATAL|CRIT.*|WARN.*", minutes=15)
+    top = (logs.get("top_patterns") or [{}])[0]
+    cont = await container_facts(run, svc) if host else None
+    hm = await run.tool("getHostMetrics", host=host) if host else None
+    traced = (repo.service(svc) or {}).get("kind") == "service" and await tm.prom_value(tm.svc_expr(svc, "rps"))
+    tr = await run.tool("searchTraces", service=svc, mode="error") if traced else {}
+    dep = await run.tool("getDeployHistory", service=svc, minutes=120)
+    facts = {"service": svc, "signal": kind, "value": sig.get("value"), "unit": sig.get("unit"),
+             "normal_high": sig.get("normal_high"), "host": host, "container": c, "container_usage": cont,
+             "host_metrics": hm, "error_log_count": logs.get("count"), "top_error_log": top.get("example"),
+             "top_error_log_count": top.get("count"), "latest_logs": [x["line"][:300] for x in logs.get("latest", [])[:3]],
+             "trace_error_messages": tr.get("error_messages"),
+             "recent_deploys": [{k: d[k] for k in ("version", "commit_hash", "message", "ts")}
+                                for d in dep.get("deployments", [])[:3]],
+             "remote_host": bool(host) and host != PLATFORM_HOST}
+    cands = []
+    if not facts["remote_host"] and remediation.app_row(svc) and kind != "log_errors":
+        cands.append({"type": "restart_service", "params": {"service": svc}})
+    cands.append({"type": "manual", "params": {}})   # connected servers are observe-only
+    facts["evidence_confidence"] = round(min(0.95, 0.5 + (0.2 if top.get("example") else 0) + (0.15 if cont else 0)
+                                             + (0.1 if tr.get("error_messages") else 0)), 2)
     return facts, cands
 
 
@@ -440,7 +516,8 @@ async def play_security(run: Run, sig: dict) -> tuple[dict, list]:
 
 
 PLAYBOOKS = {"service-error-analysis": play_service_error, "service-latency-analysis": play_service_latency,
-             "infra-resource-analysis": play_infra, "security-auth-analysis": play_security}
+             "infra-resource-analysis": play_infra, "security-auth-analysis": play_security,
+             "workload-analysis": play_workload}
 
 
 def signature(kind: str, facts: dict, action: dict) -> str:
@@ -455,6 +532,15 @@ def _pct(v) -> str:
 
 def _hhmm(ts) -> str:
     return time.strftime("%H:%M:%S", time.localtime(ts)) if ts else "?"
+
+
+def _container_line(service: str, c: dict | None) -> list[str]:
+    if not c:
+        return []
+    if not c.get("running"):
+        return [f"{service}'s container {c['container']} on {c['host']} is not reporting: it may have stopped."]
+    return [f"{service}'s container {c['container']} on {c['host']}: CPU {c.get('cpu_pct')}%, "
+            f"memory {c.get('mem_pct')}% of the machine."]
 
 
 def findings(kind: str, facts: dict) -> list[str]:
@@ -496,6 +582,36 @@ def findings(kind: str, facts: dict) -> list[str]:
         if f.get("lb_hot_instance"):
             out.append(f"{_pct(f['lb_hot_share'])} of the 5xx come from instance {f['lb_hot_instance']} only; "
                        f"the other {o} instances are healthy, so this is an instance fault, not a code change.")
+        out += _container_line(o, f.get("origin_container"))
+    elif kind in ("log_errors", "container_cpu", "container_mem", "container_down"):
+        svc, cu = f["service"], f.get("container_usage") or {}
+        where = f" in container {f['container']} on {f['host']}" if f.get("host") else ""
+        if kind == "log_errors":
+            out.append(f"{svc} is writing {f.get('value')} error log lines per minute"
+                       + (f"; normal is up to {f['normal_high']}" if f.get("normal_high") is not None else "") + ".")
+        elif kind == "container_down":
+            out.append(f"{svc}'s container {f.get('container')} on {f.get('host')} stopped reporting while the "
+                       f"server's other containers still do: it is not running.")
+        else:
+            res = "CPU" if kind == "container_cpu" else "memory"
+            out.append(f"{svc}{where} is using {f.get('value')}% of the machine's {res}"
+                       + (f"; normal is up to {f['normal_high']}%" if f.get("normal_high") is not None else "") + ".")
+        if cu and kind != "container_down":
+            out.append(f"Container now: CPU {cu.get('cpu_pct')}%, memory {cu.get('mem_pct')}% of the machine.")
+        hm = f.get("host_metrics") or {}
+        if hm:
+            out.append(f"Host {f.get('host')}: CPU {hm.get('cpu')}%, memory {hm.get('mem')}%, disk {hm.get('disk')}%.")
+        if f.get("top_error_log"):
+            out.append(f"Most frequent error/warning log in {svc} ({f.get('top_error_log_count')}x, 15 min): {f['top_error_log']}")
+        elif f.get("error_log_count") == 0:
+            out.append(f"No error or warning logs from {svc} in the last 15 minutes.")
+        if f.get("trace_error_messages"):
+            out.append(f"Failing spans in {svc} report: " + "; ".join(map(str, list(f["trace_error_messages"])[:2])))
+        if f.get("recent_deploys"):
+            d = f["recent_deploys"][0]
+            out.append(f"Last deployment of {svc}: v{d['version']} at {_hhmm(d['ts'])}.")
+        if f.get("remote_host"):
+            out.append("This server is observe-only; the fix is a manual step for the service owner.")
     elif kind == "latency":
         o = f["slowest_service_by_self_time"]
         st = f.get("self_time_ms") or {}
@@ -505,6 +621,7 @@ def findings(kind: str, facts: dict) -> list[str]:
             out.append(f"Most frequent warning log in {o} ({f.get('top_warning_log_count')}x): {f['top_warning_log']}")
         out.append("Recent deployments of " + o + ": " + (", ".join(
             f"v{d['version']} at {_hhmm(d['ts'])}" for d in f.get("recent_deploys", [])) or "none in the last 60 minutes") + ".")
+        out += _container_line(o, f.get("origin_container"))
     elif kind == "auth_bruteforce":
         ips = f.get("top_source_ips") or []
         out.append(f"{f.get('failed_logins_5m')} failed logins on {f['service']} in the last 5 minutes.")
@@ -521,6 +638,10 @@ def findings(kind: str, facts: dict) -> list[str]:
         w = f.get("busiest_workload")
         if w:
             out.append(f"Busiest {'process' if f.get('remote_host') else 'workload: container'} {w['name']} at {w['cpu_pct']}% CPU.")
+        bc = f.get("busiest_container")
+        if bc:
+            out.append(f"Busiest container on {f.get('host')}: {bc['name']} at {bc.get('cpu_pct')}% CPU, "
+                       f"{bc.get('mem_pct')}% memory of the machine.")
         if f.get("remote_host"):
             out.append("This machine is observe-only; the fix is a manual step for its owner.")
         for l in f.get("busiest_workload_logs") or []:
@@ -553,6 +674,19 @@ def fallback_text(kind: str, facts: dict, action: dict) -> dict:
     elif kind == "latency":
         rc = (f"{facts['slowest_service_by_self_time']} dominates request time: "
               f"{facts.get('top_warning_log') or 'slow responses'}")
+    elif kind in ("log_errors", "container_cpu", "container_mem", "container_down"):
+        svc = facts["service"]
+        rc = {"log_errors": f"{svc} is logging errors well above its normal rate: {facts.get('top_error_log') or 'see logs'}",
+              "container_down": f"{svc}'s container {facts.get('container')} on {facts.get('host')} has stopped",
+              "container_cpu": f"{svc}'s container is using {facts.get('value')}% of {facts.get('host')}'s CPU, above its normal",
+              "container_mem": f"{svc}'s container is using {facts.get('value')}% of {facts.get('host')}'s memory, above its normal",
+              }[kind]
+        steps = {"container_down": [f"Check why {facts.get('container')} exited (`docker ps -a`, `docker logs {facts.get('container')}`)",
+                                    "Start it again once the cause is fixed", "Confirm the service reports again"],
+                 "log_errors": [f"Read the newest errors of {svc} (linked logs)", "Check what changed: deploys, config, dependencies",
+                                a, "Confirm the error log rate returns to normal"],
+                 }.get(kind, [f"Check whether {svc} should be using this much", a, "Confirm usage returns to normal"])
+        return {"root_cause": rc, "summary": " ".join(findings(kind, facts)), "runbook": steps}
     elif kind == "auth_bruteforce":
         ip = (facts.get("top_source_ips") or [{}])[0]
         rc = f"Credential-stuffing burst from {ip.get('ip')} ({facts.get('failed_logins_5m')} failed logins in 5 min)"

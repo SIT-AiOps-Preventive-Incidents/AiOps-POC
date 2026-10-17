@@ -29,6 +29,9 @@ DEFAULT_SETTINGS = {
     "cpu_threshold": "70",
     "mem_threshold": "90",
     "disk_threshold": "90",
+    "log_err_threshold": "20",    # error log lines/min, while a service's normal is still being learned
+    "ccpu_threshold": "90",       # one container's CPU % of its machine, while learning
+    "cmem_threshold": "90",
     "auth_fail_per_min": "40",
     # how far from normal counts as a problem: low (fewer alerts) | normal | high (catch more)
     "sensitivity": "normal",

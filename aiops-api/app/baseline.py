@@ -39,6 +39,11 @@ RULES = {
     "error_rate": Rule(up=True, min_delta=0.02, min_value=0.02, safety=0.20),
     "p95": Rule(up=True, min_delta=100, min_rel=0.5),
     "rps": Rule(up=False, down=True, min_rel=0.6, min_level=0.5),
+    # error log lines per minute: at least 5/min and double the usual before it counts
+    "log_errors": Rule(up=True, min_delta=5, min_rel=1.0, min_value=5),
+    # one container's share of its machine (%)
+    "ccpu": Rule(up=True, min_delta=20, min_value=80),
+    "cmem": Rule(up=True, min_delta=15, min_value=85, safety=97),
 }
 
 # how much of the normal band's width is added as tolerance on each side

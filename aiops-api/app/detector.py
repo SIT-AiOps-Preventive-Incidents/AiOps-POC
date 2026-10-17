@@ -21,14 +21,16 @@ from . import telemetry as tm
 INTERVAL = 15
 HISTORY_MIN = 8 * 24 * 60   # as far back as Prometheus keeps (retention 8d)
 REFRESH_S = 600             # re-learn each band every 10 minutes
-STREAK = {"host_cpu": 4, "host_mem": 4, "host_disk": 4, "traffic_drop": 4}  # checks in a row before raising; default 2
+STREAK = {"host_cpu": 4, "host_mem": 4, "host_disk": 4, "traffic_drop": 4, "log_errors": 4,
+          "container_cpu": 4, "container_mem": 4, "container_down": 4}  # checks in a row before raising; default 2
 _bands: dict[str, dict] = {}
 _streak: dict[str, dict] = {}
 LAST_RUN = {"ts": 0, "checks": 0, "error": None}
 
 # the fixed limit used while a metric has too little history to learn from
 FALLBACK = {"cpu": "cpu_threshold", "mem": "mem_threshold", "disk": "disk_threshold",
-            "error_rate": "err_threshold", "p95": "p95_threshold_ms"}
+            "error_rate": "err_threshold", "p95": "p95_threshold_ms", "log_errors": "log_err_threshold",
+            "ccpu": "ccpu_threshold", "cmem": "cmem_threshold"}
 LOW_LABEL = {"host_cpu": "CPU unusually low", "host_mem": "Memory dropped sharply"}
 
 
@@ -152,6 +154,35 @@ def _is_platform_host(host: str) -> bool:
     return host == PLATFORM_HOST
 
 
+WORKLOAD_KINDS = ("log_errors", "container_cpu", "container_mem", "container_down")
+
+
+async def check_workload(s: dict) -> list[dict]:
+    """What every service has, traced or not: its error logs, and the container it runs in on a connected server.
+    This is how an app with no traces (a database, a worker, a log shipper) still gets its problems detected."""
+    svc, out = s["service_name"], []
+    v = await tm.prom_value(tm.log_errors_expr(svc))
+    r = await assess(f"logerr|{svc}", "log_errors", tm.log_errors_expr(svc, "5m"), v)
+    (out.append(_signal("log_errors", "service", svc, v, "errors/min", r)) if v is not None and r["state"] == "high"
+     else clear("log_errors", svc))
+    for inst in s.get("instances") or []:
+        host, c = inst.get("host"), inst.get("container")
+        if not host or not c or not await tm.container_count(host):
+            continue  # this server sends no container data right now (no Docker, collector off, agent away)
+        cpu = await tm.prom_value(tm.container_expr(host, c, "cpu"))
+        if cpu is None:   # the server reports its other containers but not this one: it is not running
+            out.append({"kind": "container_down", "entity_type": "service", "entity": svc, "value": 1, "threshold": 0,
+                        "baseline": 0, "unit": "down", "host": host, "container": c})
+            continue
+        clear("container_down", svc)
+        for kind, m in (("container_cpu", "cpu"), ("container_mem", "mem")):
+            val = cpu if m == "cpu" else await tm.prom_value(tm.container_expr(host, c, m))
+            r = await assess(f"c{m}|{host}/{c}", f"c{m}", tm.container_expr(host, c, m), val)
+            (out.append(_signal(kind, "service", svc, val, "%", r, host=host, container=c))
+             if val is not None and r["state"] == "high" else clear(kind, svc))
+    return out
+
+
 async def check_host(host: str) -> list[dict]:
     out = []
     self_noise = _is_platform_host(host) and llm.busy_recently()
@@ -208,8 +239,10 @@ async def check_security() -> list[dict]:
 
 async def tick():
     sigs = []
-    for a in repo.list_services(("service", "network")):
-        sigs += await check_service(a["service_name"])
+    for a in repo.list_services(("service", "network", "process")):
+        if a["kind"] != "process":
+            sigs += await check_service(a["service_name"])
+        sigs += await check_workload(a)
     for h in repo.list_hosts():
         sigs += await check_host(h["name"])
     sigs += await check_security()
@@ -256,5 +289,8 @@ async def is_healthy(inc: dict) -> bool:
     if kind == "auth_bruteforce":
         n = await tm.loki_count('sum(count_over_time({service_name="frontend"} |= "failed login" [1m]))')
         return n <= db.fsetting("auth_fail_per_min")
+    if kind in WORKLOAD_KINDS:
+        row = repo.service(ent)
+        return not row or not any(s["kind"] == kind for s in await check_workload(row))
     sigs = await check_host(ent)
     return not any(s["kind"] == kind for s in sigs)

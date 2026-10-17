@@ -96,6 +96,38 @@ def host_expr(host: str, metric: str) -> str:
     }[metric]
 
 
+# Error log lines per minute (counted by the platform collector from every log it receives).
+LOG_ERRORS = "aiops_log_errors_total"
+
+
+def log_errors_expr(svc: str, window: str = "2m") -> str:
+    return f'sum(rate({LOG_ERRORS}{{service_name="{svc}"}}[{window}])) * 60'
+
+
+# Per-container usage, sent by the collector that Connect starts on each server (docker_stats, % of the machine).
+CONTAINER = {"cpu": "container_cpu_utilization_ratio", "mem": "container_memory_percent_ratio"}
+
+
+def container_expr(host: str, container: str, metric: str) -> str:
+    return f'max({CONTAINER[metric]}{{host_name="{host}",container_name="{container}"}})'
+
+
+async def container_count(host: str) -> float | None:
+    """How many containers this server is reporting right now (None/0 = it sends no container data)."""
+    return await prom_value(f'count({CONTAINER["cpu"]}{{host_name="{host}"}})')
+
+
+async def container_usage(host: str) -> list[dict]:
+    """[{name, cpu_pct, mem_pct}] for every container the server reports, busiest CPU first."""
+    rows: dict[str, dict] = {}
+    for m, key in (("cpu", "cpu_pct"), ("mem", "mem_pct")):
+        for r in await prom(f'max by (container_name) ({CONTAINER[m]}{{host_name="{host}"}})'):
+            n = r["metric"].get("container_name")
+            if n:
+                rows.setdefault(n, {"name": n, "cpu_pct": None, "mem_pct": None})[key] = round(float(r["value"][1]), 1)
+    return sorted(rows.values(), key=lambda x: -(x["cpu_pct"] or 0))
+
+
 async def error_rate_by_version(svc: str, window: str = "2m") -> list[dict]:
     sel = f'service_name="{svc}",{SRV}'
     errs = await prom(f'sum by (app_version, app_commit) (rate({CALLS}{{{sel},status_code="STATUS_CODE_ERROR"}}[{window}]))')
