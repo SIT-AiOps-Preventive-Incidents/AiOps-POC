@@ -118,7 +118,8 @@ def views(view: str, segments: list[dict], neighbors: list[dict], hosts: list[di
 
 
 # ---------------- storage (called from inventory.ingest) ----------------
-FRESH = "now() - interval '1 day'"
+# A machine found on the network is an asset of the organisation: it stays in the Fleet however long it has been quiet
+# (the list shows when it was last heard). Only a segment whose listening host was removed is dropped.
 
 
 def ingest(host: str, inv: dict):
@@ -150,12 +151,12 @@ def ingest(host: str, inv: dict):
 
 
 def load() -> tuple[list[dict], list[dict], list[dict]]:
-    """Segments and neighbours heard in the last day, and the connected hosts with their services."""
+    """Every segment and machine ever found (assets do not expire), and the connected hosts with their services."""
     from . import db, repo
     segments = [{"cidr": r["cidr"], "gateway": r["gateway"], "host": r["host_name"], "iface": r["iface"]}
-                for r in db.q(f"""SELECT s.* FROM net_segments s JOIN hosts h ON h.name = s.host_name
-                                  WHERE s.last_seen > {FRESH} ORDER BY s.cidr, s.host_name""")]
-    neighbors = db.q(f"SELECT * FROM net_neighbors WHERE last_seen > {FRESH}")
+                for r in db.q("""SELECT s.* FROM net_segments s JOIN hosts h ON h.name = s.host_name
+                                 ORDER BY s.cidr, s.host_name""")]
+    neighbors = db.q("SELECT * FROM net_neighbors")
     svc = {}
     for r in db.q("""SELECT DISTINCT h.name AS host, s.service_name FROM service_instances i
                      JOIN services s ON s.id=i.service_id JOIN hosts h ON h.id=i.host_id"""):
