@@ -1,10 +1,7 @@
 """/api/v1/services - applications AIOps watches (traced, network devices, discovered processes)."""
-import time
-
-import httpx
 from fastapi import APIRouter, Response
 
-from .. import detector, health, repo
+from .. import autoreg, detector, health, repo
 from .. import telemetry as tm
 from .errors import ApiError, not_found
 from .schemas import ServiceIn, ServicePatch
@@ -31,23 +28,9 @@ async def create_service(body: ServiceIn, response: Response):
     return s
 
 
-@router.get("/discovered", summary="Telemetry that is arriving from services nobody registered yet")
+@router.get("/discovered", summary="Apps sending data right now that are not added yet (they are added within a minute)")
 async def discovered():
-    known = {s["service_name"] for s in repo.list_services(("service", "network", "process", "external"))}
-    seen: dict[str, float | None] = {}
-    for r in await tm.prom(f'sum by (service_name) (rate({tm.CALLS}{{span_kind="SPAN_KIND_SERVER"}}[15m]))'):
-        if r["metric"].get("service_name"):
-            seen[r["metric"]["service_name"]] = round(float(r["value"][1]), 3)
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            vals = (await c.get(f"{tm.LOKI}/loki/api/v1/label/service_name/values",
-                                params={"start": int((time.time() - 900) * 1e9)})).json().get("data", [])
-        for n in vals:
-            seen.setdefault(n, None)
-    except Exception:
-        pass
-    return [{"service_name": n, "rps": r} for n, r in sorted(seen.items())
-            if n not in known and n not in ("aiops-agent", "unknown_service")]
+    return await autoreg.pending()
 
 
 @router.get("/{name}", summary="Service detail: health, charts, endpoints, versions, traces, logs")

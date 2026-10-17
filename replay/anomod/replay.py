@@ -170,7 +170,8 @@ def _attr(k: str, v) -> dict:
 
 def resource(service: str) -> dict:
     return {"attributes": [_attr("service.name", service), _attr("service.namespace", NAMESPACE),
-                           _attr("service.instance.id", f"sn-{service}"), _attr("deployment.environment", "anomod"),
+                           _attr("service.instance.id", f"sn-{service}"), _attr("host.name", f"sn-{service}"),
+                           _attr("deployment.environment", "anomod"),
                            _attr("app.version", "anomod-sn"), _attr("app.commit", "recorded")]}
 
 
