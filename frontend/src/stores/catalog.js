@@ -4,7 +4,7 @@ import { useAppStore } from "./app";
 
 /** What RadarOps watches: services (traced, network, discovered) and hosts. */
 export const useCatalogStore = defineStore("catalog", {
-  state: () => ({ services: [], hosts: [], unregistered: [], loaded: false }),
+  state: () => ({ services: [], hosts: [], loaded: false }),
   getters: {
     applications: (s) => s.services.filter((x) => x.kind === "service"),
     network: (s) => s.services.filter((x) => x.kind === "network"),
@@ -12,9 +12,7 @@ export const useCatalogStore = defineStore("catalog", {
   },
   actions: {
     async loadServices() {
-      const [services, unregistered] = await Promise.all([api.services.list(), api.services.discovered().catch(() => [])]);
-      this.services = services;
-      this.unregistered = unregistered;
+      this.services = await api.services.list();
       this.loaded = true;
     },
     async loadHosts() {

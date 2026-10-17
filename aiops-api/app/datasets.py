@@ -35,6 +35,9 @@ SOCIALNETWORK = [
 ]
 
 
+REPLAY_AGENT = "anomod-replay"   # hosts.agent of the stand-in machines: no host metrics, health follows the service
+
+
 def host_of(service: str) -> str:
     """The lab host (container) that stands for a replayed service on the network."""
     return f"sn-{service}"
@@ -59,7 +62,10 @@ def ensure_anomod():
             repo.create_service(svc, display_name=disp, kind="service", source="traced", language="cpp", owner=owner,
                                 repo="github.com/delimitrou/DeathStarBench/socialNetwork", environment="anomod")
         repo.update_service(svc, instrumentation="sdk", entry_url=None)
-        repo.ensure_instance(svc, host_of(svc), host=seed.PLATFORM_HOST, container=host_of(svc))
+        # Each replayed service gets its own stand-in machine, so the map reads like the real spread-out deployment.
+        repo.upsert_host(host_of(svc), os="AnoMod replay", agent=REPLAY_AGENT, kind="server", environment="anomod",
+                         owner=owner)
+        repo.ensure_instance(svc, host_of(svc), host=host_of(svc), container=host_of(svc))
 
 
 # ---------------- scenarios: replay a recorded fault ----------------

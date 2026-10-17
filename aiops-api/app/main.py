@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agent, datasets, db, detector, remote, repo, seed, synthetic
+from . import agent, autoreg, datasets, db, detector, remote, repo, seed, synthetic
 from .netdisco import service as netdisco
 from .api import errors, routes_checks, routes_connect, routes_hosts, routes_incidents, routes_map, routes_network, routes_platform, routes_services
 from .api.schemas import HostRegistration
@@ -49,7 +49,8 @@ async def lifespan(_):
     routes_hosts.write_targets()
     remote.start_all()   # re-open the data channels of servers connected from the platform
     tasks = [asyncio.create_task(detector.loop()), asyncio.create_task(rotate_edge_logs()),
-             asyncio.create_task(netdisco.loop()), asyncio.create_task(synthetic.loop())]
+             asyncio.create_task(netdisco.loop()), asyncio.create_task(synthetic.loop()),
+             asyncio.create_task(autoreg.loop())]   # apps sending data are added on their own
     yield
     for t in tasks:
         t.cancel()

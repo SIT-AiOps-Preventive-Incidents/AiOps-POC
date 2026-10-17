@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS hosts (
   address      TEXT NOT NULL DEFAULT '',
   os           TEXT NOT NULL DEFAULT '',
   arch         TEXT NOT NULL DEFAULT '',
-  agent        TEXT NOT NULL DEFAULT 'aiops-agent' CHECK (agent IN ('aiops-agent', 'node_exporter')),
+  agent        TEXT NOT NULL DEFAULT 'aiops-agent' CHECK (agent IN ('aiops-agent', 'node_exporter', 'anomod-replay')),
   kind         TEXT NOT NULL DEFAULT 'server' CHECK (kind IN ('server', 'workstation')),
   environment  TEXT NOT NULL DEFAULT 'production',
   ip_addresses TEXT[] NOT NULL DEFAULT '{}',
@@ -299,3 +299,7 @@ CREATE TABLE IF NOT EXISTS net_neighbors (
   last_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (cidr, ip)
 );
+
+-- Release 1.4: each replayed AnoMod service sits on its own stand-in machine (agent 'anomod-replay', no host metrics).
+ALTER TABLE hosts DROP CONSTRAINT IF EXISTS hosts_agent_check;
+ALTER TABLE hosts ADD CONSTRAINT hosts_agent_check CHECK (agent IN ('aiops-agent', 'node_exporter', 'anomod-replay'));
