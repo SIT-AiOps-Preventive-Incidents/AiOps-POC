@@ -79,6 +79,15 @@ export const api = {
     job: (id) => get(`/connect/ssh/jobs/${id}`), links: () => get("/connect/ssh/links") },
   checks: { create: (body) => post("/checks", body), recent: (name) => get(`/checks/${enc(name)}`) },
   scenarios: { list: () => get("/scenarios"), run: (id) => post(`/scenarios/${id}/runs`) },
+  cloud: {
+    providers: () => get("/cloud/providers"),
+    accounts: () => get("/cloud/accounts"),
+    add: (body) => post("/cloud/accounts", body),
+    sync: (id) => post(`/cloud/accounts/${id}/sync`),
+    remove: (id) => del(`/cloud/accounts/${id}`),
+    instances: (accountId) => get(`/cloud/instances${accountId ? `?account_id=${accountId}` : ""}`),
+    events: () => get("/cloud/events"),
+  },
   network: {
     get: () => get("/network"),
     scan: () => post("/network/scans"),

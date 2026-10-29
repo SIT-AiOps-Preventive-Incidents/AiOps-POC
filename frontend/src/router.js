@@ -11,6 +11,8 @@ const routes = [
   { path: "/network/3d", component: () => import("@/views/Topology3DView.vue"), meta: { title: "Fleet in 3D" } },
   { path: "/network/list", component: () => import("@/views/DiscoveredNetworkView.vue"), meta: { title: "Fleet list" } },
   { path: "/network/yours", redirect: "/network/list" },
+  { path: "/cloud", component: () => import("@/views/CloudView.vue"), meta: { title: "Cloud accounts" } },
+  { path: "/connect/cloud", redirect: { path: "/cloud", query: { add: "1" } } },
   { path: "/services", component: () => import("@/views/ServicesView.vue"), meta: { title: "Services" } },
   { path: "/services/:name", component: () => import("@/views/ServiceDetailView.vue"), props: true, meta: { title: "Service" } },
   { path: "/computers", component: () => import("@/views/HostsView.vue"), meta: { title: "Hosts" } },

@@ -74,4 +74,9 @@ async def topology_graph():
         h["status"] = hh.get("status")
         h["problem_id"] = hh.get("problem_id")   # so a problem machine on the Fleet links to its incident
     svc = {s["service"]: s["status"] for s in await health.services_health()}
-    return netseg.graph(segments, neighbors, base, svc, repo.discovered_edges(3600))
+    g = netseg.graph(segments, neighbors, base, svc, repo.discovered_edges(3600))
+    from .. import cloud, cloudinv
+    accounts = cloudinv.accounts()
+    if accounts:   # cloud accounts: their networks and instances join the same map
+        g = cloud.merge(g, cloud.graph(accounts, await cloudinv.instances()))
+    return g

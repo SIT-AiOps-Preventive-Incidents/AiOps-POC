@@ -41,20 +41,26 @@ const monitorMany = () => {
 
 const VW = 1180, PAD = 20, CHIP_W = 176, CHIP_H = 34, GAP = 10, LANE_HEAD = 34, LANE_PAD = 12, BOX_H = 46, HUB_W = 210;
 const short = (s) => (s || "").replace(/\.sit\.kmutt\.ac\.th$/i, "");
-const GROUPS = [{ value: "network", label: "Network" }, { value: "owner", label: "Owner" }, { value: "status", label: "Status" }, { value: "coverage", label: "Monitoring" }];
-const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Device", service: "Service" };
+const GROUPS = [{ value: "network", label: "Network" }, { value: "location", label: "Location" }, { value: "owner", label: "Owner" }, { value: "status", label: "Status" }, { value: "coverage", label: "Monitoring" }];
+const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Device", service: "Service",
+  "cloud instance": "Cloud VM", cloud: "Cloud account" };
 const isProblem = (s) => ["problem", "down", "error"].includes(s);
-const statusDot = (m) => (isProblem(m.status) ? "bad" : m.monitored && ["healthy", "ok"].includes(m.status) ? "ok" : m.monitored ? "ok" : "neutral");
+const statusDot = (m) => (isProblem(m.status) || ["agent_silent", "error"].includes(m.cloud?.verdict?.code || m.cloud?.verdict) ? "bad"
+  : m.monitored ? "ok" : m.status === "running" ? "info" : "neutral");
 
 // one record per machine (VM / server / device), with the network it sits on and whether RadarOps monitors it
 const machines = computed(() => {
   if (!g.value) return [];
   const hubOf = {};
   for (const l of g.value.links) if (l.target.startsWith("hub:")) hubOf[l.source] = l.target.slice(4);
-  return g.value.nodes.filter((n) => n.id.startsWith("host:") || n.id.startsWith("ip:")).map((n) => ({
+  const cloudHubs = new Set(g.value.nodes.filter((n) => n.kind === "hub" && n.cloud).map((n) => n.label));
+  return g.value.nodes.filter((n) => n.id.startsWith("host:") || n.id.startsWith("ip:") || n.kind === "cloud instance").map((n) => ({
     id: n.id, ip: n.ip, mac: n.mac, vendor: n.vendor, label: short(n.label || n.ip), kind: n.kind,
     monitored: !!n.id.startsWith("host:"), owner: n.owner, status: n.status, link: n.link,
     problem_id: n.problem_id, problem_link: n.problem_link, cidr: hubOf[n.id] || "—",
+    // cloud: which account, its verdict (machine on but agent silent, stopped in the console, ...)
+    cloud: n.kind === "cloud instance" ? { account: n.account, provider: n.provider, zone: n.zone, size: n.size, verdict: n.verdict, public_ip: n.public_ip }
+      : n.cloud || (cloudHubs.has(hubOf[n.id]) ? { account: (hubOf[n.id] || "").split(" / ")[0] } : null),
   }));
 });
 const summary = computed(() => {
@@ -63,6 +69,7 @@ const summary = computed(() => {
     problems: m.filter((x) => isProblem(x.status)).length, networks: new Set(m.map((x) => x.cidr)).size };
 });
 function groupKey(m) {
+  if (group.value === "location") return m.cloud?.account ? `Cloud · ${m.cloud.account}` : "On-premises networks";
   if (group.value === "owner") return m.owner || "No owner";
   if (group.value === "status") return isProblem(m.status) ? "Needs attention" : m.monitored ? "Healthy · monitored" : "Discovered · not monitored";
   if (group.value === "coverage") return m.monitored ? "Monitored by RadarOps" : "Not monitored yet";
@@ -90,8 +97,8 @@ const view = computed(() => {
   const rowW = hubs.length * hw + (hubs.length - 1) * 20;
   hubs.forEach((hub, i) => {
     const x = (VW - rowW) / 2 + i * (hw + 20);
-    boxes.push({ id: hub.id, kind: "hub", label: hub.label, sub: `${hubCount[hub.label] || 0} machine${(hubCount[hub.label] || 0) === 1 ? "" : "s"}${hub.estimated ? " · estimated" : ""}`, x, y, w: hw, h: BOX_H, node: { ...hub } });
-    edges.push({ x1: cx, y1: chainBottom, x2: x + hw / 2, y2: y });
+    boxes.push({ id: hub.id, kind: hub.cloud ? "cloudhub" : "hub", label: hub.label, sub: `${hubCount[hub.label] || 0} machine${(hubCount[hub.label] || 0) === 1 ? "" : "s"}${hub.estimated ? " · estimated" : ""}`, x, y, w: hw, h: BOX_H, node: { ...hub } });
+    edges.push(hub.cloud ? { x1: cx, y1: 16 + BOX_H, x2: x + hw / 2, y2: y } : { x1: cx, y1: chainBottom, x2: x + hw / 2, y2: y });
   });
   if (hubs.length) y += BOX_H + 30;
 
@@ -122,14 +129,15 @@ const matches = computed(() => {
 });
 const pick = (node) => (selected.value = node);
 const open = () => selected.value?.link && router.push(selected.value.link);
-const monitor = () => router.push({ path: "/connect/computer", query: { address: selected.value.ip } });
+const monitor = () => router.push({ path: "/connect/computer", query: { address: selected.value.cloud?.public_ip || selected.value.ip, names: selected.value.label } });
 </script>
 <template>
   <div class="page page--wide">
-    <UiPageHeader title="Fleet" subtitle="Every machine across your networks — VMs, servers and devices. Connect the ones you don’t monitor yet, right from the map.">
+    <UiPageHeader eyebrow="Watch" title="Fleet" subtitle="Every machine you run, on your own networks and in the clouds you rent. Connect the ones you don’t monitor yet, right from the map.">
       <UiButton icon="add" to="/connect/computer">Add a server</UiButton>
       <UiButton variant="tint" icon="cube" to="/network/3d">3D</UiButton>
       <UiButton variant="tint" icon="list" to="/network/list">List</UiButton>
+      <UiButton variant="tint" icon="cloud" to="/cloud">Clouds</UiButton>
     </UiPageHeader>
 
     <div v-if="g" class="stats" aria-label="Fleet summary">
@@ -174,7 +182,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
           </g>
           <g v-for="b in view.boxes" :key="b.id" class="node" role="button" tabindex="0" @click="pick(b.node)" @keydown.enter="pick(b.node)">
             <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="12" :class="['box', b.kind]" />
-            <image :href="`/icons/f/${b.kind === 'hub' ? 'server' : 'globe'}_regular.svg`" :x="b.x + 14" :y="b.y + b.h / 2 - 9" width="18" height="18" />
+            <image :href="`/icons/f/${b.kind === 'hub' ? 'server' : b.kind === 'cloudhub' ? 'cloud' : 'globe'}_regular.svg`" :x="b.x + 14" :y="b.y + b.h / 2 - 9" width="18" height="18" />
             <text :x="b.x + 40" :y="b.y + (b.sub ? 20 : 28)" class="nm">{{ b.label }}</text>
             <text v-if="b.sub" :x="b.x + 40" :y="b.y + 36" class="kd">{{ b.sub }}</text>
           </g>
@@ -200,8 +208,12 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
           <template v-if="selected.mac"><dt>MAC</dt><dd>{{ selected.mac }}</dd></template>
           <template v-if="selected.vendor"><dt>Made by</dt><dd>{{ selected.vendor }}</dd></template>
           <template v-if="selected.owner"><dt>Owner</dt><dd>{{ selected.owner }}</dd></template>
-          <template v-if="selected.status"><dt>Status</dt><dd>{{ selected.monitored ? selected.status : "discovered · not monitored" }}</dd></template>
+          <template v-if="selected.status"><dt>Status</dt><dd>{{ selected.monitored ? selected.status : selected.cloud ? selected.status : "discovered · not monitored" }}</dd></template>
+          <template v-if="selected.cloud?.account"><dt>Cloud</dt><dd>{{ selected.cloud.account }}<template v-if="selected.cloud.zone"> · {{ selected.cloud.zone }}</template></dd></template>
+          <template v-if="selected.cloud?.size"><dt>Size</dt><dd>{{ selected.cloud.size }}</dd></template>
+          <template v-if="selected.cloud?.public_ip"><dt>Public IP</dt><dd>{{ selected.cloud.public_ip }}</dd></template>
         </dl>
+        <p v-if="selected.cloud?.verdict?.text" :class="['verdict', `t-${selected.cloud.verdict.code}`]">{{ selected.cloud.verdict.text }}</p>
         <UiButton v-if="selected.link" size="sm" @click="open">Open</UiButton>
         <UiButton v-else-if="selected.ip" size="sm" icon="add" @click="monitor">Monitor this machine</UiButton>
       </aside>
@@ -210,11 +222,11 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 </template>
 <style scoped>
 /* same vital-signs tiles as the Overview, so the two pages read as one product; each re-groups the map */
-.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-.stat { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 12px 16px; background: var(--c-surface);
-  border: 1px solid var(--c-border); border-radius: var(--radius-lg); cursor: pointer; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; background: var(--c-surface);
+  border: 0; box-shadow: var(--shadow-card); border-radius: var(--radius-lg); cursor: pointer; }
 .stat:hover { border-color: var(--c-primary); }
-.stat b { font-size: var(--fs-2xl); font-weight: var(--fw-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat b { font-size: 30px; font-weight: var(--fw-bold); letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .stat span { font-size: var(--fs-sm); color: var(--c-text-2); }
 .stat.ok b { color: var(--c-ok-text); }
 .stat.bad { border-color: color-mix(in srgb, var(--c-bad) 45%, var(--c-border)); } .stat.bad b { color: var(--c-bad-text); }
@@ -247,7 +259,12 @@ svg { display: block; width: 100%; height: auto; }
 .lane-title { font: 600 13px var(--font); fill: var(--c-text); } .lane-sub { font-weight: 400; fill: var(--c-text-2); }
 .node { cursor: pointer; } .node .box { fill: var(--c-surface); stroke: var(--c-separator); stroke-width: 1.4; }
 .node .box.internet { fill: var(--c-primary-tint); stroke: var(--c-primary); }
-.node .box.hub { fill: var(--c-primary-tint); stroke: color-mix(in srgb, var(--c-primary) 55%, var(--c-border)); }
+.node .box.hub, .node .box.cloudhub { fill: var(--c-primary-tint); stroke: color-mix(in srgb, var(--c-primary) 55%, var(--c-border)); }
+.node .box.cloudhub { stroke-dasharray: 5 4; }
+.dot.info { fill: var(--c-primary); }
+.verdict { margin: 0 0 12px; padding: 9px 11px; border-radius: var(--radius-md); font-size: var(--fs-sm); background: var(--c-fill); color: var(--c-text-2); }
+.verdict.t-agent_silent, .verdict.t-error { background: var(--c-bad-bg); color: var(--c-bad-text); }
+.verdict.t-stopped_in_cloud { background: var(--c-warn-bg); color: var(--c-warn-text); }
 .node .box.gateway { stroke: color-mix(in srgb, var(--c-primary) 45%, var(--c-border)); }
 .node:hover .box { stroke: var(--c-primary); }
 .nm { font: 600 14px var(--font); fill: var(--c-text); } .kd { font: 11.5px var(--font); fill: var(--c-text-2); }

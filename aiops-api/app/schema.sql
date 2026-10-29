@@ -303,3 +303,44 @@ CREATE TABLE IF NOT EXISTS net_neighbors (
 -- Release 1.4: each replayed AnoMod service sits on its own stand-in machine (agent 'anomod-replay', no host metrics).
 ALTER TABLE hosts DROP CONSTRAINT IF EXISTS hosts_agent_check;
 ALTER TABLE hosts ADD CONSTRAINT hosts_agent_check CHECK (agent IN ('aiops-agent', 'node_exporter', 'anomod-replay'));
+
+-- Release 2: cloud inventory. A customer's cloud account (read-only credential, sealed), every instance it lists,
+-- and what changed between reads. Instances are kept after deletion (gone_at) so the Fleet keeps its history.
+CREATE TABLE IF NOT EXISTS cloud_accounts (
+  id            SERIAL PRIMARY KEY,
+  provider      TEXT NOT NULL CHECK (provider IN ('proxmox', 'openstack', 'vcd', 'cloudstack', 'aws', 'azure', 'gcp')),
+  name          TEXT NOT NULL UNIQUE,
+  config        JSONB NOT NULL DEFAULT '{}',     -- endpoint, region, project: nothing secret
+  secret        TEXT NOT NULL,                   -- Fernet-sealed credential, never returned by the API
+  status        TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'ok', 'error')),
+  last_sync_at  TIMESTAMPTZ,
+  last_error    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS cloud_instances (
+  account_id    INT NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+  instance_id   TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  state         TEXT NOT NULL,                   -- running | stopped | starting | stopping | error | deleted | unknown
+  private_ips   TEXT[] NOT NULL DEFAULT '{}',
+  public_ips    TEXT[] NOT NULL DEFAULT '{}',
+  networks      TEXT[] NOT NULL DEFAULT '{}',
+  zone          TEXT,
+  size          TEXT,
+  created_at    TIMESTAMPTZ,                     -- when the provider created it
+  tags          JSONB NOT NULL DEFAULT '{}',
+  first_seen    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  gone_at       TIMESTAMPTZ,                     -- no longer listed by the provider
+  PRIMARY KEY (account_id, instance_id)
+);
+CREATE TABLE IF NOT EXISTS cloud_events (
+  id            SERIAL PRIMARY KEY,
+  account_id    INT NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+  ts            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind          TEXT NOT NULL CHECK (kind IN ('added', 'removed', 'state')),
+  instance_id   TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  detail        TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS cloud_events_ts ON cloud_events (ts DESC);

@@ -12,9 +12,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agent, autoreg, datasets, db, detector, remote, repo, seed, synthetic
+from . import agent, autoreg, cloudinv, datasets, db, detector, remote, repo, seed, synthetic
 from .netdisco import service as netdisco
-from .api import errors, routes_checks, routes_connect, routes_hosts, routes_incidents, routes_map, routes_network, routes_platform, routes_services
+from .api import errors, routes_checks, routes_cloud, routes_connect, routes_hosts, routes_incidents, routes_map, routes_network, routes_platform, routes_services
 from .api.schemas import HostRegistration
 
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +50,7 @@ async def lifespan(_):
     remote.start_all()   # re-open the data channels of servers connected from the platform
     tasks = [asyncio.create_task(detector.loop()), asyncio.create_task(rotate_edge_logs()),
              asyncio.create_task(netdisco.loop()), asyncio.create_task(synthetic.loop()),
-             asyncio.create_task(autoreg.loop())]   # apps sending data are added on their own
+             asyncio.create_task(autoreg.loop()), asyncio.create_task(cloudinv.loop())]   # apps sending data are added on their own
     yield
     for t in tasks:
         t.cancel()
@@ -59,7 +59,7 @@ async def lifespan(_):
 app = FastAPI(title="AIOps One API", version="1.0.0", lifespan=lifespan,
               description="Agentic root cause analysis: services, hosts, service map, incidents, approvals.")
 errors.install(app)
-for r in (routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network, routes_checks, routes_connect):
+for r in (routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network, routes_checks, routes_connect, routes_cloud):
     app.include_router(r.router)
 
 
