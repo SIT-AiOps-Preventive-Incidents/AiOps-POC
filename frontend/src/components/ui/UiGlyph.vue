@@ -1,12 +1,32 @@
 <script setup>
-// Pastel glyphs for everything that names a thing (navigation, connect choices, lists, incident kinds).
-// Drawn without outlines: each shape is built from three tones of one soft hue - a light face, a mid body and a
-// deeper shade - with fine detail lines in the hue's own dark tone, never black. One second hue at most, for the
-// one detail that matters (a red cell, a lit LED). Minimal shapes, real features: bays, pins, cells, needles.
-defineProps({ name: { type: String, required: true }, size: { type: Number, default: 22 } });
+// Pastel glyphs for everything that names a thing (navigation, connect choices, lists, incident kinds), finished to
+// look drawn by a person rather than generated: the colour is printed slightly off the line (like a riso print),
+// the colour carries a fine paper grain, and a thin plum pen line - never black - traces each shape with a small
+// wobble and the odd gap where the pen lifted. The shapes themselves are three tones of one soft hue.
+import { computed, useId } from "vue";
+const props = defineProps({ name: { type: String, required: true }, size: { type: Number, default: 22 } });
+const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+// a stable "hand" per glyph name, so the same icon always wobbles the same way
+const seed = computed(() => [...props.name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7));
+// small icons get a gentler wobble, or the line turns to noise
+const rough = computed(() => (props.size < 24 ? 0.55 : props.size < 40 ? 0.8 : 1.1));
 </script>
 <template>
-  <svg class="ui-glyph" :width="size" :height="size" viewBox="0 0 24 24" aria-hidden="true">
+  <svg class="ui-glyph" :width="size" :height="size" viewBox="-1 -1 26 26" aria-hidden="true">
+    <defs>
+      <filter :id="`${id}w`" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" :seed="seed" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" :scale="rough" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter :id="`${id}g`" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" :seed="seed + 3" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" :scale="rough * 0.7" xChannelSelector="R" yChannelSelector="G" result="d" />
+        <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" :seed="seed + 9" result="grain" />
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.24  0 0 0 0 0.2  0 0 0 0 0.32  0 0 0 -2.2 0.62" result="specks" />
+        <feComposite in="specks" in2="d" operator="in" result="sp" />
+        <feMerge><feMergeNode in="d" /><feMergeNode in="sp" /></feMerge>
+      </filter>
+      <g :id="`${id}a`">
     <!-- overview: a dashboard panel, two tiles and a dial -->
     <g v-if="name === 'home'">
       <rect x="2" y="3.5" width="20" height="17" rx="4.5" fill="#acdcf3" />
@@ -238,8 +258,15 @@ defineProps({ name: { type: String, required: true }, size: { type: Number, defa
       <g v-else><circle cx="16.4" cy="15" r="3.1" fill="#f5b6c2" /><rect x="15.2" y="13.8" width="2.4" height="2.4" rx=".5" fill="#fde5ea" /></g>
     </g>
     <circle v-else cx="12" cy="12" r="8" fill="#cdd4df" />
+      </g>
+    </defs>
+    <!-- the colour, printed a touch off the line, with paper grain -->
+    <use :href="`#${id}a`" transform="translate(0.7 0.8)" :filter="`url(#${id}g)`" />
+    <!-- the pen: the same shapes traced by hand, thin plum, with a gap or two where the pen lifted -->
+    <use :href="`#${id}a`" class="pen" :filter="`url(#${id}w)`" />
   </svg>
 </template>
 <style scoped>
-.ui-glyph { flex: none; display: block; }
+.ui-glyph { flex: none; display: block; overflow: visible; }
+.pen { fill-opacity: 0; stroke: #463a58; stroke-width: 0.95; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 26 1.6 9 2.4 40 1.2; }
 </style>
