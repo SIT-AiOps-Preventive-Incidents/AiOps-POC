@@ -8,7 +8,7 @@ usePolling(() => cat.loadServices(), 10000);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Services" subtitle="Everything RadarOps watches. Apps that send data are added on their own, within a minute.">
+    <UiPageHeader eyebrow="Watch" title="Services" subtitle="Everything RadarOps watches. Apps that send data are added on their own, within a minute.">
       <UiButton icon="add" to="/connect">Connect</UiButton>
     </UiPageHeader>
     <div class="section-label">Applications ({{ cat.applications.length }})</div>

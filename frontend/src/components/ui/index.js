@@ -1,12 +1,15 @@
 // Component library entry: every UI primitive, registered globally in main.js.
 export { default as UiAppTile } from "./UiAppTile.vue";
 export { default as UiAreaChart } from "./UiAreaChart.vue";
+export { default as UiBar } from "./UiBar.vue";
 export { default as UiButton } from "./UiButton.vue";
 export { default as UiCard } from "./UiCard.vue";
 export { default as UiCodeBlock } from "./UiCodeBlock.vue";
 export { default as UiDisclosure } from "./UiDisclosure.vue";
 export { default as UiEmpty } from "./UiEmpty.vue";
 export { default as UiField } from "./UiField.vue";
+export { default as UiGauge } from "./UiGauge.vue";
+export { default as UiGlyph } from "./UiGlyph.vue";
 export { default as UiIcon } from "./UiIcon.vue";
 export { default as UiList } from "./UiList.vue";
 export { default as UiListRow } from "./UiListRow.vue";

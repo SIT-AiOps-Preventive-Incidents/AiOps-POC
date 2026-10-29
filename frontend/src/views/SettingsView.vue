@@ -26,7 +26,7 @@ async function testTeams() {
 </script>
 <template>
   <div v-if="d" class="page page--narrow">
-    <UiPageHeader title="Settings" />
+    <UiPageHeader eyebrow="Setup" title="Settings" />
     <div class="section-label">Appearance</div>
     <UiCard>
       <UiSegmented :model-value="ui.prefs.theme || 'auto'" label="Appearance" @update:model-value="ui.setTheme"

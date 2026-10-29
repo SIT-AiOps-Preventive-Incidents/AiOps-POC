@@ -44,7 +44,7 @@ const empty = computed(() => d.value && !d.value.groups.length);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Fleet list"
+    <UiPageHeader eyebrow="Fleet" title="Fleet list"
                   subtitle="Every machine across your networks, as a list. By default the agent only listens to the announcements each machine makes; use “Scan a segment” to also find the quiet ones on a network you are authorised to scan.">
       <UiButton v-if="hosts.length" variant="tint" icon="search" @click="scanOpen = true">Scan a segment</UiButton>
       <UiButton icon="flowchart" to="/network">Map</UiButton>

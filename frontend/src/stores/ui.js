@@ -9,7 +9,7 @@ export const useUiStore = defineStore("ui", {
       this.toasts.push({ id, message, tone });
       setTimeout(() => (this.toasts = this.toasts.filter((t) => t.id !== id)), 3200);
     },
-    /** "auto" follows the OS; "light" / "dark" force it. Applied to <html data-theme> (index.html does the first paint). */
+    /** "dark" (default) | "light" | "auto" (follows the OS). Applied to <html data-theme> (index.html does the first paint). */
     setTheme(mode) {
       this.setPref("theme", mode);
       applyTheme(mode);
@@ -21,14 +21,14 @@ export const useUiStore = defineStore("ui", {
   },
 });
 
-export const THEMES = ["auto", "light", "dark"];
+export const THEMES = ["dark", "light", "auto"];
 
 export function applyTheme(mode) {
   const root = document.documentElement;
-  if (mode === "light" || mode === "dark") root.dataset.theme = mode;
+  if (mode === "light" || mode === "auto") root.dataset.theme = mode;
   else delete root.dataset.theme;
-  const dark = mode === "dark" || (mode !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#000000" : "#ffffff");
+  const light = mode === "light" || (mode === "auto" && window.matchMedia("(prefers-color-scheme: light)").matches);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#e9e9e7" : "#08090a");
 }
 
 function loadPrefs() {

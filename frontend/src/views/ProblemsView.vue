@@ -12,7 +12,7 @@ const sections = [
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Incidents" subtitle="The AI investigates each incident and tests a fix in a dry run. A fix is applied only after its owner approves it." />
+    <UiPageHeader eyebrow="Respond" title="Incidents" subtitle="The AI investigates each incident and tests a fix in a dry run. A fix is applied only after its owner approves it." />
     <template v-for="s in sections" :key="s.key">
       <div class="section-label">{{ s.title }} ({{ store[s.key].length }})</div>
       <UiList>

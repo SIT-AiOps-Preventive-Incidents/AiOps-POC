@@ -20,7 +20,7 @@ const app = createApp(App).use(createPinia()).use(router);
 for (const [name, component] of Object.entries(ui)) app.component(name, component);
 app.mount("#app");
 
-// "Auto" theme: keep the browser chrome colour in step when the OS switches light/dark
-const savedTheme = () => { try { return (JSON.parse(localStorage.getItem("aiops.prefs")) || {}).theme || "auto"; } catch { return "auto"; } };
+// "Auto" theme: keep the browser chrome colour in step when the OS switches light/dark (dark is the default)
+const savedTheme = () => { try { return (JSON.parse(localStorage.getItem("aiops.prefs")) || {}).theme || "dark"; } catch { return "dark"; } };
 applyTheme(savedTheme());
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyTheme(savedTheme()));
+window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => applyTheme(savedTheme()));

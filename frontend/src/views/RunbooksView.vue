@@ -8,7 +8,7 @@ async function toggle(r) { await api.runbooks.setEnabled(r.id, !r.enabled); refr
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Runbooks" subtitle="Fixes that worked and were rated 4-5 stars. When the same problem comes back, the AI reuses them instead of starting over." />
+    <UiPageHeader eyebrow="Automation" title="Runbooks" subtitle="Fixes that worked and were rated 4-5 stars. When the same problem comes back, the AI reuses them instead of starting over." />
     <UiList>
       <UiListRow v-for="r in rbs" :key="r.id" :title="`RB-${r.id} ${r.title}`" :detail="r.root_cause"
                  :subtitle="`Used ${r.uses}× · rating ${r.avg_score ?? '-'} (${r.ratings}) · ${(r.steps || []).length} steps`">

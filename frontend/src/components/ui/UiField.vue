@@ -15,10 +15,11 @@ const id = useId();
   </div>
 </template>
 <style scoped>
-.ui-field label { display: block; font-size: var(--fs-sm); color: var(--c-text); margin: 12px 0 6px; font-weight: var(--fw-medium); }
+.ui-field label { display: block; font-size: var(--fs-sm); color: var(--c-text-2); margin: 14px 0 7px; font-weight: var(--fw-medium); }
 .ui-field__hint { color: var(--c-text-3); font-weight: var(--fw-regular); }
-input, textarea { width: 100%; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 8px 10px; font-size: var(--fs-md); }
+input, textarea { width: 100%; background: var(--c-fill); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 10px 12px; font-size: var(--fs-md); }
+textarea { min-height: 84px; resize: vertical; font-family: var(--font-mono); font-size: var(--fs-sm); }
 input:hover, textarea:hover { border-color: var(--c-text-3); }
-input:focus, textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-tint-2); }
+input:focus, textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-tint); }
 input.mono { font-family: var(--font-mono); font-size: var(--fs-sm); }
 </style>

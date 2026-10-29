@@ -54,7 +54,7 @@ async function run(id) {
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Demo scenarios" subtitle="Break something on purpose and watch the AI find and fix it. Detection takes about 40 s, the AI another 1-3 minutes." />
+    <UiPageHeader eyebrow="Demo & tools" title="Demo scenarios" subtitle="Break something on purpose and watch the AI find and fix it. Detection takes about 40 s, the AI another 1-3 minutes." />
     <template v-if="anomod.length">
       <h3 class="sec sec--first">SocialNetwork (AnoMod, recorded on a real deployment)</h3>
       <p class="small muted note">Each run replays the logs and traces AnoMod recorded while the fault was injected, re-timed to now. Detection and root cause come from RadarOps, not from the recording.</p>

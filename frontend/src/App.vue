@@ -22,8 +22,9 @@ usePolling(() => app.load(), 15000); // global status for sidebar badge + top ba
   <UiToastHost />
 </template>
 <style>
-#app { display: flex; overflow: hidden; }
-.main { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100vh; }
-.view { flex: 1; overflow: auto; padding: 0 32px 64px; }
-@media (max-width: 760px) { .view { padding: 4px 16px 80px; } }
+/* the app sits in one rounded frame on a darker ground; the sidebar is a panel inside it */
+#app { display: flex; overflow: hidden; padding: 12px; gap: 12px; background: var(--c-frame); }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; height: calc(100vh - 24px); }
+.view { flex: 1; overflow: auto; padding: 0 20px 64px 8px; }
+@media (max-width: 760px) { #app { padding: 0; gap: 0; } .main { height: 100vh; } .view { padding: 4px 16px 80px; } }
 </style>

@@ -15,20 +15,20 @@ code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
 
 /* layout primitives */
 .page { max-width: var(--page-max); margin: 0 auto; }
-.page--wide { max-width: 1400px; }
+.page--wide { max-width: 1480px; }
 .page--narrow { max-width: 760px; }
 .stack { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
 .row { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .row--between { justify-content: space-between; }
 .row--wrap { flex-wrap: wrap; }
-.grid { display: grid; gap: var(--sp-4); }
+.grid { display: grid; gap: var(--sp-5); }
 .grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.split { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: var(--sp-4); align-items: start; }
-.section-title { font-size: var(--fs-lg); font-weight: var(--fw-semibold); margin: var(--sp-8) 0 var(--sp-3); display: flex; justify-content: space-between; align-items: baseline; }
+.split { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: var(--sp-5); align-items: start; }
+.section-title { font-size: var(--fs-xl); letter-spacing: -0.015em; font-weight: var(--fw-semibold); margin: var(--sp-8) 0 var(--sp-3); display: flex; justify-content: space-between; align-items: baseline; }
 .section-title a { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
-.section-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); text-wrap: balance; margin: var(--sp-6) 0 var(--sp-2); }
+.section-label { font-size: 11px; font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-text-3); text-wrap: balance; margin: var(--sp-6) 0 var(--sp-2); }
 .muted { color: var(--c-text-2); }
 .dim { color: var(--c-text-3); }
 .small { font-size: var(--fs-sm); }
@@ -48,6 +48,6 @@ code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
 }
 
 /* Black-only brand marks: readable on dark surfaces, untouched on the white logo tiles */
-:root[data-theme="dark"] .ui-logo--mono { filter: invert(1); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ui-logo--mono { filter: invert(1); } }
+:root:not([data-theme="light"]) .ui-logo--mono { filter: invert(1); }
+@media (prefers-color-scheme: light) { :root[data-theme="auto"] .ui-logo--mono { filter: none; } }
 .ui-tile .ui-logo--mono { filter: none !important; }

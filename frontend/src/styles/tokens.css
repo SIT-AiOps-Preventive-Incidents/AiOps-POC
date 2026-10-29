@@ -1,170 +1,172 @@
 /* =========================================================================
    RadarOps design tokens - the single source of truth for every component.
-   Two colours carry meaning across the whole product:
-     blue   = the system is working (detecting, investigating, applying a fix)
-     orange = it is your turn (a fix is waiting for your approval)
-   Everything else is neutral: white on light, black on dark. Flat surfaces, 1 px borders,
-   small radii, dense rows - an operations console, not a phone settings screen.
-   Themes: light (default) and dark, chosen by the OS ("Auto") or forced with <html data-theme>.
+
+   An operations console you keep open all day: dark by default, quiet surfaces, big plain numbers.
+   Colour carries meaning and nothing else:
+     sky blue = the system at work (and the one accent for actions)
+     green    = healthy        red = broken        amber = watch it
+   No gradients on surfaces, no glow, no purple. Depth comes from three steps of near-black and a 1 px edge.
+   Themes: dark (default) and light, forced with <html data-theme> or following the OS on "Auto".
    ========================================================================= */
 :root {
-  /* ---- neutrals: a warm paper-grey ramp (NOT the cool slate every AI tool defaults to) ---- */
-  --c-bg: #f4f3f1;            /* page canvas - warm paper so white cards sit on it without feeling cold/generic */
-  --c-surface: #ffffff;       /* cards, tables, sheets */
-  --c-raised: #ebe9e5;        /* sidebar, table headers, wells */
-  --c-fill: #f2f1ee;          /* inputs, hover */
-  --c-fill-2: #e6e4df;        /* tracks, pressed */
-  --c-border: #e5e2dd;        /* hairlines */
-  --c-separator: #efedea;     /* row dividers inside a card */
-  --c-text: #1b1a17;
-  --c-text-2: #615e57;
-  --c-text-3: #938f87;
+  /* ---- neutrals (dark) ---- */
+  --c-bg: #08090a;            /* outside the app frame */
+  --c-frame: #0e0f11;         /* the app frame the panels sit in */
+  --c-surface: #151619;       /* cards, tables, sheets */
+  --c-raised: #121315;        /* sidebar panel, wells */
+  --c-fill: #1c1d21;          /* inputs, hover, secondary buttons */
+  --c-fill-2: #26282d;        /* tracks, pressed */
+  --c-border: #24262b;        /* card edges */
+  --c-separator: #1f2125;     /* row dividers inside a card */
+  --c-text: #f4f4f5;
+  --c-text-2: #a3a5ad;
+  --c-text-3: #6f727b;
 
-  /* ---- brand: deep petrol blue = the system at work. Hand-picked, NOT Tailwind indigo (the AI tell) ---- */
-  --c-primary: #155e8c;
-  --c-primary-hover: #124f77;
-  --c-primary-press: #0f4162;
-  --c-primary-tint: #e9f0f5;
-  --c-primary-tint-2: #cfe0ec;
-  --c-on-primary: #ffffff;
+  /* ---- the one accent ---- */
+  --c-primary: #5ab0e2;
+  --c-primary-hover: #77c0ea;
+  --c-primary-press: #4a9fd2;
+  --c-primary-tint: #11222d;
+  --c-primary-tint-2: #17394c;
+  --c-on-primary: #061019;
 
-  /* ---- action = your turn. One accent only: same petrol as primary (no second brand colour) ---- */
-  --c-action: #155e8c;
-  --c-action-hover: #124f77;
-  --c-action-text: #124f77;
-  --c-action-bg: #e9f0f5;
-  --c-on-action: #ffffff;
+  --c-action: #5ab0e2;
+  --c-action-hover: #77c0ea;
+  --c-action-text: #8ccbee;
+  --c-action-bg: #11222d;
+  --c-on-action: #061019;
 
-  /* ---- semantic status: solid (dots, bars) / text / background ---- */
-  --c-ok: #16a34a;      --c-ok-text: #0f7a37;    --c-ok-bg: #e8f6ee;
-  --c-bad: #e5383b;     --c-bad-text: #c0262a;   --c-bad-bg: #fdecec;
-  --c-warn: #d99a00;    --c-warn-text: #8a6100;  --c-warn-bg: #fdf5df;
-  --c-ai: #155e8c;      --c-ai-text: #124f77;    --c-ai-bg: #e9f0f5;   /* the AI is part of "the system": petrol */
-  --c-info: #155e8c;    --c-info-text: #124f77;  --c-info-bg: #e9f0f5;
-  --c-neutral: #c6c2ba;
-  --c-star: #155e8c;
+  /* ---- status: solid (dots, bars) / text / background ---- */
+  --c-ok: #2fcf8e;      --c-ok-text: #5fe0aa;    --c-ok-bg: #0d2219;
+  --c-bad: #f2545b;     --c-bad-text: #ff8a8f;   --c-bad-bg: #2a1214;
+  --c-warn: #f0b33c;    --c-warn-text: #f6ca72;  --c-warn-bg: #2a2010;
+  --c-ai: #5ab0e2;      --c-ai-text: #8ccbee;    --c-ai-bg: #11222d;
+  --c-info: #5ab0e2;    --c-info-text: #8ccbee;  --c-info-bg: #11222d;
+  --c-neutral: #4b4e56;
+  --c-star: #5ab0e2;
 
   /* ---- chrome & special surfaces ---- */
-  --c-chrome-top: #ffffff;
-  --c-chrome-side: #ffffff;
-  --c-hover: #f2f1ee;
-  --c-overlay: rgba(27, 26, 23, 0.42);
-  --c-toast: #1b1a17;  --c-on-toast: #ffffff;
-  --c-code-bg: #1b1a17;  --c-code-text: #ece9e3;
-  --c-logo-bg: #ffffff;
-  --c-edge: #a29e95;  --c-edge-disc: #b0aca3;
-  --c-bad-surface: #fff7f7;
-  --c-halo: rgba(21, 94, 140, 0.35);  --c-halo-bad: rgba(229, 56, 59, 0.45);
+  --c-chrome-top: transparent;
+  --c-chrome-side: #121315;
+  --c-hover: #1c1d21;
+  --c-overlay: rgba(0, 0, 0, 0.66);
+  --c-toast: #f4f4f5;  --c-on-toast: #0e0f11;
+  --c-code-bg: #0b0c0d;  --c-code-text: #e6e7ea;
+  --c-logo-bg: #f4f4f5;
+  --c-edge: #3a3d44;  --c-edge-disc: #4b4e56;
+  --c-bad-surface: #1d0e0f;
+  --c-halo: rgba(90, 176, 226, 0.45);  --c-halo-bad: rgba(242, 84, 91, 0.5);
   --shadow-seg: none;
 
   /* ---- data visualisation (categorical) ---- */
-  --c-chart-1: #155e8c;  /* throughput, default */
-  --c-chart-2: #e5383b;  /* errors */
-  --c-chart-3: #6b93c2;  /* latency, load */
-  --c-chart-4: #6b7a90;  /* memory */
-  --c-chart-5: #0e8f8f;  /* disk */
+  --c-chart-1: #5ab0e2;  /* throughput, default */
+  --c-chart-2: #f2545b;  /* errors */
+  --c-chart-3: #9aa7c4;  /* latency, load */
+  --c-chart-4: #8f939c;  /* memory */
+  --c-chart-5: #2fcf8e;  /* disk */
 
   /* ---- type ---- */
   --font: "Geist", "Noto Sans Thai", system-ui, -apple-system, sans-serif;
   --font-th: "Noto Sans Thai", "Geist", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --fs-xs: 12px;  --fs-sm: 13px;  --fs-md: 14px;  --fs-lg: 16px;
-  --fs-xl: 18px;  --fs-2xl: 24px; --fs-3xl: 28px;
-  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 600;
-  /* leading: one value per role, so line spacing never drifts between places (headings tight, body readable) */
-  --lh-tight: 1.2; --lh-snug: 1.35; --lh-normal: 1.5;
+  --fs-xl: 20px;  --fs-2xl: 26px; --fs-3xl: 34px; --fs-hero: 46px;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --lh-tight: 1.15; --lh-snug: 1.35; --lh-normal: 1.5;
 
-  /* ---- spacing (4 px grid) - the only gaps/paddings in use; large steps named so section gaps never drift ---- */
+  /* ---- spacing (4 px grid) ---- */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 28px;
   --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
 
-  /* ---- shape & depth: cards lift off the slate canvas with a soft shadow, not a hard border ---- */
-  --radius-sm: 5px; --radius-md: 7px; --radius-lg: 10px; --radius-xl: 14px; --radius-pill: 999px;
-  --shadow-1: 0 1px 1px rgba(27, 26, 23, 0.05), 0 2px 5px -2px rgba(27, 26, 23, 0.07), 0 0 0 1px rgba(27, 26, 23, 0.05);
-  --shadow-card: var(--shadow-1);
-  --shadow-2: 0 16px 40px -10px rgba(27, 26, 23, 0.24), 0 0 0 1px rgba(27, 26, 23, 0.06);
-  --focus-ring: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-primary);
+  /* ---- shape & depth: generous radii, a hairline edge, almost no shadow ---- */
+  --radius-sm: 7px; --radius-md: 10px; --radius-lg: 16px; --radius-xl: 22px; --radius-pill: 999px;
+  --shadow-1: 0 0 0 1px var(--c-border);
+  --shadow-card: 0 0 0 1px var(--c-border), 0 1px 0 0 rgba(255, 255, 255, 0.025) inset;
+  --shadow-2: 0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --focus-ring: 0 0 0 2px var(--c-frame), 0 0 0 4px var(--c-primary);
 
   /* ---- motion ---- */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 0.12s; --dur: 0.2s;
 
   /* ---- layout ---- */
-  --sidebar-w: 232px; --topbar-h: 52px; --page-max: 1240px;
+  --sidebar-w: 248px; --topbar-h: 64px; --page-max: 1320px;
 
-  color-scheme: light;
-}
-
-/* ---- dark theme: black base, the same two signal colours lifted for contrast ---- */
-:root[data-theme="dark"] {
-  --c-bg: #0a0b0d;
-  --c-surface: #16181d;
-  --c-raised: #0f1116;
-  --c-fill: #1f2229;
-  --c-fill-2: #2b2f39;
-  --c-border: #2c303a;
-  --c-separator: #23272f;
-  --c-text: #f2f4f7;
-  --c-text-2: #c3c9d4;
-  --c-text-3: #98a0ae;
-  --c-primary: #4ea3dd;  --c-primary-hover: #70b6e6;  --c-primary-press: #3c93d0;
-  --c-primary-tint: #0d2535;  --c-primary-tint-2: #123749;
-  --c-action: #4ea3dd;  --c-action-hover: #70b6e6;  --c-action-text: #86c3ea;  --c-action-bg: #0d2535;  --c-on-action: #051018;
-  --c-ok: #22c55e;   --c-ok-text: #4ade80;   --c-ok-bg: #0b2416;
-  --c-bad: #f0484b;  --c-bad-text: #ff7b7d;  --c-bad-bg: #2d0f10;
-  --c-warn: #f2b320; --c-warn-text: #f8c95a; --c-warn-bg: #2a2007;
-  --c-ai: #4ea3dd;   --c-ai-text: #86c3ea;   --c-ai-bg: #0d2535;
-  --c-info: #4ea3dd; --c-info-text: #86c3ea; --c-info-bg: #0d2535;
-  --c-neutral: #4a5160;
-  --c-star: #4ea3dd;
-  --c-chart-1: #4ea3dd; --c-chart-2: #ff6b6d; --c-chart-3: #7fa9d6; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
-  --c-chrome-top: #0c0d10;
-  --c-chrome-side: #0c0d10;
-  --c-hover: #1f2229;
-  --c-overlay: rgba(0, 0, 0, 0.7);
-  --c-toast: #f2f4f7;  --c-on-toast: #0f1218;
-  --c-code-bg: #090a0d;  --c-code-text: #e8ecf2;
-  --c-logo-bg: #f2f4f7;
-  --c-edge: #3a404c;  --c-edge-disc: #4a5160;
-  --c-bad-surface: #1c0b0c;
-  --c-halo: rgba(78, 163, 221, 0.5);  --c-halo-bad: rgba(240, 72, 75, 0.5);
-  --shadow-2: 0 18px 50px -8px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
   color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --c-bg: #0a0b0d;
-    --c-surface: #16181d;
-    --c-raised: #0f1116;
-    --c-fill: #1f2229;
-    --c-fill-2: #2b2f39;
-    --c-border: #2c303a;
-    --c-separator: #23272f;
-    --c-text: #f2f4f7;
-    --c-text-2: #c3c9d4;
-    --c-text-3: #98a0ae;
-    --c-primary: #4ea3dd;  --c-primary-hover: #70b6e6;  --c-primary-press: #3c93d0;
-    --c-primary-tint: #0d2535;  --c-primary-tint-2: #123749;
-    --c-action: #4ea3dd;  --c-action-hover: #70b6e6;  --c-action-text: #86c3ea;  --c-action-bg: #0d2535;  --c-on-action: #051018;
-    --c-ok: #22c55e;   --c-ok-text: #4ade80;   --c-ok-bg: #0b2416;
-    --c-bad: #f0484b;  --c-bad-text: #ff7b7d;  --c-bad-bg: #2d0f10;
-    --c-warn: #f2b320; --c-warn-text: #f8c95a; --c-warn-bg: #2a2007;
-    --c-ai: #4ea3dd;   --c-ai-text: #86c3ea;   --c-ai-bg: #0d2535;
-    --c-info: #4ea3dd; --c-info-text: #86c3ea; --c-info-bg: #0d2535;
-    --c-neutral: #4a5160;
-    --c-star: #4ea3dd;
-    --c-chart-1: #4ea3dd; --c-chart-2: #ff6b6d; --c-chart-3: #7fa9d6; --c-chart-4: #8d9aae; --c-chart-5: #2bb5b5;
-    --c-chrome-top: #0c0d10;
-    --c-chrome-side: #0c0d10;
-    --c-hover: #1f2229;
-    --c-overlay: rgba(0, 0, 0, 0.7);
-    --c-toast: #f2f4f7;  --c-on-toast: #0f1218;
-    --c-code-bg: #090a0d;  --c-code-text: #e8ecf2;
-    --c-logo-bg: #f2f4f7;
-    --c-edge: #3a404c;  --c-edge-disc: #4a5160;
-    --c-bad-surface: #1c0b0c;
-    --c-halo: rgba(78, 163, 221, 0.5);  --c-halo-bad: rgba(240, 72, 75, 0.5);
-    --shadow-2: 0 18px 50px -8px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
-    color-scheme: dark;
+
+/* ---- light: the same system on paper ---- */
+:root[data-theme="light"] {
+  --c-bg: #e9e9e7;
+  --c-frame: #f4f4f3;
+  --c-surface: #ffffff;
+  --c-raised: #fbfbfa;
+  --c-fill: #f1f1ef;
+  --c-fill-2: #e5e5e2;
+  --c-border: #e3e3e0;
+  --c-separator: #eeeeec;
+  --c-text: #131416;
+  --c-text-2: #5d6068;
+  --c-text-3: #8f929a;
+  --c-primary: #1b78b0;  --c-primary-hover: #16689a;  --c-primary-press: #125a86;
+  --c-primary-tint: #e8f2f8;  --c-primary-tint-2: #cfe4f1;  --c-on-primary: #ffffff;
+  --c-action: #1b78b0;  --c-action-hover: #16689a;  --c-action-text: #145f8c;  --c-action-bg: #e8f2f8;  --c-on-action: #ffffff;
+  --c-ok: #12a46b;   --c-ok-text: #0b7c50;   --c-ok-bg: #e5f6ee;
+  --c-bad: #e0393f;  --c-bad-text: #bf262c;  --c-bad-bg: #fdeceb;
+  --c-warn: #d1930c; --c-warn-text: #8a6100; --c-warn-bg: #fcf3dc;
+  --c-ai: #1b78b0;   --c-ai-text: #145f8c;   --c-ai-bg: #e8f2f8;
+  --c-info: #1b78b0; --c-info-text: #145f8c; --c-info-bg: #e8f2f8;
+  --c-neutral: #c4c5c9;
+  --c-star: #1b78b0;
+  --c-chart-1: #1b78b0; --c-chart-2: #e0393f; --c-chart-3: #6b7fa6; --c-chart-4: #7a7e88; --c-chart-5: #12a46b;
+  --c-chrome-side: #fbfbfa;
+  --c-hover: #f1f1ef;
+  --c-overlay: rgba(19, 20, 22, 0.42);
+  --c-toast: #131416;  --c-on-toast: #ffffff;
+  --c-code-bg: #131416;  --c-code-text: #ececea;
+  --c-logo-bg: #ffffff;
+  --c-edge: #b9bbc0;  --c-edge-disc: #c4c5c9;
+  --c-bad-surface: #fff7f7;
+  --c-halo: rgba(27, 120, 176, 0.35);  --c-halo-bad: rgba(224, 57, 63, 0.4);
+  --shadow-card: 0 0 0 1px var(--c-border), 0 1px 2px rgba(19, 20, 22, 0.04);
+  --shadow-2: 0 18px 44px -10px rgba(19, 20, 22, 0.22), 0 0 0 1px rgba(19, 20, 22, 0.06);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --c-bg: #e9e9e7;
+    --c-frame: #f4f4f3;
+    --c-surface: #ffffff;
+    --c-raised: #fbfbfa;
+    --c-fill: #f1f1ef;
+    --c-fill-2: #e5e5e2;
+    --c-border: #e3e3e0;
+    --c-separator: #eeeeec;
+    --c-text: #131416;
+    --c-text-2: #5d6068;
+    --c-text-3: #8f929a;
+    --c-primary: #1b78b0;  --c-primary-hover: #16689a;  --c-primary-press: #125a86;
+    --c-primary-tint: #e8f2f8;  --c-primary-tint-2: #cfe4f1;  --c-on-primary: #ffffff;
+    --c-action: #1b78b0;  --c-action-hover: #16689a;  --c-action-text: #145f8c;  --c-action-bg: #e8f2f8;  --c-on-action: #ffffff;
+    --c-ok: #12a46b;   --c-ok-text: #0b7c50;   --c-ok-bg: #e5f6ee;
+    --c-bad: #e0393f;  --c-bad-text: #bf262c;  --c-bad-bg: #fdeceb;
+    --c-warn: #d1930c; --c-warn-text: #8a6100; --c-warn-bg: #fcf3dc;
+    --c-ai: #1b78b0;   --c-ai-text: #145f8c;   --c-ai-bg: #e8f2f8;
+    --c-info: #1b78b0; --c-info-text: #145f8c; --c-info-bg: #e8f2f8;
+    --c-neutral: #c4c5c9;
+    --c-star: #1b78b0;
+    --c-chart-1: #1b78b0; --c-chart-2: #e0393f; --c-chart-3: #6b7fa6; --c-chart-4: #7a7e88; --c-chart-5: #12a46b;
+    --c-chrome-side: #fbfbfa;
+    --c-hover: #f1f1ef;
+    --c-overlay: rgba(19, 20, 22, 0.42);
+    --c-toast: #131416;  --c-on-toast: #ffffff;
+    --c-code-bg: #131416;  --c-code-text: #ececea;
+    --c-logo-bg: #ffffff;
+    --c-edge: #b9bbc0;  --c-edge-disc: #c4c5c9;
+    --c-bad-surface: #fff7f7;
+    --c-halo: rgba(27, 120, 176, 0.35);  --c-halo-bad: rgba(224, 57, 63, 0.4);
+    --shadow-card: 0 0 0 1px var(--c-border), 0 1px 2px rgba(19, 20, 22, 0.04);
+    --shadow-2: 0 18px 44px -10px rgba(19, 20, 22, 0.22), 0 0 0 1px rgba(19, 20, 22, 0.06);
+    color-scheme: light;
   }
 }

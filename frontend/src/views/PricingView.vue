@@ -34,7 +34,7 @@ const FAQ = [
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Pricing" subtitle="Start free. Pay only for the machines you actually monitor — discovery and the Fleet map are always free." />
+    <UiPageHeader eyebrow="Demo & tools" title="Pricing" subtitle="Start free. Pay only for the machines you actually monitor — discovery and the Fleet map are always free." />
 
     <div class="billing">
       <UiSegmented v-model="cycle" :options="[{ value: 'monthly', label: 'Monthly' }, { value: 'yearly', label: 'Yearly · save 25%' }]" label="Billing period" />

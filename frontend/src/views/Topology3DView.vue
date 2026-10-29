@@ -260,7 +260,7 @@ const open = () => selected.value?.link && router.push(selected.value.link);
 </script>
 <template>
   <div class="page page--wide">
-    <UiPageHeader title="Fleet in 3D" subtitle="Internet, gateways, one hub per network, and the machines on it. Drag to turn, scroll to zoom, click for details, double-click to fly in.">
+    <UiPageHeader eyebrow="Fleet" title="Fleet in 3D" subtitle="Internet, gateways, one hub per network, and the machines on it. Drag to turn, scroll to zoom, click for details, double-click to fly in.">
       <UiButton variant="tint" icon="flowchart" to="/network">Map</UiButton>
       <UiButton variant="tint" icon="list" to="/network/list">List</UiButton>
     </UiPageHeader>

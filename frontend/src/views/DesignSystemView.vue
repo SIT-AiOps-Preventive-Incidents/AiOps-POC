@@ -22,7 +22,7 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Design system" subtitle="Tokens and components every page is built from, rendered live from the code. One accent — petrol blue — carries the system and your turn; red, amber and green are reserved for severity. Warm paper neutrals, grounded cards, dense rows." />
+    <UiPageHeader eyebrow="Demo & tools" title="Design system" subtitle="Tokens and components every page is built from, rendered live from the code. Dark first, three steps of near-black, one sky-blue accent for the system and your next action; green, amber and red only for status. Cards share one anatomy: name, what it is, a status line, one measure." />
     <div class="section-label">Color tokens</div>
     <UiCard v-for="[group, list] in COLORS" :key="group" :title="group" class="mb">
       <div class="swatches"><div v-for="v in list" :key="v" class="sw"><span :style="{ background: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ values[v] }}</small></div></div>

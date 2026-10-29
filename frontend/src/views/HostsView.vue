@@ -7,7 +7,7 @@ usePolling(() => cat.loadHosts(), 10000);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Hosts" subtitle="Machines that report CPU, memory and disk - and the services found running on them.">
+    <UiPageHeader eyebrow="Fleet" title="Hosts" subtitle="Machines that report CPU, memory and disk - and the services found running on them.">
       <UiButton icon="add" to="/connect/computer">Add a host</UiButton>
     </UiPageHeader>
     <div class="grid grid--3">
