@@ -78,17 +78,18 @@ const avgCpu = computed(() => {
 const mmss = (s) => (s == null ? "–" : s < 60 ? `${Math.round(s)}s` : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`);
 const tone = (s, good, bad) => (s == null ? "neutral" : s <= good ? "ok" : s <= bad ? "warn" : "bad");
 
-// incidents per day for the last 14 days: the one trend line on the page
+// incidents over 14 days in 6-hour steps: the one trend line on the page, jagged like real traffic
 const trend = computed(() => {
-  const days = 14, now = Date.now() / 1000, bins = Array(days).fill(0);
+  const step = 6 * 3600, n = 56, now = Date.now() / 1000, bins = Array(n).fill(0);
+  let opened = 0, resolved = 0;
   for (const i of incidents.list) {
-    const d = Math.floor((now - i.detected_at) / 86400);
-    if (d >= 0 && d < days) bins[days - 1 - d] += 1;
+    const k = Math.floor((now - i.detected_at) / step);
+    if (k >= 0 && k < n) { bins[n - 1 - k] += 1; opened += 1; if (i.status === "resolved" || i.status === "closed") resolved += 1; }
   }
-  const max = Math.max(1, ...bins), W = 460, H = 92;
-  const pts = bins.map((v, i) => [(i / (days - 1)) * W, H - 6 - (v / max) * (H - 18)]);
-  const line = pts.map((p) => p.map((n) => n.toFixed(1)).join(",")).join(" ");
-  return { line, area: `0,${H} ${line} ${W},${H}`, W, H, total: bins.reduce((a, b) => a + b, 0), today: bins[days - 1] };
+  const max = Math.max(1, ...bins), W = 480, H = 110;
+  const pts = bins.map((v, i) => [(i / (n - 1)) * W, H - 4 - (v / max) * (H - 22)]);
+  const line = pts.map((p) => p.map((x) => x.toFixed(1)).join(",")).join(" ");
+  return { line, area: `0,${H} ${line} ${W},${H}`, W, H, opened, resolved };
 });
 
 const kindLabel = (i) => INCIDENT_KIND[i.kind]?.label || i.title;
@@ -104,6 +105,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
       <div class="board">
         <!-- status: do I need to act? -->
         <section :class="['card', 'welcome', `t-${headline.tone}`]">
+          <UiDotArt variant="ribbon" class="art art--ribbon" from="#6b4fd8" via="#8a6cf0" to="#3f7fd6" fade="left" :seed="2" />
           <p class="welcome__k">{{ t("Right now", "ตอนนี้") }}</p>
           <h2 class="welcome__h">{{ headline.text }}</h2>
           <ul class="checks">
@@ -117,10 +119,10 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           <div class="metric__top">
             <div>
               <h3>{{ t("AI investigation", "AI สืบสวน") }}</h3>
-              <p class="sub">{{ t("Average time to a root cause", "เวลาเฉลี่ยจนได้สาเหตุ") }} · {{ app.llm.active || app.llm.models?.[0] || t("local model", "โมเดลในเครื่อง") }}</p>
+              <p class="sub">{{ app.llm.active || app.llm.models?.[0] || t("local model", "โมเดลในเครื่อง") }} · {{ t("on CPU", "บน CPU") }}</p>
               <p class="state"><UiStatusDot :tone="app.llm.up ? 'ok' : 'bad'" :size="9" />{{ app.llm.up ? t("Online", "พร้อม") : t("Offline", "ออฟไลน์") }}</p>
             </div>
-            <UiGauge :size="104" :ratio="(speed[0].seconds || 0) / 300" :value="mmss(speed[0].seconds)" :unit="t('min', 'นาที')" :tone="tone(speed[0].seconds, 120, 300)" />
+            <UiGauge :size="112" :ratio="(speed[0].seconds || 0) / 180" :value="mmss(speed[0].seconds)" :unit="t('to root cause', 'ถึงสาเหตุ')" tone="info" />
           </div>
           <UiBar :label="t('Incidents resolved', 'แก้ไขแล้ว')" :value="`${Math.round(resolvedShare * 100)}%`" :ratio="resolvedShare" />
           <router-link to="/problems" class="rail" :aria-label="t('Open incidents', 'เปิดเหตุการณ์')"><UiIcon name="chevron_right" :size="18" /></router-link>
@@ -151,12 +153,12 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           <div class="metric__top">
             <div>
               <h3>{{ t("Fix after approval", "แก้หลังอนุมัติ") }}</h3>
-              <p class="sub">{{ t("Average from approve to verified · dry run first", "เวลาเฉลี่ยจากอนุมัติถึงยืนยัน · dry run ก่อน") }}</p>
+              <p class="sub">{{ t("Dry run first, then the owner decides", "dry run ก่อน แล้วเจ้าของตัดสินใจ") }}</p>
               <p class="state"><UiStatusDot :tone="awaitingList.length ? 'warn' : 'ok'" :size="9" />{{ awaitingList.length ? t(`${awaitingList.length} waiting for you`, `รอคุณ ${awaitingList.length}`) : t("Nothing waiting", "ไม่มีรายการรอ") }}</p>
             </div>
-            <UiGauge :size="104" :ratio="(speed[1].seconds || 0) / 300" :value="mmss(speed[1].seconds)" :unit="t('min', 'นาที')" :tone="tone(speed[1].seconds, 120, 300)" />
+            <UiGauge :size="112" :ratio="(speed[1].seconds || 0) / 180" :value="mmss(speed[1].seconds)" :unit="t('to verified', 'ถึงยืนยัน')" tone="info" />
           </div>
-          <UiBar :label="t('Waiting for approval', 'รออนุมัติ')" :value="awaitingList.length" :ratio="queue.length ? awaitingList.length / queue.length : 0" tone="info" />
+          <UiBar :label="t('Waiting for approval', 'รออนุมัติ')" :value="awaitingList.length" :ratio="queue.length ? awaitingList.length / queue.length : 0" />
           <router-link to="/runbooks" class="rail" :aria-label="t('Open runbooks', 'เปิดคู่มือแก้ไข')"><UiIcon name="chevron_right" :size="18" /></router-link>
         </section>
 
@@ -165,16 +167,65 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           <div class="fleet__top">
             <div>
               <h3>{{ t("Fleet", "ฟลีต") }}</h3>
-              <p class="sub">{{ fleet ? t(`${fleet.total} machines · ${fleet.networks} networks · ${fleet.clouds.length} cloud account${fleet.clouds.length === 1 ? "" : "s"}`, `${fleet.total} เครื่อง · ${fleet.networks} เครือข่าย · ${fleet.clouds.length} บัญชีคลาวด์`) : t("Loading", "กำลังโหลด") }}</p>
+              <p class="sub">{{ fleet ? t(`${fleet.total} machines · ${fleet.clouds.length} cloud account${fleet.clouds.length === 1 ? "" : "s"}`, `${fleet.total} เครื่อง · ${fleet.clouds.length} บัญชีคลาวด์`) : t("Loading", "กำลังโหลด") }}</p>
               <p class="state"><UiStatusDot :tone="fleet && fleet.monitored ? 'ok' : 'neutral'" :size="9" />{{ fleet ? t(`${fleet.monitored} monitored`, `เฝ้าดู ${fleet.monitored}`) : "–" }}</p>
             </div>
-            <div class="fleet__nums"><span><b>{{ trend.today }}</b> {{ t("today", "วันนี้") }}</span><span><b>{{ trend.total }}</b> {{ t("in 14 days", "ใน 14 วัน") }}</span></div>
+            <div class="fleet__nums">
+              <span :title="t('Incidents opened, 14 days', 'เหตุการณ์ที่เปิด 14 วัน')"><UiIcon name="chevron_left" :size="12" class="up" /><b>{{ trend.opened }}</b> {{ t("opened", "เปิด") }}</span>
+              <span :title="t('Incidents resolved, 14 days', 'เหตุการณ์ที่แก้แล้ว 14 วัน')"><UiIcon name="chevron_left" :size="12" class="down" /><b>{{ trend.resolved }}</b> {{ t("resolved", "แก้แล้ว") }}</span>
+            </div>
           </div>
-          <svg :viewBox="`0 0 ${trend.W} ${trend.H}`" preserveAspectRatio="none" class="spark" role="img" :aria-label="t('Incidents per day, last 14 days', 'จำนวนเหตุการณ์ต่อวัน 14 วัน')">
-            <polygon :points="trend.area" class="spark__a" /><polyline :points="trend.line" class="spark__l" vector-effect="non-scaling-stroke" />
+          <svg :viewBox="`0 0 ${trend.W} ${trend.H}`" preserveAspectRatio="none" class="spark" role="img" :aria-label="t('Incidents over the last 14 days', 'เหตุการณ์ 14 วันที่ผ่านมา')">
+            <defs><linearGradient id="sparkfill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--c-viz)" stop-opacity="0.55" /><stop offset="1" stop-color="var(--c-viz)" stop-opacity="0" /></linearGradient></defs>
+            <polygon :points="trend.area" fill="url(#sparkfill)" /><polyline :points="trend.line" class="spark__l" vector-effect="non-scaling-stroke" />
           </svg>
-          <p class="spark__cap">{{ t("Incidents per day", "เหตุการณ์ต่อวัน") }}</p>
           <router-link to="/network" class="rail" :aria-label="t('Open the Fleet', 'เปิดฟลีต')"><UiIcon name="chevron_right" :size="18" /></router-link>
+        </section>
+
+        <!-- action cards, each with its own dot art -->
+        <section class="card act">
+          <UiDotArt variant="wave" class="art art--wave" from="#6e54e8" via="#3f8fe0" to="#2b4fa8" :seed="1" />
+          <h3>{{ t("Service map", "แผนผังบริการ") }}</h3>
+          <p class="sub">{{ t("Every hop a request takes", "ทุกจุดที่คำขอผ่าน") }}</p>
+          <p class="state"><UiStatusDot :tone="svc.affected ? 'bad' : 'ok'" :size="9" />{{ svc.affected ? t("Problems on the map", "มีจุดผิดปกติ") : t("All paths healthy", "ทุกเส้นทางปกติ") }}</p>
+          <UiButton variant="tint" to="/map" chevron>{{ t("Open map", "เปิดแผนผัง") }}</UiButton>
+        </section>
+        <section class="card act">
+          <UiDotArt variant="wave" class="art art--wave2" from="#f2a37a" via="#b77ce8" to="#5a5bd8" :seed="4" fade="left" />
+          <h3>{{ t("Investigate", "สืบสวน") }}</h3>
+          <p class="sub">{{ t("Ask the AI to look again", "ให้ AI ดูใหม่อีกรอบ") }}</p>
+          <p class="state"><UiStatusDot :tone="investigatingList.length ? 'info' : 'ok'" :size="9" />{{ investigatingList.length ? t(`${investigatingList.length} in progress`, `กำลังทำ ${investigatingList.length}`) : t("Idle", "ว่าง") }}</p>
+          <UiButton variant="tint" to="/problems" chevron>{{ t("Incidents", "เหตุการณ์") }}</UiButton>
+        </section>
+
+        <!-- the switches that matter -->
+        <section class="card prefs">
+          <h3>{{ t("Platform settings", "ตั้งค่าแพลตฟอร์ม") }}</h3>
+          <template v-if="settings">
+            <p class="prefs__sec">{{ t("Investigation", "การสืบสวน") }}</p>
+            <div class="pref"><span>{{ t("Investigate new incidents automatically", "สืบสวนเหตุการณ์ใหม่อัตโนมัติ") }}</span>
+              <UiSwitch :model-value="settings.auto_analyze === '1'" :label="t('Investigate automatically', 'สืบสวนอัตโนมัติ')" @update:model-value="(v) => saveSetting('auto_analyze', v ? '1' : '0')" /></div>
+            <div class="pref"><span>{{ t("Teams alerts", "แจ้งเตือน Teams") }}</span><span class="muted">{{ settings.teams_webhook ? t("On", "เปิด") : t("Not set", "ยังไม่ตั้ง") }}</span></div>
+            <p class="prefs__sec">{{ t("Detection", "การตรวจจับ") }}</p>
+            <UiSegmented :model-value="settings.sensitivity || 'normal'" :options="SENS" :label="t('Sensitivity', 'ความไว')" @update:model-value="(v) => saveSetting('sensitivity', v)" />
+            <div class="pref"><span>{{ t("Re-read cloud accounts", "อ่านบัญชีคลาวด์ใหม่ทุก") }}</span><span class="muted">{{ Math.round((settings.cloud_sync_s || 300) / 60) }} {{ t("min", "นาที") }}</span></div>
+          </template>
+          <UiButton variant="tint" block to="/settings" chevron class="prefs__all">{{ t("All settings", "การตั้งค่าทั้งหมด") }}</UiButton>
+        </section>
+
+        <section class="card act">
+          <UiDotArt variant="sphere" class="art art--sphere" from="#3f8fe0" via="#7a62e6" to="#d9a0f0" :seed="1" fade="left" />
+          <h3>{{ t("Connect", "เชื่อมต่อ") }}</h3>
+          <p class="sub">{{ t("A server, an app, a website or a cloud", "เครื่อง แอป เว็บไซต์ หรือคลาวด์") }}</p>
+          <p class="state"><UiStatusDot :tone="fleet && fleet.clouds.length ? 'ok' : 'neutral'" :size="9" />{{ fleet ? t(`${fleet.clouds.length} cloud account${fleet.clouds.length === 1 ? "" : "s"}`, `${fleet.clouds.length} บัญชีคลาวด์`) : "–" }}</p>
+          <UiButton variant="tint" to="/connect" chevron>{{ t("Connect", "เชื่อมต่อ") }}</UiButton>
+        </section>
+        <section class="card act">
+          <UiDotArt variant="sphere" class="art art--sphere2" from="#2fc98b" via="#3f8fe0" to="#6e54e8" :seed="3" fade="left" />
+          <h3>{{ t("Runbooks", "คู่มือแก้ไข") }}</h3>
+          <p class="sub">{{ t("Fixes that worked, reused", "วิธีแก้ที่ได้ผล นำมาใช้ซ้ำ") }}</p>
+          <p class="state"><UiStatusDot tone="ok" :size="9" />{{ t("Learning from ratings", "เรียนรู้จากคะแนน") }}</p>
+          <UiButton variant="tint" to="/runbooks" chevron>{{ t("Runbooks", "คู่มือแก้ไข") }}</UiButton>
         </section>
 
         <!-- the queue -->
@@ -194,20 +245,6 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           </div>
           <div v-else class="clear"><UiStatusDot tone="ok" :size="10" /><span>{{ t("Nothing needs you. The AI opens an incident the moment something drifts.", "ไม่มีอะไรต้องทำ AI จะเปิดเหตุการณ์ทันทีที่มีอะไรผิดปกติ") }}</span></div>
         </section>
-
-        <!-- the switches that matter -->
-        <section class="card prefs">
-          <h3>{{ t("Platform settings", "ตั้งค่าแพลตฟอร์ม") }}</h3>
-          <template v-if="settings">
-            <p class="prefs__sec">{{ t("Investigation", "การสืบสวน") }}</p>
-            <div class="pref"><span>{{ t("Investigate new incidents automatically", "สืบสวนเหตุการณ์ใหม่อัตโนมัติ") }}</span>
-              <UiSwitch :model-value="settings.auto_analyze === '1'" :label="t('Investigate automatically', 'สืบสวนอัตโนมัติ')" @update:model-value="(v) => saveSetting('auto_analyze', v ? '1' : '0')" /></div>
-            <p class="prefs__sec">{{ t("Detection", "การตรวจจับ") }}</p>
-            <UiSegmented :model-value="settings.sensitivity || 'normal'" :options="SENS" :label="t('Sensitivity', 'ความไว')" @update:model-value="(v) => saveSetting('sensitivity', v)" />
-            <div class="pref"><span>{{ t("Teams alerts", "แจ้งเตือน Teams") }}</span><span class="muted">{{ settings.teams_webhook ? t("On", "เปิด") : t("Not set", "ยังไม่ตั้ง") }}</span></div>
-          </template>
-          <UiButton variant="tint" block to="/settings" chevron class="prefs__all">{{ t("All settings", "การตั้งค่าทั้งหมด") }}</UiButton>
-        </section>
       </div>
     </template>
     <UiWait v-else :title="t('Loading the overview', 'กำลังโหลดภาพรวม')" />
@@ -215,40 +252,55 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
 </template>
 <style scoped>
 .board { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
-.card { position: relative; background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 22px 24px; min-width: 0; }
-.card h3 { font-size: 22px; font-weight: var(--fw-semibold); letter-spacing: -0.02em; line-height: 1.2; }
+.card { position: relative; overflow: hidden; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-card); padding: 24px 26px; min-width: 0; isolation: isolate; }
+.card > :not(.art):not(.rail) { position: relative; z-index: 1; }
+.card h3 { font-size: 24px; font-weight: var(--fw-semibold); letter-spacing: -0.02em; line-height: 1.2; }
 .sub { font-size: var(--fs-sm); color: var(--c-text-3); margin-top: 4px; }
-.state { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-weight: var(--fw-semibold); }
+.state { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-weight: var(--fw-semibold); font-size: 15px; }
 .muted { color: var(--c-text-2); }
+/* the halftone art sits at the card's edge, behind the words */
+.art { z-index: 0; opacity: 0.95; }
+.art--ribbon { right: -120px; top: -30px; width: 110%; height: 78%; opacity: 0.55; }
+.art--wave, .art--wave2 { right: -30px; bottom: -40px; width: 75%; height: 120%; }
+.art--sphere, .art--sphere2 { right: -50px; bottom: -70px; width: 70%; height: 150%; opacity: 0.8; }
 /* the right-edge chevron rail every resource card carries */
-.rail { position: absolute; top: 0; right: 0; bottom: 0; width: 44px; display: grid; place-items: center; color: var(--c-text-3);
-  border-left: 1px solid var(--c-separator); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+.rail { position: absolute; top: 0; right: 0; bottom: 0; width: 46px; display: grid; place-items: center; color: var(--c-text-3); z-index: 2;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.03)); box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.05); }
 .rail:hover { background: var(--c-hover); color: var(--c-text); }
-.metric, .mini, .fleet { padding-right: 64px; display: flex; flex-direction: column; justify-content: space-between; gap: 22px; }
-.mini { padding: 22px 50px 22px 22px; } .mini .rail { width: 34px; }
-.mini .state { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; }
+.metric, .mini, .fleet { padding-right: 66px; display: flex; flex-direction: column; justify-content: space-between; gap: 22px; }
+.mini { padding: 24px 54px 24px 24px; } .mini .rail { width: 36px; }
+.mini .state { white-space: nowrap; }
 
 .welcome { grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; }
-.welcome__k { color: var(--c-text-3); }
-.welcome__h { font-size: var(--fs-hero); font-weight: var(--fw-bold); letter-spacing: -0.035em; line-height: 1.02; margin-top: 4px; }
+.welcome__k { color: var(--c-text-3); font-size: 15px; }
+.welcome__h { font-size: var(--fs-hero); font-weight: var(--fw-bold); letter-spacing: -0.035em; line-height: 1.02; margin-top: 4px; max-width: 9ch; }
 .t-action .welcome__h { color: var(--c-warn-text); }
 .checks { list-style: none; padding: 0; margin: auto 0 0; display: flex; flex-direction: column; gap: 14px; padding-top: 28px; }
 .checks li { display: flex; gap: 12px; align-items: flex-start; } .checks li .ui-dot { margin-top: 5px; }
-.checks b { display: block; font-weight: var(--fw-semibold); } .checks span { font-size: var(--fs-sm); color: var(--c-text-3); }
+.checks b { display: block; font-weight: var(--fw-semibold); font-size: 15px; } .checks span { font-size: var(--fs-sm); color: var(--c-text-3); }
 .welcome__go { align-self: flex-end; margin-top: 22px; }
 
 .metric { grid-column: span 4; }
 .metric__top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .mini { grid-column: span 2; }
-.fleet { grid-column: span 4; gap: 10px; }
+.fleet { grid-column: span 4; gap: 6px; }
 .fleet__top { display: flex; justify-content: space-between; gap: 12px; }
-.fleet__nums { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; }
-.fleet__nums b { color: var(--c-text); font-size: var(--fs-md); }
-.spark { width: 100%; height: 92px; display: block; margin-top: 6px; }
-.spark__a { fill: var(--c-primary); opacity: 0.14; } .spark__l { fill: none; stroke: var(--c-primary); stroke-width: 2; stroke-linejoin: round; }
-.spark__cap { font-size: var(--fs-xs); color: var(--c-text-3); }
+.fleet__nums { display: flex; gap: 14px; font-size: var(--fs-sm); color: var(--c-text-3); white-space: nowrap; }
+.fleet__nums span { display: inline-flex; align-items: center; gap: 3px; } .fleet__nums b { color: var(--c-text); }
+.up { transform: rotate(90deg); color: var(--c-text); } .down { transform: rotate(-90deg); color: var(--c-text); }
+.spark { width: 100%; height: 110px; display: block; margin-top: auto; }
+.spark__l { fill: none; stroke: var(--c-viz-hi); stroke-width: 1.6; stroke-linejoin: round; }
 
-.queue { grid-column: span 8; }
+.act { grid-column: span 4; min-height: 196px; display: flex; flex-direction: column; align-items: flex-start; }
+.act .ui-btn { margin-top: auto; }
+.act .state { margin-bottom: 22px; }
+
+.prefs { grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; gap: 14px; }
+.prefs__sec { font-size: 10.5px; font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.09em; color: var(--c-text-3); margin-top: 8px; }
+.pref { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 15px; }
+.prefs__all { margin-top: auto; }
+
+.queue { grid-column: span 12; }
 .queue__h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .link { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
 .rows { display: flex; flex-direction: column; }
@@ -259,18 +311,13 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
 .row-i__s { font-size: var(--fs-sm); color: var(--c-text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .clear { display: flex; align-items: center; gap: 12px; padding: 22px 4px; color: var(--c-text-2); }
 
-.prefs { grid-column: span 4; display: flex; flex-direction: column; gap: 14px; }
-.prefs__sec { font-size: 10.5px; font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.09em; color: var(--c-text-3); margin-top: 6px; }
-.pref { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.prefs__all { margin-top: auto; }
-
 @media (max-width: 1280px) {
   .welcome { grid-column: span 6; grid-row: span 1; } .metric { grid-column: span 6; } .mini { grid-column: span 3; } .fleet { grid-column: span 6; }
-  .queue { grid-column: span 12; } .prefs { grid-column: span 12; }
+  .act { grid-column: span 6; } .prefs { grid-column: span 12; grid-row: auto; }
 }
 @media (max-width: 760px) {
   .board { grid-template-columns: 1fr; }
-  .welcome, .metric, .mini, .fleet, .queue, .prefs { grid-column: auto; }
+  .welcome, .metric, .mini, .fleet, .act, .queue, .prefs { grid-column: auto; }
   .welcome__h { font-size: 36px; } .row-i__s { white-space: normal; }
 }
 </style>

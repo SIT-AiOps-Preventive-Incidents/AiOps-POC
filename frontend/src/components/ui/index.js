@@ -6,6 +6,7 @@ export { default as UiButton } from "./UiButton.vue";
 export { default as UiCard } from "./UiCard.vue";
 export { default as UiCodeBlock } from "./UiCodeBlock.vue";
 export { default as UiDisclosure } from "./UiDisclosure.vue";
+export { default as UiDotArt } from "./UiDotArt.vue";
 export { default as UiEmpty } from "./UiEmpty.vue";
 export { default as UiField } from "./UiField.vue";
 export { default as UiGauge } from "./UiGauge.vue";

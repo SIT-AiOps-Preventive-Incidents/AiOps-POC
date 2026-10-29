@@ -53,7 +53,7 @@ const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
 .filter { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
 .focus { display: flex; align-items: center; gap: 8px; }
 .focus select { font: inherit; font-size: var(--fs-sm); padding: 6px 10px; border: 1px solid var(--c-border); border-radius: var(--radius-md);
-  background: var(--c-surface); color: var(--c-text); cursor: pointer; }
+  background: var(--surface); color: var(--c-text); cursor: pointer; }
 .focus select:hover { border-color: var(--c-primary); }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .layout.with-side { grid-template-columns: minmax(0, 1fr) 340px; }

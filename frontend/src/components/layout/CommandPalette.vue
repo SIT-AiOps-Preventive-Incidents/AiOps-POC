@@ -108,7 +108,7 @@ const indexOf = (gi, ii) => { let n = 0; for (let g = 0; g < gi; g++) n += group
 <style scoped>
 .cmd-overlay { position: fixed; inset: 0; z-index: 100; background: var(--c-overlay); backdrop-filter: blur(2px);
   display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; }
-.cmd { width: 100%; max-width: 580px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-xl);
+.cmd { width: 100%; max-width: 580px; background: var(--surface); border: 1px solid var(--c-border); border-radius: var(--radius-xl);
   box-shadow: var(--shadow-2); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
 .cmd__search { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); color: var(--c-text-3); }
 .cmd__search input { flex: 1; border: 0; background: none; outline: none; font: inherit; font-size: var(--fs-lg); color: var(--c-text); }
@@ -119,7 +119,7 @@ const indexOf = (gi, ii) => { let n = 0; for (let g = 0; g < gi; g++) n += group
   padding: 9px 10px; border-radius: var(--radius-md); color: var(--c-text); }
 .cmd__it.on { background: var(--c-primary-tint); }
 .cmd__ic { width: 28px; height: 28px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; background: var(--c-fill); color: var(--c-text-2); }
-.cmd__it.on .cmd__ic { background: var(--c-surface); color: var(--c-primary); }
+.cmd__it.on .cmd__ic { background: var(--surface); color: var(--c-primary); }
 .cmd__l { flex: 1; min-width: 0; font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cmd__sub { font-size: var(--fs-sm); color: var(--c-text-3); flex: none; }
 .cmd__empty { padding: 28px; text-align: center; color: var(--c-text-3); }

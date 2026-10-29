@@ -93,7 +93,7 @@ const ok = (b) => (b ? "ok" : "neutral");
 </template>
 <style scoped>
 .steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
-.step { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 18px 20px; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 14px; }
+.step { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 18px 20px; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 14px; }
 .step.todo { opacity: 0.6; }
 .n { width: 28px; height: 28px; border-radius: 50%; background: var(--c-primary); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
 .step.done .n { background: var(--c-ok); } .step.todo .n { background: var(--c-fill-2); color: var(--c-text-3); }

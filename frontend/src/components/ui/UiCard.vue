@@ -22,7 +22,7 @@ defineProps({ title: String, subtitle: String, icon: String, flush: Boolean, to:
   </section>
 </template>
 <style scoped>
-.ui-card { position: relative; background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+.ui-card { position: relative; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-card);
   padding: 22px 24px; min-width: 0; }
 .ui-card--link { padding-right: 60px; }
 .ui-card--flush { padding: 0; overflow: hidden; }

@@ -226,7 +226,7 @@ async function addNodeExporter() {
   </div>
 </template>
 <style scoped>
-.card { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 22px 24px; }
+.card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 22px 24px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .lbl { display: block; font-size: var(--fs-sm); color: var(--c-text-2); margin: 12px 0 6px; font-weight: 500; }
 .lbl--top { margin-top: 0; }

@@ -45,7 +45,7 @@
 </template>
 <style scoped>
 .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
-.choice { position: relative; background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 26px; color: var(--c-text); display: flex; flex-direction: column; gap: 10px; border: 1px solid transparent; }
+.choice { position: relative; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 26px; color: var(--c-text); display: flex; flex-direction: column; gap: 10px; border: 1px solid transparent; }
 .choice:hover { border-color: color-mix(in srgb, var(--c-primary) 50%, transparent); }
 .choice--primary { border-color: var(--c-primary-tint-2); }
 .choice__tag { position: absolute; top: -10px; left: 20px; background: var(--c-primary); color: var(--c-on-primary); font-size: var(--fs-xs); font-weight: var(--fw-semibold); padding: 2px 10px; border-radius: var(--radius-pill); }

@@ -233,7 +233,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 </template>
 
 <style scoped>
-.canvas { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: auto; padding: 8px; }
+.canvas { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: auto; padding: 8px; }
 /* render at natural pixel size so a node is always the same size; scroll if the graph is wider than the card
    (never stretch a small graph to fill the width, which blew the boxes up) */
 svg { display: block; max-width: 100%; height: auto; }

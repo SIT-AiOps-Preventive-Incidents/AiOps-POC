@@ -300,12 +300,12 @@ const open = () => selected.value?.link && router.push(selected.value.link);
 .legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c-text-3); }
 .legend .k-hub { background: #2f8fc7; } .legend .k-gateway { background: #15598c; } .legend .k-connected { background: var(--c-ok); }
 .legend .k-service { background: var(--c-primary); border-radius: 50%; } .legend .k-internet { background: var(--c-primary); }
-.stage { position: relative; height: calc(100vh - 230px); min-height: 460px; border-radius: var(--radius-lg); background: var(--c-surface);
+.stage { position: relative; height: calc(100vh - 230px); min-height: 460px; border-radius: var(--radius-lg); background: var(--surface);
   box-shadow: var(--shadow-1); overflow: hidden; }
 .canvas { position: absolute; inset: 0; }
 .canvas :deep(canvas) { display: block; cursor: grab; }
 .canvas :deep(.t3-labels) { position: absolute; top: 0; left: 0; pointer-events: none; }
-.canvas :deep(.t3-label) { font: 600 12px/1.2 var(--font, inherit); color: var(--c-text); background: var(--c-surface); padding: 2px 6px;
+.canvas :deep(.t3-label) { font: 600 12px/1.2 var(--font, inherit); color: var(--c-text); background: var(--surface); padding: 2px 6px;
   border-radius: 6px; box-shadow: var(--shadow-1); white-space: nowrap; }
 .canvas :deep(.t3-label.service) { font-weight: 500; font-size: 11px; color: var(--c-text-2); }
 .canvas :deep(.t3-label.hub) { background: #2f8fc7; color: #fff; }
@@ -313,7 +313,7 @@ const open = () => selected.value?.link && router.push(selected.value.link);
 .bar .search { display: flex; align-items: center; gap: 8px; min-width: 260px; }
 .bar .search :deep(.ui-field) { margin: 0; flex: 1; } .bar .search :deep(label) { display: none; }
 .nogl { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; }
-.panel { position: absolute; top: 14px; right: 14px; width: 280px; background: var(--c-surface); border-radius: var(--radius-lg);
+.panel { position: absolute; top: 14px; right: 14px; width: 280px; background: var(--surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2, var(--shadow-1)); padding: 14px 16px; }
 .ptitle { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ptitle b { font-size: var(--fs-lg); overflow-wrap: anywhere; }

@@ -223,7 +223,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 <style scoped>
 /* same vital-signs tiles as the Overview, so the two pages read as one product; each re-groups the map */
 .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-.stat { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; background: var(--c-surface);
+.stat { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; background: var(--surface);
   border: 0; box-shadow: var(--shadow-card); border-radius: var(--radius-lg); cursor: pointer; }
 .stat:hover { border-color: var(--c-primary); }
 .stat b { font-size: 30px; font-weight: var(--fw-bold); letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
@@ -232,7 +232,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .stat.bad { border-color: color-mix(in srgb, var(--c-bad) 45%, var(--c-border)); } .stat.bad b { color: var(--c-bad-text); }
 @media (max-width: 1080px) { .stats { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-.recs { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
+.recs { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
 .recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
 .bulk-btn { margin-left: auto; align-self: center; }
 .rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; align-items: stretch; }
@@ -252,7 +252,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .layout.with-side { grid-template-columns: minmax(0, 1fr) 320px; }
 @media (max-width: 1080px) { .layout.with-side { grid-template-columns: 1fr; } }
-.canvas { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: auto; padding: 10px; max-height: calc(100vh - 280px); }
+.canvas { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: auto; padding: 10px; max-height: calc(100vh - 280px); }
 svg { display: block; width: 100%; height: auto; }
 .edge { fill: none; stroke: var(--c-edge, #c9cfdb); stroke-width: 1.6; }
 .lane { fill: var(--c-fill); stroke: var(--c-separator); stroke-dasharray: 5 5; }
@@ -277,7 +277,7 @@ svg { display: block; width: 100%; height: auto; }
 @media (prefers-reduced-motion: reduce) { .chip.problem .cbox { animation: none; } }
 .ct { font: 500 12px var(--font); fill: var(--c-text); }
 .dot.ok { fill: var(--c-ok); } .dot.bad { fill: var(--c-bad); } .dot.neutral { fill: var(--c-neutral); }
-.side { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; position: sticky; top: 12px; }
+.side { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; position: sticky; top: 12px; }
 .shead { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .shead b { font-size: var(--fs-lg); overflow-wrap: anywhere; }
 .alert { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 9px 11px; border-radius: var(--radius-md);
   background: var(--c-bad-bg); color: var(--c-bad-text); font-weight: var(--fw-semibold); font-size: var(--fs-sm); }

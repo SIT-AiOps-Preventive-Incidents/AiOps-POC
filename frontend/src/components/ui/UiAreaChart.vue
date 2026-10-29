@@ -53,7 +53,7 @@ const learnedFrom = computed(() => (props.normal?.learned_from === "same_hour"
   </div>
 </template>
 <style scoped>
-.chart { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 14px 16px; min-width: 0; }
+.chart { background: var(--surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 14px 16px; min-width: 0; }
 .chart__head { display: flex; justify-content: space-between; align-items: baseline; }
 .chart__head h3 { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text-2); }
 .chart__v { font-size: 22px; font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }

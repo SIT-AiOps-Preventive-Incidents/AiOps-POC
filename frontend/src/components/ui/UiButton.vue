@@ -40,9 +40,10 @@ const tag = computed(() => (props.to ? "router-link" : props.href ? "a" : "butto
 .ui-btn--block { width: 100%; }
 
 /* filled — primary (blue = the system) */
-.ui-btn--primary { background: var(--c-primary); color: var(--c-on-primary); }
-.ui-btn--primary:hover:not(:disabled) { background: var(--c-primary-hover); }
-.ui-btn--primary:active:not(:disabled) { background: var(--c-primary-press); }
+.ui-btn--primary { background: var(--grad-primary, var(--c-primary)); color: var(--c-on-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 18px -8px color-mix(in srgb, var(--c-primary) 70%, transparent); }
+.ui-btn--primary:hover:not(:disabled) { filter: brightness(1.07); }
+.ui-btn--primary:active:not(:disabled) { filter: brightness(0.95); }
 
 /* filled — action (orange = your turn) */
 .ui-btn--action { background: var(--c-action); color: var(--c-on-action); }
@@ -50,7 +51,7 @@ const tag = computed(() => (props.to ? "router-link" : props.href ? "a" : "butto
 .ui-btn--action:active:not(:disabled) { background: var(--c-action-hover); }
 
 /* secondary — a quiet filled neutral */
-.ui-btn--tint { background: var(--c-fill); color: var(--c-text); border-color: var(--c-border); }
+.ui-btn--tint { background: var(--c-fill); color: var(--c-text); border-color: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
 .ui-btn--tint:hover:not(:disabled) { background: var(--c-fill-2); }
 .ui-btn--tint:active:not(:disabled) { background: var(--c-fill-2); }
 

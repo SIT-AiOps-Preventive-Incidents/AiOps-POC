@@ -182,7 +182,7 @@ const providerLabel = (id) => providers.value.find((p) => p.id === id)?.label ||
   </div>
 </template>
 <style scoped>
-.card { background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 22px 24px; margin-bottom: 16px; }
+.card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 22px 24px; margin-bottom: 16px; }
 .card h3 { font-size: 20px; font-weight: var(--fw-semibold); letter-spacing: -0.02em; }
 .sub { font-size: var(--fs-sm); color: var(--c-text-3); margin-top: 4px; }
 .state { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-weight: var(--fw-semibold); }

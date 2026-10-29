@@ -24,7 +24,7 @@ defineProps({ steps: { type: Array, required: true } });
   </ol>
 </template>
 <style scoped>
-.ui-stepper { --c: 28px; --gap: 6px; display: flex; list-style: none; margin: 0; padding: 16px 12px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+.ui-stepper { --c: 28px; --gap: 6px; display: flex; list-style: none; margin: 0; padding: 16px 12px; background: var(--surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
 .ui-step { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; min-width: 0; }
 /* connector from the previous circle's right edge to this circle's left edge */
 .ui-step::before { content: ""; position: absolute; top: calc(var(--c) / 2 - 1px); height: 2px; border-radius: 1px;
@@ -34,13 +34,13 @@ defineProps({ steps: { type: Array, required: true } });
 .ui-step__c { width: var(--c); height: var(--c); box-sizing: border-box; border-radius: 50%; background: var(--c-fill-2); color: var(--c-text-3);
   display: grid; place-items: center; font-size: 13px; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .done .ui-step__c { background: var(--c-primary); color: #fff; }
-.current .ui-step__c { background: var(--c-surface); border: 2px solid var(--c-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-primary) 16%, transparent); }
+.current .ui-step__c { background: var(--surface); border: 2px solid var(--c-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-primary) 16%, transparent); }
 .ui-step__dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-primary); }
 .failed .ui-step__c { background: var(--c-bad); color: #fff; }
 .ui-step__l { font-size: 12.5px; font-weight: var(--fw-semibold); margin-top: 8px; text-wrap: balance; }
 .todo .ui-step__l { color: var(--c-text-3); font-weight: var(--fw-medium, 500); }
 .current .ui-step__l { color: var(--c-primary); }
-.you .ui-step__c { background: var(--c-surface); border: 2px solid var(--c-action); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-action) 18%, transparent); }
+.you .ui-step__c { background: var(--surface); border: 2px solid var(--c-action); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-action) 18%, transparent); }
 .you .ui-step__dot { background: var(--c-action); }
 .you .ui-step__l { color: var(--c-action-text); }
 .ui-step__t { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; min-height: 1em; }

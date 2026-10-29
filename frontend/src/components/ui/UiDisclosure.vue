@@ -11,7 +11,7 @@ defineProps({ title: String, meta: String, card: { type: Boolean, default: true 
 <style scoped>
 .ui-disc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: var(--fw-semibold); }
 .ui-disc > summary::-webkit-details-marker { display: none; }
-.ui-disc--card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+.ui-disc--card { background: var(--surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
 .ui-disc--card > summary { padding: 14px 18px; }
 .ui-disc--card > summary:hover { background: var(--c-hover); }
 .ui-disc--card .ui-disc__body { padding: 0 18px 16px; }

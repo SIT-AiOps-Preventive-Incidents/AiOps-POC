@@ -114,7 +114,7 @@ async function decide(decision) {
 .will__cmd { background: var(--c-fill); border-radius: 8px; padding: 8px 10px; font: 12px/1.5 var(--font-mono); white-space: pre-wrap; margin: 4px 0; }
 
 /* the decision: orange frames the one place that needs a person; a clean white body does the work */
-.decision { margin-top: 16px; border: 1.5px solid var(--c-action); border-radius: var(--radius-lg); overflow: hidden; background: var(--c-surface); }
+.decision { margin-top: 16px; border: 1.5px solid var(--c-action); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); }
 .decision__h { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: var(--c-action-bg); color: var(--c-action-text);
   font-size: var(--fs-sm); font-weight: var(--fw-semibold); border-bottom: 1px solid color-mix(in srgb, var(--c-action) 25%, transparent); }
 .decision__h .ui-icon { color: var(--c-action); }

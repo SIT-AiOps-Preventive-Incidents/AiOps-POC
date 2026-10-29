@@ -15,7 +15,7 @@ const emit = defineEmits(["update:modelValue"]);
 </template>
 <style scoped>
 .ui-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--c-border); border-radius: var(--radius-md); overflow: hidden; }
-.ui-seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--c-surface); padding: 6px 12px;
+.ui-seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--surface); padding: 6px 12px;
   font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--c-text-2); cursor: pointer; touch-action: manipulation; }
 .ui-seg button + button { border-left: 1px solid var(--c-border); }
 .ui-seg button:hover { background: var(--c-fill); }

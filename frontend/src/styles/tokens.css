@@ -1,18 +1,20 @@
 /* =========================================================================
    RadarOps design tokens - the single source of truth for every component.
 
-   An operations console you keep open all day: dark by default, quiet surfaces, big plain numbers.
-   Colour carries meaning and nothing else:
-     sky blue = the system at work (and the one accent for actions)
-     green    = healthy        red = broken        amber = watch it
-   No gradients on surfaces, no glow, no purple. Depth comes from three steps of near-black and a 1 px edge.
+   An instrument panel you keep open all day: dark by default, big plain numbers, cards lit softly from the top
+   left like glass under a desk lamp, and halftone dot art at the edges of the cards that invite an action.
+     mint   = healthy, and the main action          cyan = gauges (a measure, not a verdict)
+     red    = broken     amber = watch it            violet = traffic and trend charts
    Themes: dark (default) and light, forced with <html data-theme> or following the OS on "Auto".
    ========================================================================= */
 :root {
   /* ---- neutrals (dark) ---- */
   --c-bg: #08090a;            /* outside the app frame */
   --c-frame: #0e0f11;         /* the app frame the panels sit in */
-  --c-surface: #151619;       /* cards, tables, sheets */
+  --c-surface: #141417;       /* cards, tables, sheets (flat colour, for SVG fills and mixes) */
+  /* the card itself: a soft light from the top-left corner over the flat colour */
+  --surface: radial-gradient(120% 95% at 0% 0%, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0) 40%), #141417;
   --c-raised: #121315;        /* sidebar panel, wells */
   --c-fill: #1c1d21;          /* inputs, hover, secondary buttons */
   --c-fill-2: #26282d;        /* tracks, pressed */
@@ -23,27 +25,33 @@
   --c-text-3: #6f727b;
 
   /* ---- the one accent ---- */
-  --c-primary: #5ab0e2;
-  --c-primary-hover: #77c0ea;
-  --c-primary-press: #4a9fd2;
-  --c-primary-tint: #11222d;
-  --c-primary-tint-2: #17394c;
-  --c-on-primary: #061019;
+  --c-primary: #2fc98b;
+  --c-primary-hover: #45d79b;
+  --c-primary-press: #24b07a;
+  --c-primary-tint: #0f2219;
+  --c-primary-tint-2: #163a2a;
+  --c-on-primary: #04150d;
+  --grad-primary: linear-gradient(180deg, #3dd99a, #1fae76);
+  --grad-active: linear-gradient(90deg, rgba(47, 201, 139, 0.2), rgba(47, 201, 139, 0.04));
 
-  --c-action: #5ab0e2;
-  --c-action-hover: #77c0ea;
-  --c-action-text: #8ccbee;
-  --c-action-bg: #11222d;
-  --c-on-action: #061019;
+  --c-action: #2fc98b;
+  --c-action-hover: #45d79b;
+  --c-action-text: #5fe0aa;
+  --c-action-bg: #0f2219;
+  --c-on-action: #04150d;
+
+  /* gauges and the trend chart */
+  --c-gauge: #56b6ea;  --c-gauge-hi: #b8e6ff;
+  --c-viz: #9474f2;    --c-viz-hi: #c3adff;
 
   /* ---- status: solid (dots, bars) / text / background ---- */
   --c-ok: #2fcf8e;      --c-ok-text: #5fe0aa;    --c-ok-bg: #0d2219;
   --c-bad: #f2545b;     --c-bad-text: #ff8a8f;   --c-bad-bg: #2a1214;
   --c-warn: #f0b33c;    --c-warn-text: #f6ca72;  --c-warn-bg: #2a2010;
-  --c-ai: #5ab0e2;      --c-ai-text: #8ccbee;    --c-ai-bg: #11222d;
-  --c-info: #5ab0e2;    --c-info-text: #8ccbee;  --c-info-bg: #11222d;
+  --c-ai: #56b6ea;      --c-ai-text: #8ccbee;    --c-ai-bg: #0f212d;
+  --c-info: #56b6ea;    --c-info-text: #8ccbee;  --c-info-bg: #0f212d;
   --c-neutral: #4b4e56;
-  --c-star: #5ab0e2;
+  --c-star: #f0b33c;
 
   /* ---- chrome & special surfaces ---- */
   --c-chrome-top: transparent;
@@ -55,15 +63,15 @@
   --c-logo-bg: #f4f4f5;
   --c-edge: #3a3d44;  --c-edge-disc: #4b4e56;
   --c-bad-surface: #1d0e0f;
-  --c-halo: rgba(90, 176, 226, 0.45);  --c-halo-bad: rgba(242, 84, 91, 0.5);
+  --c-halo: rgba(47, 201, 139, 0.45);  --c-halo-bad: rgba(242, 84, 91, 0.5);
   --shadow-seg: none;
 
   /* ---- data visualisation (categorical) ---- */
-  --c-chart-1: #5ab0e2;  /* throughput, default */
+  --c-chart-1: #56b6ea;  /* throughput, default */
   --c-chart-2: #f2545b;  /* errors */
   --c-chart-3: #9aa7c4;  /* latency, load */
   --c-chart-4: #8f939c;  /* memory */
-  --c-chart-5: #2fcf8e;  /* disk */
+  --c-chart-5: #2fc98b;  /* disk */
 
   /* ---- type ---- */
   --font: "Geist", "Noto Sans Thai", system-ui, -apple-system, sans-serif;
@@ -81,7 +89,7 @@
   /* ---- shape & depth: generous radii, a hairline edge, almost no shadow ---- */
   --radius-sm: 7px; --radius-md: 10px; --radius-lg: 16px; --radius-xl: 22px; --radius-pill: 999px;
   --shadow-1: 0 0 0 1px var(--c-border);
-  --shadow-card: 0 0 0 1px var(--c-border), 0 1px 0 0 rgba(255, 255, 255, 0.025) inset;
+  --shadow-card: inset 0 0 0 1px rgba(255, 255, 255, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 30px -18px rgba(0, 0, 0, 0.9);
   --shadow-2: 0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --focus-ring: 0 0 0 2px var(--c-frame), 0 0 0 4px var(--c-primary);
 
@@ -97,6 +105,12 @@
 
 /* ---- light: the same system on paper ---- */
 :root[data-theme="light"] {
+  --ground-lines: 0;
+    --surface: #ffffff;
+    --grad-primary: linear-gradient(180deg, #1fb57a, #149463);
+    --grad-active: linear-gradient(90deg, rgba(18, 164, 107, 0.14), rgba(18, 164, 107, 0.03));
+    --c-gauge: #1b86c4;  --c-gauge-hi: #65bdf0;
+    --c-viz: #7656e0;    --c-viz-hi: #a98ff5;
   --c-bg: #e9e9e7;
   --c-frame: #f4f4f3;
   --c-surface: #ffffff;
@@ -108,9 +122,9 @@
   --c-text: #131416;
   --c-text-2: #5d6068;
   --c-text-3: #8f929a;
-  --c-primary: #1b78b0;  --c-primary-hover: #16689a;  --c-primary-press: #125a86;
-  --c-primary-tint: #e8f2f8;  --c-primary-tint-2: #cfe4f1;  --c-on-primary: #ffffff;
-  --c-action: #1b78b0;  --c-action-hover: #16689a;  --c-action-text: #145f8c;  --c-action-bg: #e8f2f8;  --c-on-action: #ffffff;
+  --c-primary: #12a46b;  --c-primary-hover: #0f8f5d;  --c-primary-press: #0c7a50;
+  --c-primary-tint: #e5f6ee;  --c-primary-tint-2: #c7ecd9;  --c-on-primary: #ffffff;
+  --c-action: #12a46b;  --c-action-hover: #0f8f5d;  --c-action-text: #0b7c50;  --c-action-bg: #e5f6ee;  --c-on-action: #ffffff;
   --c-ok: #12a46b;   --c-ok-text: #0b7c50;   --c-ok-bg: #e5f6ee;
   --c-bad: #e0393f;  --c-bad-text: #bf262c;  --c-bad-bg: #fdeceb;
   --c-warn: #d1930c; --c-warn-text: #8a6100; --c-warn-bg: #fcf3dc;
@@ -134,6 +148,11 @@
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
+    --surface: #ffffff;
+    --grad-primary: linear-gradient(180deg, #1fb57a, #149463);
+    --grad-active: linear-gradient(90deg, rgba(18, 164, 107, 0.14), rgba(18, 164, 107, 0.03));
+    --c-gauge: #1b86c4;  --c-gauge-hi: #65bdf0;
+    --c-viz: #7656e0;    --c-viz-hi: #a98ff5;
     --c-bg: #e9e9e7;
     --c-frame: #f4f4f3;
     --c-surface: #ffffff;
@@ -145,9 +164,9 @@
     --c-text: #131416;
     --c-text-2: #5d6068;
     --c-text-3: #8f929a;
-    --c-primary: #1b78b0;  --c-primary-hover: #16689a;  --c-primary-press: #125a86;
-    --c-primary-tint: #e8f2f8;  --c-primary-tint-2: #cfe4f1;  --c-on-primary: #ffffff;
-    --c-action: #1b78b0;  --c-action-hover: #16689a;  --c-action-text: #145f8c;  --c-action-bg: #e8f2f8;  --c-on-action: #ffffff;
+    --c-primary: #12a46b;  --c-primary-hover: #0f8f5d;  --c-primary-press: #0c7a50;
+    --c-primary-tint: #e5f6ee;  --c-primary-tint-2: #c7ecd9;  --c-on-primary: #ffffff;
+    --c-action: #12a46b;  --c-action-hover: #0f8f5d;  --c-action-text: #0b7c50;  --c-action-bg: #e5f6ee;  --c-on-action: #ffffff;
     --c-ok: #12a46b;   --c-ok-text: #0b7c50;   --c-ok-bg: #e5f6ee;
     --c-bad: #e0393f;  --c-bad-text: #bf262c;  --c-bad-bg: #fdeceb;
     --c-warn: #d1930c; --c-warn-text: #8a6100; --c-warn-bg: #fcf3dc;

@@ -1,4 +1,7 @@
 <script setup>
+// Top-right cluster, as in the reference: search, Guide mode (explanations under page titles on or off), language,
+// and the workspace you are looking at. The page title itself sits on the page, left, at the same height.
+import { computed } from "vue";
 import { useAppStore } from "@/stores/app";
 import { useUiStore } from "@/stores/ui";
 import { useI18n } from "@/lib/i18n";
@@ -7,45 +10,47 @@ const ui = useUiStore();
 const { locale, t, toggle } = useI18n();
 const openCmd = () => window.dispatchEvent(new CustomEvent("aiops:command"));
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
+const guide = computed({ get: () => ui.prefs.guide !== false, set: (v) => { ui.setPref("guide", v); document.getElementById("app")?.classList.toggle("guide-off", !v); } });
+if (ui.prefs.guide === false) document.getElementById("app")?.classList.add("guide-off");
+const host = typeof location !== "undefined" ? location.hostname.split(".")[0].toUpperCase() : "";
 </script>
 <template>
   <header class="topbar">
     <button class="topbar__menu" aria-label="Open menu" @click="ui.navOpen = !ui.navOpen"><UiIcon name="list" :size="22" /></button>
-    <div class="status">
-      <span class="status__item" :title="app.detectorLive ? 'The detector checked every service in the last minute' : 'The detector has not reported yet'">
-        <span :class="['beat', { live: app.detectorLive }]" />{{ app.detectorLive ? t("Monitoring", "กำลังเฝ้าระวัง") : t("Detector starting", "กำลังเริ่มตัวตรวจจับ") }}</span>
-      <span class="status__item"><UiStatusDot :tone="app.llm.up ? 'ok' : 'bad'" :size="7" />AI {{ app.llm.up ? app.llm.active : t("offline", "ออฟไลน์") }}</span>
-    </div>
+    <div class="spacer" />
     <button class="search" type="button" @click="openCmd" :aria-label="t('Search', 'ค้นหา')">
-      <UiIcon name="search" :size="16" /><span>{{ t("Search incidents, services, hosts…", "ค้นหา incident, บริการ, เครื่อง…") }}</span><kbd>{{ isMac ? "⌘K" : "Ctrl K" }}</kbd>
+      <UiIcon name="search" :size="16" /><span>{{ t("Search", "ค้นหา") }}</span><kbd>{{ isMac ? "⌘K" : "Ctrl K" }}</kbd>
     </button>
-    <div class="tools">
-      <UiButton variant="plain" size="sm" :href="app.grafanaUrl"><UiLogo name="grafana" :size="14" />Grafana</UiButton>
-      <UiButton variant="plain" size="sm" href="/docs" icon="code">API</UiButton>
-      <button class="lang" type="button" :aria-label="t('Switch language', 'สลับภาษา')" :title="t('Language', 'ภาษา')" @click="toggle">
-        {{ locale === "th" ? "ไทย" : "EN" }}</button>
+    <div class="guide">
+      <div class="guide__t"><b>{{ t("Guide mode", "โหมดแนะนำ") }}</b><span>{{ t("Explain what each page shows", "อธิบายว่าแต่ละหน้าแสดงอะไร") }}</span></div>
+      <UiSwitch v-model="guide" :label="t('Guide mode', 'โหมดแนะนำ')" />
+    </div>
+    <button class="lang" type="button" :aria-label="t('Switch language', 'สลับภาษา')" @click="toggle">{{ locale === "th" ? "ไทย" : "EN" }}</button>
+    <div class="who">
+      <span class="who__av" aria-hidden="true"><UiGlyph name="server" :size="20" /></span>
+      <div class="who__t"><span>{{ t("Workspace", "พื้นที่ทำงาน") }}</span><b>{{ host }} · {{ app.hosts.length }} {{ t("hosts", "เครื่อง") }}</b></div>
     </div>
   </header>
 </template>
 <style scoped>
-.topbar { height: var(--topbar-h); flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px 0 8px;
-  background: var(--c-chrome-top); z-index: 5; }
+.topbar { position: absolute; top: 4px; right: 20px; z-index: 6; display: flex; align-items: center; gap: 10px; height: 64px; pointer-events: none; }
+.topbar > * { pointer-events: auto; }
+.spacer { display: none; }
 .topbar__menu { display: none; background: none; border: 0; color: var(--c-text); padding: 6px; cursor: pointer; }
-.status { display: flex; gap: 18px; align-items: center; font-size: var(--fs-sm); color: var(--c-text-2); }
-.status__item { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-.beat { width: 7px; height: 7px; border-radius: 50%; background: var(--c-neutral); }
-.beat.live { background: var(--c-ok); box-shadow: 0 0 0 0 var(--c-ok); animation: beat 2.4s var(--ease) infinite; }
-@keyframes beat { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-ok) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
-/* search bar → opens the ⌘K command palette; the one fast way to reach anything */
-.search { flex: 1; max-width: 420px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; margin: 0 16px;
-  border: 0; box-shadow: var(--shadow-card); border-radius: 12px; background: var(--c-surface); color: var(--c-text-3); cursor: pointer; }
-.search:hover { border-color: var(--c-text-3); background: var(--c-fill); }
-.search span { flex: 1; min-width: 0; text-align: left; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search kbd { font: 500 11px var(--font-mono, monospace); background: var(--c-fill); border: 1px solid var(--c-border); border-radius: 4px; padding: 0 5px; line-height: 16px; color: var(--c-text-2); flex: none; }
-.tools { display: flex; gap: 4px; align-items: center; }
-.lang { display: grid; place-items: center; height: 36px; min-width: 44px; padding: 0 10px; margin-left: 6px; border: 0; border-radius: 10px;
-  background: var(--c-fill); color: var(--c-text-2); cursor: pointer; touch-action: manipulation; font: var(--fw-semibold) var(--fs-sm)/1 var(--font); }
-.lang:hover { background: var(--c-fill-2); color: var(--c-text); }
-@media (max-width: 980px) { .search span, .search kbd { display: none; } .search { flex: none; max-width: none; width: 36px; justify-content: center; padding: 0; margin: 0 8px; } }
-@media (max-width: 760px) { .topbar { padding: 0 12px; } .topbar__menu { display: block; } .status__item:last-child { display: none; } }
+.search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px 0 14px; border: 0; border-radius: 14px; background: var(--surface);
+  box-shadow: var(--shadow-card); color: var(--c-text-3); cursor: pointer; }
+.search:hover { color: var(--c-text); }
+.search span { font-size: var(--fs-sm); }
+.search kbd { font: 500 11px var(--font-mono, monospace); background: var(--c-fill); border-radius: 5px; padding: 1px 6px; color: var(--c-text-2); }
+.guide { display: flex; align-items: center; gap: 16px; height: 52px; padding: 0 12px 0 16px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card); }
+.guide__t { display: flex; flex-direction: column; line-height: 1.25; } .guide__t b { font-size: var(--fs-sm); } .guide__t span { font-size: 11.5px; color: var(--c-text-3); }
+.lang { height: 44px; min-width: 48px; padding: 0 12px; border: 0; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card);
+  color: var(--c-text-2); cursor: pointer; font: var(--fw-semibold) var(--fs-sm)/1 var(--font); }
+.lang:hover { color: var(--c-text); }
+.who { display: flex; align-items: center; gap: 10px; padding-left: 6px; }
+.who__av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--c-fill-2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.who__t { display: flex; flex-direction: column; line-height: 1.25; } .who__t span { font-size: 11.5px; color: var(--c-text-3); } .who__t b { font-size: var(--fs-sm); white-space: nowrap; }
+@media (max-width: 1280px) { .guide__t span, .who__t { display: none; } }
+@media (max-width: 980px) { .guide, .who { display: none; } }
+@media (max-width: 760px) { .topbar { position: static; right: auto; padding: 0 12px; height: 56px; } .spacer { display: block; flex: 1; } .topbar__menu { display: block; } }
 </style>
