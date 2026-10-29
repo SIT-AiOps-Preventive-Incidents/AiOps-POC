@@ -27,7 +27,7 @@ const host = typeof location !== "undefined" ? location.hostname.split(".")[0].t
     </div>
     <button class="lang" type="button" :aria-label="t('Switch language', 'สลับภาษา')" @click="toggle">{{ locale === "th" ? "ไทย" : "EN" }}</button>
     <div class="who">
-      <span class="who__av" aria-hidden="true"><UiGlyph name="server" :size="20" /></span>
+      <span class="who__av" aria-hidden="true"><UiBrandMark :size="26" /></span>
       <div class="who__t"><span>{{ t("Workspace", "พื้นที่ทำงาน") }}</span><b>{{ host }} · {{ app.hosts.length }} {{ t("hosts", "เครื่อง") }}</b></div>
     </div>
   </header>

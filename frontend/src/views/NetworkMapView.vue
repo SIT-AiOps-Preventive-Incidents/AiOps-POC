@@ -77,6 +77,15 @@ function groupKey(m) {
 }
 const KEY_RANK = { "Needs attention": 0, "Healthy · monitored": 1, "Monitored by RadarOps": 1, "Discovered · not monitored": 2, "Not monitored yet": 2, "No owner": 9 };
 
+// each number is a door: the drawing on its right says where it goes, and the card goes there
+const STATS = computed(() => [
+  { k: "machines", v: summary.value.total, go: "See them all", to: "/network/list", glyph: "vm", hue: "slate", badge: "arrow" },
+  { k: "monitored", v: summary.value.monitored, go: "Open hosts", to: "/computers", glyph: "server", hue: "mint", badge: "check", cls: summary.value.monitored ? "ok" : "" },
+  { k: "not monitored", v: summary.value.unmonitored, go: "Connect them", to: "/network/list", glyph: "device", hue: "sky", badge: "plus" },
+  { k: "need attention", v: summary.value.problems, go: "Open incidents", to: "/problems", glyph: "inc_hostdown", hue: "rose", badge: "alert", cls: summary.value.problems ? "bad" : "" },
+  { k: "networks", v: summary.value.networks, go: "By network", to: "/network/list", glyph: "router", hue: "lilac", badge: "arrow" },
+]);
+
 const view = computed(() => {
   if (!g.value) return null;
   const nodes = g.value.nodes;
@@ -140,13 +149,12 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <UiButton variant="tint" icon="cloud" to="/cloud">Clouds</UiButton>
     </UiPageHeader>
 
-    <div v-if="g" class="stats" aria-label="Fleet summary">
-      <button class="stat" @click="group = 'network'"><b>{{ summary.total }}</b><span>machines</span></button>
-      <button :class="['stat', { ok: summary.monitored }]" @click="group = 'coverage'"><b>{{ summary.monitored }}</b><span>monitored</span></button>
-      <button class="stat" @click="group = 'coverage'"><b>{{ summary.unmonitored }}</b><span>not monitored</span></button>
-      <button :class="['stat', { bad: summary.problems }]" @click="group = 'status'"><b>{{ summary.problems }}</b><span>need attention</span></button>
-      <button class="stat" @click="group = 'network'"><b>{{ summary.networks }}</b><span>networks</span></button>
-    </div>
+    <nav v-if="g" class="stats" aria-label="Fleet summary">
+      <router-link v-for="st in STATS" :key="st.k" :to="st.to" :class="['stat', st.cls]">
+        <span class="stat__t"><b>{{ st.v }}</b><span>{{ st.k }}</span><small>{{ st.go }}</small></span>
+        <UiSpot :glyph="st.glyph" :hue="st.hue" :badge="st.badge" :size="68" />
+      </router-link>
+    </nav>
     <section v-if="recs && recs.recommendations.length" class="recs">
       <div class="recs-head">
         <b>Suggested to monitor next</b>
@@ -154,15 +162,18 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
         <UiButton v-if="picked.size" size="sm" icon="add" class="bulk-btn" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
       </div>
       <div class="rec-row">
-        <div v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', { checked: picked.has(r.ip) }]"
-             role="button" tabindex="0" :aria-pressed="picked.has(r.ip)" @click="toggle(r.ip)" @keydown.enter="toggle(r.ip)" @keydown.space.prevent="toggle(r.ip)">
-          <span class="rec-check"><UiIcon name="checkmark" :size="13" /></span>
-          <div class="rec-top">
-            <UiAppTile icon="server" color="var(--c-chart-4)" :size="30" />
+        <div v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', 'spot-host', { checked: picked.has(r.ip) }]"
+             role="link" tabindex="0" :aria-label="`Monitor ${short(r.name)}`" @click="monitorIp(r.ip)" @keydown.enter="monitorIp(r.ip)">
+          <div class="rec-body">
             <div class="rec-name">{{ short(r.name) }}</div>
+            <div class="rec-why muted small">{{ r.reasons[0] }}</div>
+            <div class="rec-act">
+              <UiButton size="sm" icon="add" @click.stop="monitorIp(r.ip)">Monitor now</UiButton>
+              <button type="button" :class="['rec-pick', { on: picked.has(r.ip) }]" :aria-pressed="picked.has(r.ip)" @click.stop="toggle(r.ip)">
+                <span class="rec-box"><UiIcon v-if="picked.has(r.ip)" name="checkmark" :size="12" /></span>Select</button>
+            </div>
           </div>
-          <div class="rec-why muted small">{{ r.reasons[0] }}</div>
-          <UiButton size="sm" variant="tint" icon="add" block @click.stop="monitorIp(r.ip)">Monitor now</UiButton>
+          <UiSpot :glyph="r.vendor === 'Proxmox' ? 'vm' : 'server'" hue="sky" badge="plus" :size="72" />
         </div>
       </div>
     </section>
@@ -222,31 +233,33 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 </template>
 <style scoped>
 /* same vital-signs tiles as the Overview, so the two pages read as one product; each re-groups the map */
-.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-.stat { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; background: var(--surface);
-  border: 0; box-shadow: var(--shadow-card); border-radius: var(--radius-lg); cursor: pointer; }
-.stat:hover { border-color: var(--c-primary); }
-.stat b { font-size: 30px; font-weight: var(--fw-bold); letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.stat { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 14px 18px 22px; background: var(--surface);
+  box-shadow: var(--shadow-card); border-radius: 20px; color: var(--c-text); text-decoration: none; transition: transform var(--dur-fast) var(--ease); }
+.stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-card), inset 0 0 0 1px color-mix(in srgb, var(--c-primary) 35%, transparent); }
+.stat__t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat b { font-size: 34px; font-weight: var(--fw-bold); letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .stat span { font-size: var(--fs-sm); color: var(--c-text-2); }
-.stat.ok b { color: var(--c-ok-text); }
-.stat.bad { border-color: color-mix(in srgb, var(--c-bad) 45%, var(--c-border)); } .stat.bad b { color: var(--c-bad-text); }
-@media (max-width: 1080px) { .stats { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-.recs { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); padding: 14px 16px; margin-bottom: 14px; }
-.recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .recs-head b { font-size: var(--fs-lg); }
+.stat small { font-size: var(--fs-xs); color: var(--c-text-3); margin-top: 8px; }
+.stat:hover small { color: var(--c-primary); }
+.stat.ok b { color: var(--c-ok-text); } .stat.bad b { color: var(--c-bad-text); }
+@media (max-width: 1280px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .stats { grid-template-columns: 1fr; } }
+.recs { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-card); padding: 20px 22px; margin-bottom: 16px; }
+.recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; } .recs-head b { font-size: var(--fs-xl); }
 .bulk-btn { margin-left: auto; align-self: center; }
-.rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; align-items: stretch; }
-/* grid rows (name / reason / button) so the Monitor button sits on the same line across every card */
-.rec { border: 1px solid var(--c-separator); border-radius: 12px; padding: 12px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; position: relative; cursor: pointer; }
-.rec:hover { border-color: var(--c-text-3); }
-.rec.checked { border-color: var(--c-primary); background: var(--c-primary-tint); box-shadow: inset 0 0 0 1px var(--c-primary); }
-/* a tick appears in the corner only when the card is selected for bulk monitoring */
-.rec-check { position: absolute; top: 9px; right: 9px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--c-primary); color: var(--c-on-primary); opacity: 0; transform: scale(0.6); transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
-.rec.checked .rec-check { opacity: 1; transform: scale(1); }
-.rec-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.rec-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; line-height: var(--lh-snug); }
-.rec-why { align-self: start; }
+.rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; align-items: stretch; }
+.rec { display: flex; align-items: center; gap: 10px; padding: 16px 12px 16px 18px; border-radius: 16px; background: var(--c-fill);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); cursor: pointer; transition: background var(--dur-fast) var(--ease); }
+.rec:hover { background: var(--c-fill-2); }
+.rec.checked { box-shadow: inset 0 0 0 1.5px var(--c-primary); }
+.rec-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rec-name { font-weight: var(--fw-semibold); font-size: 15px; overflow-wrap: anywhere; line-height: var(--lh-snug); }
+.rec-act { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.rec-pick { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: var(--c-text-3); font-size: var(--fs-sm); cursor: pointer; padding: 4px; }
+.rec-pick:hover, .rec-pick.on { color: var(--c-text); }
+.rec-box { width: 16px; height: 16px; border-radius: 5px; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--c-text-3); }
+.rec-pick.on .rec-box { background: var(--c-primary); box-shadow: none; color: var(--c-on-primary); }
 .bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
 .search { min-width: 260px; flex: 1; max-width: 360px; } .search :deep(.ui-field) { margin: 0; } .search :deep(label) { display: none; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
