@@ -35,12 +35,21 @@ export function parseTargets(addressQuery, nameQuery) {
     .map((address, i) => (names[i] ? { address, name: slug(names[i].replace(/[.:]/g, "-")) || undefined } : { address }));
 }
 
-// Bulk connect: one shared sign-in, many machines. The credential is used once per host and never stored.
-export function bulkBody(f, targets) {
+// Bulk connect: one shared sign-in, or (perMachine) a user and password for each machine. Credentials are used once
+// per host and never stored.
+export function bulkBody(f, targets, per = {}) {
+  if (f.perMachine) {
+    return { port: Number(f.port) || 22, ebpf: Boolean(f.ebpf),
+      targets: targets.map((t) => ({ ...t, user: (per[t.address]?.user || "").trim(), password: per[t.address]?.password || "" })) };
+  }
   return { targets, port: Number(f.port) || 22, user: f.user.trim(), ebpf: Boolean(f.ebpf), ...credential(f) };
 }
 
-export function missingCred(f) {
+export function missingCred(f, targets = [], per = {}) {
+  if (f.perMachine) {
+    const t = targets.find((x) => !(per[x.address]?.user || "").trim() || !per[x.address]?.password);
+    return t ? `Enter the user and password for ${t.name || t.address}` : null;
+  }
   if (!f.user.trim()) return "Enter the user to sign in as";
   if (f.auth === "password" ? !f.password : !f.key) return f.auth === "password" ? "Enter the password" : "Choose the key file";
   return null;

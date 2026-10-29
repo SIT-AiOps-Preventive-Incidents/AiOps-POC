@@ -156,7 +156,10 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
       <div class="recs-head">
         <b>Suggested to monitor next</b>
         <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · RadarOps ranked them by what it would learn</span>
-        <UiButton v-if="picked.size" size="sm" icon="add" class="bulk-btn" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
+        <span v-if="picked.size" class="bulk-btn">
+          <UiButton size="sm" variant="ghost" icon="dismiss" @click="picked = new Set()">Clear selection</UiButton>
+          <UiButton size="sm" icon="add" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
+        </span>
       </div>
       <div class="rec-row">
         <div v-for="r in recs.recommendations.slice(0, 6)" :key="r.ip" :class="['rec', 'spot-host', { checked: picked.has(r.ip) }]"
@@ -244,7 +247,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 @media (max-width: 560px) { .stats { grid-template-columns: 1fr; } }
 .recs { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-card); padding: 20px 22px; margin-bottom: 16px; }
 .recs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; } .recs-head b { font-size: var(--fs-xl); }
-.bulk-btn { margin-left: auto; align-self: center; }
+.bulk-btn { margin-left: auto; align-self: center; display: inline-flex; gap: 8px; }
 .rec-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; align-items: stretch; }
 .rec { display: flex; align-items: center; gap: 10px; padding: 16px 12px 16px 18px; border-radius: 16px; background: var(--c-fill);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); cursor: pointer; transition: background var(--dur-fast) var(--ease); }

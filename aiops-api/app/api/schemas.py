@@ -116,9 +116,14 @@ class SshConnectIn(BaseModel):
 
 
 class BulkTarget(BaseModel):
-    """One machine to connect in a bulk run. name defaults to the address when the discovery had no hostname."""
+    """One machine to connect in a bulk run. name defaults to the address when the discovery had no hostname.
+    A machine may bring its own sign-in (user, password or key); anything it leaves out comes from the shared one."""
     address: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.:-]+$")
     name: str | None = Field(default=None, max_length=60, pattern=r"^[A-Za-z0-9._-]+$")
+    user: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    password: str | None = None
+    private_key: str | None = None
+    passphrase: str | None = None
 
 
 class SshBulkConnectIn(BaseModel):
@@ -127,7 +132,7 @@ class SshBulkConnectIn(BaseModel):
     and never stored."""
     targets: list[BulkTarget] = Field(min_length=1, max_length=50)
     port: int = Field(default=22, ge=1, le=65535)
-    user: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    user: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
     password: str | None = None
     private_key: str | None = None
     passphrase: str | None = None
@@ -135,8 +140,16 @@ class SshBulkConnectIn(BaseModel):
 
     @model_validator(mode="after")
     def _one_way_in(self):
-        if bool(self.password) == bool(self.private_key):
-            raise ValueError("give either a password or a private key")
+        if self.password and self.private_key:
+            raise ValueError("give either a password or a private key, not both")
+        for t in self.targets:
+            own = bool(t.password or t.private_key)
+            if t.password and t.private_key:
+                raise ValueError(f"{t.address}: give either a password or a private key, not both")
+            if not own and not (self.password or self.private_key):
+                raise ValueError(f"{t.address}: no password or key, and no shared one")
+            if not (t.user or self.user):
+                raise ValueError(f"{t.address}: no user to sign in as")
         return self
 
     def each(self) -> list[SshConnectIn]:
@@ -145,7 +158,9 @@ class SshBulkConnectIn(BaseModel):
         out = []
         for t in self.targets:
             name = t.name or t.address.replace(".", "-").replace(":", "-")
-            out.append(SshConnectIn(name=name, address=t.address, port=self.port, user=self.user,
-                                    password=self.password, private_key=self.private_key,
-                                    passphrase=self.passphrase, ebpf=self.ebpf))
+            own = bool(t.password or t.private_key)   # a machine's own credential replaces the shared one entirely
+            out.append(SshConnectIn(name=name, address=t.address, port=self.port, user=t.user or self.user,
+                                    password=t.password if own else self.password,
+                                    private_key=t.private_key if own else self.private_key,
+                                    passphrase=t.passphrase if own else self.passphrase, ebpf=self.ebpf))
         return out

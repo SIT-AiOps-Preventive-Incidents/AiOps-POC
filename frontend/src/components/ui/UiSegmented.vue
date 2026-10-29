@@ -2,7 +2,7 @@
 // Button group for one choice. options: [{ value, label, logo?, icon? }]
 import UiIcon from "./UiIcon.vue";
 import UiLogo from "./UiLogo.vue";
-defineProps({ modelValue: [String, Number], options: { type: Array, required: true }, label: String });
+defineProps({ modelValue: [String, Number, Boolean], options: { type: Array, required: true }, label: String });
 const emit = defineEmits(["update:modelValue"]);
 </script>
 <template>

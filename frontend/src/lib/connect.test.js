@@ -81,3 +81,17 @@ test("the shared credential still has to be complete, but no single address is n
   assert.equal(missingCred(form({ auth: "key" })), "Choose the key file");
   assert.equal(missingCred(form()), null);
 });
+
+test("per-machine sign-in: each target carries its own user and password, nothing shared is sent", () => {
+  const targets = [{ address: "10.0.0.1", name: "a" }, { address: "10.0.0.2" }];
+  const per = { "10.0.0.1": { user: "ubuntu", password: "x" }, "10.0.0.2": { user: "admin", password: "y" } };
+  assert.deepEqual(bulkBody(form({ perMachine: true, port: "22" }), targets, per), { port: 22, ebpf: true,
+    targets: [{ address: "10.0.0.1", name: "a", user: "ubuntu", password: "x" }, { address: "10.0.0.2", user: "admin", password: "y" }] });
+});
+
+test("per-machine sign-in names the first machine still missing a user or password", () => {
+  const targets = [{ address: "10.0.0.1", name: "a" }, { address: "10.0.0.2" }];
+  assert.equal(missingCred(form({ perMachine: true }), targets, { "10.0.0.1": { user: "u", password: "p" } }),
+    "Enter the user and password for 10.0.0.2");
+  assert.equal(missingCred(form({ perMachine: true }), targets, { "10.0.0.1": { user: "u", password: "p" }, "10.0.0.2": { user: "v", password: "q" } }), null);
+});

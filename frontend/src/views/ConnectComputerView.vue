@@ -16,7 +16,7 @@ const route = useRoute();
 
 // ---- connect a server from RadarOps: sign in once on this page, RadarOps does the rest ----
 // address can be pre-filled from the Fleet map ("Monitor this machine" on a discovered VM)
-const form = ref({ name: "", address: route.query.address ? String(route.query.address) : "", port: "22", user: "", auth: "password", password: "", key: "", keyFile: "", passphrase: "", ebpf: true });
+const form = ref({ name: "", address: route.query.address ? String(route.query.address) : "", port: "22", user: "", auth: "password", password: "", key: "", keyFile: "", passphrase: "", ebpf: true, perMachine: false });
 const suggested = computed(() => hostName("", form.value.address) || "server-name");
 const job = ref(null);
 const target = ref("");
@@ -53,12 +53,17 @@ const bulkStat = computed(() => {
     failed: j.filter((b) => b.job?.state === "failed").length };
 });
 const bulkBusy = computed(() => bulkJobs.value?.some((b) => !b.job || b.job.state === "running"));
+// each machine's own sign-in, keyed by address (used when "Different per machine" is on)
+const per = ref({});
+const perOf = (t) => (per.value[t.address] ||= { user: "", password: "" });
+const SIGNIN = [{ value: false, label: "Same for all" }, { value: true, label: "Different per machine" }];
 async function connectBulk() {
-  const why = missingCred(form.value);
+  const why = missingCred(form.value, targets.value, per.value);
   if (why) return ui.toast(why);
   try {
-    const { jobs } = await api.connect.bulk(bulkBody(form.value, targets.value));
+    const { jobs } = await api.connect.bulk(bulkBody(form.value, targets.value, per.value));
     Object.assign(form.value, { password: "", key: "", keyFile: "", passphrase: "" });
+    per.value = {};   // passwords are not kept in the page either
     bulkJobs.value = jobs.map((j) => ({ ...j, job: null }));
   } catch (e) {
     ui.toast(e.message);
@@ -110,7 +115,7 @@ async function addNodeExporter() {
 <template>
   <div class="page page--narrow">
     <UiPageHeader :title="bulkMode ? `Monitor ${targets.length} machines` : 'Add a host'" :back="{ to: bulkMode ? '/network' : '/connect', label: bulkMode ? 'Fleet' : 'Add a host or service' }"
-                  :subtitle="bulkMode ? 'Sign in once with a credential these machines share. RadarOps installs the agent on each and starts watching their services.' : 'Sign in to the server once from here. RadarOps installs what it needs, then finds and watches every service on it.'" />
+                  :subtitle="bulkMode ? 'Sign in once with a credential they share, or give each machine its own. RadarOps installs the agent on each and starts watching their services.' : 'Sign in to the server once from here. RadarOps installs what it needs, then finds and watches every service on it.'" />
 
     <!-- bulk: one shared sign-in for many machines -->
     <section v-if="bulkMode && !bulkJobs" class="card">
@@ -118,6 +123,19 @@ async function addNodeExporter() {
       <div class="targets">
         <span v-for="t in targets" :key="t.address" class="target">{{ t.name || t.address }}</span>
       </div>
+      <label class="lbl">Sign-in</label>
+      <UiSegmented v-model="form.perMachine" :options="SIGNIN" label="Sign-in" />
+      <!-- one row per machine: its own user and password -->
+      <div v-if="form.perMachine" class="permach">
+        <div class="permach__h"><span>Machine</span><span>User</span><span>Password</span></div>
+        <div v-for="t in targets" :key="t.address" class="permach__r">
+          <span class="permach__n"><b>{{ t.name || t.address }}</b><small v-if="t.name">{{ t.address }}</small></span>
+          <input v-model="perOf(t).user" :aria-label="`User for ${t.name || t.address}`" placeholder="ubuntu" autocomplete="off" spellcheck="false" />
+          <input v-model="perOf(t).password" type="password" :aria-label="`Password for ${t.name || t.address}`" autocomplete="new-password" @keydown.enter="connectBulk" />
+        </div>
+        <UiField v-model="form.port" label="SSH port (all machines)" placeholder="22" mono class="permach__port" />
+      </div>
+      <template v-else>
       <div class="grid2 mt-2">
         <UiField v-model="form.user" label="User (same on every machine)" placeholder="ubuntu" mono />
         <UiField v-model="form.port" label="SSH port" placeholder="22" mono />
@@ -129,9 +147,10 @@ async function addNodeExporter() {
         <label class="file mt"><input type="file" @change="pickKey" /><span>{{ form.keyFile || "Choose the key these machines accept" }}</span></label>
         <UiField v-model="form.passphrase" type="password" label="Key passphrase" hint="(only if it has one)" />
       </template>
+      </template>
       <div class="row mt-2"><UiSwitch v-model="form.ebpf" label="Trace their services automatically" /><span>Logs, metrics and traces for every service on each machine</span></div>
       <UiButton class="mt connect" @click="connectBulk">Connect {{ targets.length }} machines</UiButton>
-      <p class="small muted mt-2">One credential, used once per machine to install the agent, then forgotten. Machines that refuse it are reported on their own — the rest still connect.</p>
+      <p class="small muted mt-2">{{ form.perMachine ? "Each sign-in is used once on its own machine to install the agent, then forgotten." : "One credential, used once per machine to install the agent, then forgotten." }} Machines that refuse it are reported on their own and the rest still connect.</p>
     </section>
 
     <section v-else-if="bulkMode" class="card">
@@ -244,6 +263,15 @@ async function addNodeExporter() {
 .checklist li.running .dot { border-color: var(--c-primary); background: radial-gradient(var(--c-primary) 35%, transparent 40%); }
 .stats { font-weight: var(--fw-semibold); }
 .targets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.permach { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.permach__h, .permach__r { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; }
+.permach__h { font-size: 10.5px; font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.09em; color: var(--c-text-3); }
+.permach__n { display: flex; flex-direction: column; min-width: 0; } .permach__n b { overflow-wrap: anywhere; font-weight: var(--fw-semibold); }
+.permach__n small { font-size: var(--fs-xs); color: var(--c-text-3); font-family: var(--font-mono); }
+.permach__r input { width: 100%; background: var(--c-fill); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 9px 11px; font: var(--fs-md) var(--font-mono); }
+.permach__r input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-tint); }
+.permach__port { max-width: 200px; }
+@media (max-width: 640px) { .permach__h { display: none; } .permach__r { grid-template-columns: 1fr; } }
 .target { font-size: var(--fs-sm); background: var(--c-fill); border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: 3px 8px; font-family: var(--font-mono, monospace); }
 .hostlist { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 10px; }
 .hostlist li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; }

@@ -109,3 +109,22 @@ def test_bulk_route_starts_one_job_per_target_and_reports_them(monkeypatch):
     body = r.json()
     assert body["count"] == 2 and [j["name"] for j in body["jobs"]] == ["db2", "10-4-82-41"]
     assert [j["job_id"] for j in body["jobs"]] == ["job-db2", "job-10-4-82-41"] and started == ["db2", "10-4-82-41"]
+
+
+def test_bulk_connect_lets_each_machine_bring_its_own_sign_in():
+    b = SshBulkConnectIn(targets=[{"address": "10.4.82.40", "user": "ubuntu", "password": "a"},
+                                  {"address": "10.4.82.41", "user": "admin", "password": "b"}])   # no shared credential
+    c1, c2 = b.each()
+    assert (c1.user, c1.password, c2.user, c2.password) == ("ubuntu", "a", "admin", "b")
+
+
+def test_a_machine_without_its_own_sign_in_falls_back_to_the_shared_one():
+    b = SshBulkConnectIn(user="poc", password="shared",
+                         targets=[{"address": "10.4.82.40", "password": "own"}, {"address": "10.4.82.41"}])
+    c1, c2 = b.each()
+    assert (c1.user, c1.password) == ("poc", "own") and (c2.user, c2.password) == ("poc", "shared")
+
+
+def test_every_machine_must_end_up_with_a_user_and_exactly_one_way_in():
+    with pytest.raises(ValidationError):   # second machine has nothing and there is no shared credential
+        SshBulkConnectIn(targets=[{"address": "10.4.82.40", "user": "u", "password": "a"}, {"address": "10.4.82.41"}])
