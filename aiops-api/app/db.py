@@ -35,7 +35,11 @@ DEFAULT_SETTINGS = {
     "auth_fail_per_min": "40",
     # how far from normal counts as a problem: low (fewer alerts) | normal | high (catch more)
     "sensitivity": "normal",
-    "cloud_sync_s": "300",       # how often every connected cloud account is re-read
+    "cloud_sync_s": "300",
+    # Insights: what an hour of disruption costs the business, and how long a root cause takes by hand
+    "downtime_cost_per_hour": "10000",
+    "manual_rca_minutes": "45",
+    "currency": "THB",       # how often every connected cloud account is re-read
     "verify_after_s": "60",
     # the platform's own containers are not part of the monitored application
     # network discovery: addresses of real switches/routers to poll over SNMP (lab nodes are found by label)

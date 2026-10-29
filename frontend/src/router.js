@@ -13,6 +13,7 @@ const routes = [
   { path: "/network/yours", redirect: "/network/list" },
   { path: "/cloud", component: () => import("@/views/CloudView.vue"), meta: { title: "Cloud accounts" } },
   { path: "/connect/cloud", redirect: { path: "/cloud", query: { add: "1" } } },
+  { path: "/insights", component: () => import("@/views/InsightsView.vue"), meta: { title: "Insights" } },
   { path: "/services", component: () => import("@/views/ServicesView.vue"), meta: { title: "Services" } },
   { path: "/services/:name", component: () => import("@/views/ServiceDetailView.vue"), props: true, meta: { title: "Service" } },
   { path: "/computers", component: () => import("@/views/HostsView.vue"), meta: { title: "Hosts" } },

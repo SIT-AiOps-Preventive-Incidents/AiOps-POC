@@ -15,6 +15,7 @@ const NAV = computed(() => [
   { label: t("Main", "หลัก"), items: [
     { to: "/", label: t("Overview", "ภาพรวม"), icon: "home" },
     { to: "/problems", label: t("Incidents", "เหตุการณ์"), icon: "warning", badge: true },
+    { to: "/insights", label: t("Insights", "อินไซต์"), icon: "pulse" },
     { to: "/network", label: t("Fleet", "ฟลีต"), icon: "server", children: [
       { to: "/network", label: t("Map", "แผนที่"), exact: true },
       { to: "/network/list", label: t("List", "รายการ") },

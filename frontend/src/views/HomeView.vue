@@ -14,6 +14,7 @@ import { useUiStore } from "@/stores/ui";
 import { useI18n } from "@/lib/i18n";
 import SeverityPill from "@/components/domain/SeverityPill.vue";
 import StatusPill from "@/components/domain/StatusPill.vue";
+import InsightCard from "@/components/domain/InsightCard.vue";
 
 const app = useAppStore();
 const incidents = useIncidentStore();
@@ -30,6 +31,9 @@ usePolling(async () => {
       networks: g.nodes.filter((n) => n.kind === "hub").length, clouds };
   } catch { fleet.value = null; }
 }, 30000);
+
+const ins = ref(null);
+usePolling(async () => { try { ins.value = await api.insights(); } catch { ins.value = null; } }, 60000);
 
 const settings = ref(null);
 api.settings.get().then((r) => (settings.value = { ...r.settings })).catch(() => {});
@@ -229,6 +233,12 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           <UiButton variant="tint" to="/runbooks" chevron>{{ t("Runbooks", "คู่มือแก้ไข") }}</UiButton>
         </section>
 
+        <!-- what the data says: the top findings, each with its action -->
+        <section v-if="ins && ins.findings.length" class="insights">
+          <div class="queue__h"><h3>{{ t("What your data says", "ข้อมูลบอกอะไร") }}</h3><router-link to="/insights" class="link">{{ t("All insights", "อินไซต์ทั้งหมด") }}</router-link></div>
+          <div class="insights__grid"><InsightCard v-for="f in ins.findings.slice(0, 4)" :key="f.id" :f="f" /></div>
+        </section>
+
         <!-- the queue -->
         <section class="card queue">
           <div class="queue__h"><h3>{{ t("Incident queue", "คิวเหตุการณ์") }}</h3><router-link to="/problems" class="link">{{ t("All incidents", "ทั้งหมด") }}</router-link></div>
@@ -303,6 +313,10 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
 .prefs__all { margin-top: auto; }
 
 .queue { grid-column: span 12; }
+.insights { grid-column: span 12; margin-top: 8px; }
+.insights h3 { font-size: 24px; font-weight: var(--fw-semibold); letter-spacing: -0.02em; }
+.insights__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1080px) { .insights__grid { grid-template-columns: 1fr; } }
 .queue__h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .link { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
 .rows { display: flex; flex-direction: column; }

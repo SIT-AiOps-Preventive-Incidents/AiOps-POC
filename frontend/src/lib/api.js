@@ -33,6 +33,7 @@ const enc = encodeURIComponent;
 
 export const api = {
   overview: () => get("/overview"),
+  insights: () => get("/insights"),
   health: () => get("/health"),
 
   services: {
