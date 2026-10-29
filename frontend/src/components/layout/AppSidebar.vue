@@ -52,14 +52,7 @@ const theme = computed({ get: () => ui.prefs.theme || "dark", set: (v) => ui.set
 <template>
   <aside :class="['sidebar', { open: ui.navOpen }]">
     <router-link to="/" class="brand" aria-label="RadarOps overview">
-      <svg class="brand__mark" viewBox="0 0 28 28" width="26" height="26" aria-hidden="true">
-        <rect width="28" height="28" rx="8" fill="var(--c-primary)" />
-        <circle cx="14" cy="14" r="8.5" fill="none" stroke="var(--c-on-primary)" stroke-width="1.3" opacity="0.35" />
-        <circle cx="14" cy="14" r="4.6" fill="none" stroke="var(--c-on-primary)" stroke-width="1.3" opacity="0.45" />
-        <path d="M14 14 L19.9 7.9" fill="none" stroke="var(--c-on-primary)" stroke-width="1.6" stroke-linecap="round" />
-        <circle cx="14" cy="14" r="1.6" fill="var(--c-on-primary)" />
-        <circle cx="19.9" cy="7.9" r="2.2" fill="var(--c-on-primary)" />
-      </svg>
+      <UiBrandMark :size="32" />
       <b>RadarOps</b><span class="brand__tag">R2</span>
     </router-link>
     <nav @click="ui.navOpen = false">

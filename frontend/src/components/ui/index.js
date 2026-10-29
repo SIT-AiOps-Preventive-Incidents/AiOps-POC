@@ -2,6 +2,7 @@
 export { default as UiAppTile } from "./UiAppTile.vue";
 export { default as UiAreaChart } from "./UiAreaChart.vue";
 export { default as UiBar } from "./UiBar.vue";
+export { default as UiBrandMark } from "./UiBrandMark.vue";
 export { default as UiButton } from "./UiButton.vue";
 export { default as UiCard } from "./UiCard.vue";
 export { default as UiCodeBlock } from "./UiCodeBlock.vue";

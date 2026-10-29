@@ -106,7 +106,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
       <div class="board">
         <!-- status: do I need to act? -->
         <section :class="['card', 'welcome', `t-${headline.tone}`]">
-          <UiDotArt variant="sphere" class="art art--orb" from="#5a46c8" via="#6f8ff0" to="#2fc98b" fade="left" :seed="2" />
+          <UiDotArt variant="sphere" class="art art--orb" from="#cbbcf4" via="#acdcf3" to="#a9e5c9" fade="left" :seed="2" />
           <p class="welcome__k">{{ t("Right now", "ตอนนี้") }}</p>
           <h2 class="welcome__h">{{ headline.text }}</h2>
           <ul class="checks">
@@ -185,14 +185,14 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
 
         <!-- action cards, each with its own dot art -->
         <section class="card act">
-          <UiDotArt variant="wave" class="art art--wave" from="#6e54e8" via="#3f8fe0" to="#2b4fa8" :seed="1" />
+          <UiDotArt variant="wave" class="art art--wave" from="#cbbcf4" via="#acdcf3" to="#7cc2e6" :seed="1" />
           <h3>{{ t("Service map", "แผนผังบริการ") }}</h3>
           <p class="sub">{{ t("Every hop a request takes", "ทุกจุดที่คำขอผ่าน") }}</p>
           <p class="state"><UiStatusDot :tone="svc.affected ? 'bad' : 'ok'" :size="9" />{{ svc.affected ? t("Problems on the map", "มีจุดผิดปกติ") : t("All paths healthy", "ทุกเส้นทางปกติ") }}</p>
           <UiButton variant="tint" to="/map" chevron>{{ t("Open map", "เปิดแผนผัง") }}</UiButton>
         </section>
         <section class="card act">
-          <UiDotArt variant="wave" class="art art--wave2" from="#f2a37a" via="#b77ce8" to="#5a5bd8" :seed="4" fade="left" />
+          <UiDotArt variant="wave" class="art art--wave2" from="#f9cba9" via="#f5b6c2" to="#cbbcf4" :seed="4" fade="left" />
           <h3>{{ t("Investigate", "สืบสวน") }}</h3>
           <p class="sub">{{ t("Ask the AI to look again", "ให้ AI ดูใหม่อีกรอบ") }}</p>
           <p class="state"><UiStatusDot :tone="investigatingList.length ? 'info' : 'ok'" :size="9" />{{ investigatingList.length ? t(`${investigatingList.length} in progress`, `กำลังทำ ${investigatingList.length}`) : t("Idle", "ว่าง") }}</p>
@@ -215,14 +215,14 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
         </section>
 
         <section class="card act">
-          <UiDotArt variant="sphere" class="art art--sphere" from="#3f8fe0" via="#7a62e6" to="#d9a0f0" :seed="1" fade="left" />
+          <UiDotArt variant="sphere" class="art art--sphere" from="#acdcf3" via="#cbbcf4" to="#f5b6c2" :seed="1" fade="left" />
           <h3>{{ t("Connect", "เชื่อมต่อ") }}</h3>
           <p class="sub">{{ t("A server, an app, a website or a cloud", "เครื่อง แอป เว็บไซต์ หรือคลาวด์") }}</p>
           <p class="state"><UiStatusDot :tone="fleet && fleet.clouds.length ? 'ok' : 'neutral'" :size="9" />{{ fleet ? t(`${fleet.clouds.length} cloud account${fleet.clouds.length === 1 ? "" : "s"}`, `${fleet.clouds.length} บัญชีคลาวด์`) : "–" }}</p>
           <UiButton variant="tint" to="/connect" chevron>{{ t("Connect", "เชื่อมต่อ") }}</UiButton>
         </section>
         <section class="card act">
-          <UiDotArt variant="sphere" class="art art--sphere2" from="#2fc98b" via="#3f8fe0" to="#6e54e8" :seed="3" fade="left" />
+          <UiDotArt variant="sphere" class="art art--sphere2" from="#a9e5c9" via="#acdcf3" to="#cbbcf4" :seed="3" fade="left" />
           <h3>{{ t("Runbooks", "คู่มือแก้ไข") }}</h3>
           <p class="sub">{{ t("Fixes that worked, reused", "วิธีแก้ที่ได้ผล นำมาใช้ซ้ำ") }}</p>
           <p class="state"><UiStatusDot tone="ok" :size="9" />{{ t("Learning from ratings", "เรียนรู้จากคะแนน") }}</p>
