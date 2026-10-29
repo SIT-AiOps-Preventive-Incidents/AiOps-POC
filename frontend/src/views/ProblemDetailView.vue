@@ -4,7 +4,6 @@ import FeedbackCard from "@/components/domain/FeedbackCard.vue";
 import FixPanel from "@/components/domain/FixPanel.vue";
 import InvestigationTimeline from "@/components/domain/InvestigationTimeline.vue";
 import SeverityPill from "@/components/domain/SeverityPill.vue";
-import StatusPill from "@/components/domain/StatusPill.vue";
 import TraceWaterfall from "@/components/domain/TraceWaterfall.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -92,7 +91,7 @@ async function openTrace(id) {
       <template #subtitle><span class="facts"><span>{{ inc.entity_type === "host" ? "Host" : "Service" }} <b>{{ inc.entity }}</b></span>
         <span v-if="inc.affected.length">Also affected <b>{{ inc.affected.join(", ") }}</b></span><span>Detected <b>{{ clockSec(inc.detected_at) }}</b></span>
         <span>Owner <b>{{ inc.owner || "unassigned" }}</b></span><span class="mono dim">P-{{ inc.id }}</span></span></template>
-      <SeverityPill :severity="inc.severity" /><StatusPill :status="inc.status" />
+      <SeverityPill :severity="inc.severity" />
     </UiPageHeader>
     <UiStepper :steps="steps" />
     <div class="split mt">

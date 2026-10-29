@@ -10,7 +10,7 @@ import SeverityPill from "./SeverityPill.vue";
 const props = defineProps({ incident: { type: Object, required: true } });
 const { t } = useI18n();
 const i = computed(() => props.incident);
-const kind = computed(() => INCIDENT_KIND[i.value.kind] || { icon: "warning", label: "Problem" });
+const kind = computed(() => INCIDENT_KIND[i.value.kind] || { glyph: "inc_error", label: "Problem" });
 const entity = computed(() => i.value.entity_name || i.value.entity);
 
 const STAGES = computed(() => [t("Detected", "ตรวจพบ"), t("AI investigated", "AI สืบสวน"), t("Your approval", "คุณอนุมัติ"), t("Fix applied", "แก้ไขแล้ว"), t("Verified", "ยืนยันแล้ว")]);
@@ -27,7 +27,7 @@ const waiting = computed(() => i.value.status === "awaiting_approval");
 <template>
   <article :class="['inc', { 'inc--you': waiting }]">
     <header class="inc__head">
-      <span class="inc__kind"><UiIcon :name="kind.icon" :size="16" /></span>
+      <span class="inc__kind"><UiGlyph :name="kind.glyph || 'inc_error'" :size="22" /></span>
       <div class="inc__title">
         <router-link :to="`/problems/${i.id}`"><b>{{ kind.label || i.title }}</b> {{ t("on", "ที่") }} {{ entity }}</router-link>
         <span class="inc__meta">P-{{ i.id }} · {{ t("detected", "ตรวจพบ") }} {{ ago(i.detected_at) }}<template v-if="i.owner"> · {{ t("owner", "เจ้าของ") }} {{ i.owner }}</template></span>
@@ -48,7 +48,7 @@ const waiting = computed(() => i.value.status === "awaiting_approval");
 .inc--you { box-shadow: inset 3px 0 0 var(--c-action); }
 .inc__head { display: flex; align-items: center; gap: 10px; }
 .inc__head .ui-button { flex: none; }
-.inc__kind { width: 28px; height: 28px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none; background: var(--c-fill); color: var(--c-text-2); }
+.inc__kind { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--c-fill); color: var(--c-text-2); }
 .inc__title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .inc__title a { color: var(--c-text); font-size: var(--fs-lg); }
 .inc__title a:hover { color: var(--c-primary); }

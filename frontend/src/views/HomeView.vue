@@ -13,6 +13,7 @@ import { useIncidentStore } from "@/stores/incidents";
 import { useUiStore } from "@/stores/ui";
 import { useI18n } from "@/lib/i18n";
 import SeverityPill from "@/components/domain/SeverityPill.vue";
+import StatusPill from "@/components/domain/StatusPill.vue";
 
 const app = useAppStore();
 const incidents = useIncidentStore();
@@ -233,12 +234,13 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           <div class="queue__h"><h3>{{ t("Incident queue", "คิวเหตุการณ์") }}</h3><router-link to="/problems" class="link">{{ t("All incidents", "ทั้งหมด") }}</router-link></div>
           <div v-if="queue.length" class="rows">
             <div v-for="i in queue.slice(0, 5)" :key="i.id" class="row-i" @click="$router.push(`/problems/${i.id}`)">
-              <UiStatusDot :tone="i.status === 'awaiting_approval' ? 'warn' : 'info'" :size="9" />
+              <span class="row-i__ic"><UiGlyph :name="INCIDENT_KIND[i.kind]?.glyph || 'inc_error'" :size="24" /></span>
               <div class="row-i__b">
                 <div class="row-i__t"><b>{{ kindLabel(i) }}</b> <span class="muted">{{ t("on", "ที่") }} {{ entityOf(i) }}</span></div>
                 <div class="row-i__s">P-{{ i.id }} · {{ ago(i.detected_at) }}<template v-if="i.root_cause"> · {{ i.root_cause }}</template></div>
               </div>
               <SeverityPill :severity="i.severity" />
+              <StatusPill :status="i.status" />
               <UiButton :variant="i.status === 'awaiting_approval' ? 'primary' : 'tint'" size="sm" :to="`/problems/${i.id}`" chevron @click.stop>
                 {{ i.status === "awaiting_approval" ? t("Review", "ดู") : t("Open", "เปิด") }}</UiButton>
             </div>
@@ -308,6 +310,9 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
 .row-i:first-child { border-top: 0; }
 .row-i:hover .row-i__t b { color: var(--c-primary); }
 .row-i__b { flex: 1; min-width: 0; }
+.row-i__ic { width: 42px; height: 42px; flex: none; border-radius: 13px; display: grid; place-items: center; background: var(--c-fill);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.row-i :deep(.stage) { flex: none; }
 .row-i__s { font-size: var(--fs-sm); color: var(--c-text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .clear { display: flex; align-items: center; gap: 12px; padding: 22px 4px; color: var(--c-text-2); }
 

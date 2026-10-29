@@ -135,6 +135,83 @@ defineProps({ name: { type: String, required: true }, size: { type: Number, defa
       <circle cx="5.2" cy="17.5" r="1" fill="#e9edf3" />
       <path d="M14.5 3a5 5 0 0 0-4.7 6.7L3.6 15.9a2.1 2.1 0 0 0 3 3l6.2-6.2A5 5 0 0 0 19.5 8l-3 3-2.9-.5-.5-2.9 3-3a5 5 0 0 0-1.6-.6z" fill="none" class="ink" />
     </g>
+    <!-- ===== incident kinds ===== -->
+    <!-- failure rate: a chart line that breaks and drops into red -->
+    <g v-else-if="name === 'inc_error'">
+      <rect x="2.5" y="3.5" width="19" height="17" rx="3.5" fill="#2a2d35" />
+      <path d="M5 15l3.5-3.5 3 2 3.5-5" fill="none" stroke="#56b6ea" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M15.5 8.5l3.5 8" fill="none" stroke="#f2545b" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="1.6 2" />
+      <circle cx="19" cy="16.5" r="2.2" fill="#f2545b" />
+      <rect x="2.5" y="3.5" width="19" height="17" rx="3.5" fill="none" class="ink" />
+    </g>
+    <!-- slow responses: a stopwatch past the red mark -->
+    <g v-else-if="name === 'inc_latency'">
+      <rect x="10" y="1.5" width="4" height="2.5" rx="1" fill="#8a93a3" />
+      <circle cx="12" cy="13" r="8.5" fill="#f1a63a" />
+      <path d="M12 13V7.5A5.5 5.5 0 0 1 17.2 11" fill="#f2545b" />
+      <circle cx="12" cy="13" r="5.5" fill="none" stroke="#fff3dc" stroke-width="1" opacity=".6" />
+      <path d="M12 13l3.5-3" stroke="#3a2306" stroke-width="1.8" stroke-linecap="round" />
+      <circle cx="12" cy="13" r="8.5" fill="none" class="ink" />
+    </g>
+    <!-- CPU: a chip running hot -->
+    <g v-else-if="name === 'inc_cpu'">
+      <path d="M8 2.5v3M12 2.5v3M16 2.5v3M8 18.5v3M12 18.5v3M16 18.5v3M2.5 8h3M2.5 12h3M2.5 16h3M18.5 8h3M18.5 12h3M18.5 16h3" stroke="#a7afbd" stroke-width="1.5" stroke-linecap="round" />
+      <rect x="5" y="5" width="14" height="14" rx="2.5" fill="#3f4a5e" />
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2" fill="#f2545b" />
+      <path d="M10.5 13.5c0-1.4 1.5-1.6 1.5-3 .9.6 1.5 1.6 1.5 2.4a1.5 1.5 0 0 1-3 .6z" fill="#ffd36b" />
+      <rect x="5" y="5" width="14" height="14" rx="2.5" fill="none" class="ink" />
+    </g>
+    <!-- memory: a RAM stick, its cells filled up -->
+    <g v-else-if="name === 'inc_mem'">
+      <path d="M2.5 8.5a1.5 1.5 0 0 1 1.5-1.5h16a1.5 1.5 0 0 1 1.5 1.5V15H2.5z" fill="#2f9e74" />
+      <path d="M4 15v2.5M7 15v2.5M10 15v2.5M14 15v2.5M17 15v2.5M20 15v2.5" stroke="#ffd36b" stroke-width="1.4" stroke-linecap="round" />
+      <rect x="5" y="9" width="3" height="4" rx=".6" fill="#f2545b" /><rect x="9" y="9" width="3" height="4" rx=".6" fill="#f2545b" />
+      <rect x="13" y="9" width="3" height="4" rx=".6" fill="#f2545b" /><rect x="17" y="9" width="2.5" height="4" rx=".6" fill="#f1a63a" />
+      <path d="M2.5 8.5a1.5 1.5 0 0 1 1.5-1.5h16a1.5 1.5 0 0 1 1.5 1.5V15H2.5z" fill="none" class="ink" />
+    </g>
+    <!-- low disk: a drive with its bar nearly full -->
+    <g v-else-if="name === 'inc_disk'">
+      <rect x="2.5" y="6" width="19" height="12" rx="3" fill="#5b6b86" />
+      <rect x="5" y="10" width="11" height="4" rx="1.2" fill="#2a2d35" />
+      <rect x="5" y="10" width="10" height="4" rx="1.2" fill="#f1a63a" />
+      <circle cx="18.5" cy="12" r="1.3" fill="#f2545b" />
+      <rect x="2.5" y="6" width="19" height="12" rx="3" fill="none" class="ink" />
+    </g>
+    <!-- host down: a server with a red cross -->
+    <g v-else-if="name === 'inc_hostdown'">
+      <rect x="3.5" y="2.5" width="14" height="8" rx="2" fill="#5b6b86" />
+      <rect x="3.5" y="12.5" width="14" height="8" rx="2" fill="#5b6b86" />
+      <path d="M6.5 6.5h5M6.5 16.5h5" stroke="#c9d3e3" stroke-width="1.4" stroke-linecap="round" />
+      <circle cx="18" cy="17" r="4.5" fill="#f2545b" />
+      <path d="M16.3 15.3l3.4 3.4M19.7 15.3l-3.4 3.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" />
+      <rect x="3.5" y="2.5" width="14" height="8" rx="2" fill="none" class="ink" /><circle cx="18" cy="17" r="4.5" fill="none" class="ink" />
+    </g>
+    <!-- password attack: a padlock with hits around it -->
+    <g v-else-if="name === 'inc_auth'">
+      <path d="M8 10V7.5a4 4 0 0 1 8 0V10" fill="none" stroke="#a7afbd" stroke-width="2" />
+      <rect x="5" y="10" width="14" height="11" rx="2.5" fill="#f1a63a" />
+      <circle cx="12" cy="14.6" r="1.6" fill="#3a2306" /><path d="M12 15.5v2.5" stroke="#3a2306" stroke-width="1.6" stroke-linecap="round" />
+      <path d="M2 4.5l2 1.5M22 4.5l-2 1.5M2.5 10.5h1.5M20 10.5h1.5" stroke="#f2545b" stroke-width="1.6" stroke-linecap="round" />
+      <rect x="5" y="10" width="14" height="11" rx="2.5" fill="none" class="ink" />
+    </g>
+    <!-- error logs: a page of lines, red ones climbing -->
+    <g v-else-if="name === 'inc_logs'">
+      <path d="M5 3.5A1.5 1.5 0 0 1 6.5 2h8l4.5 4.5v14A1.5 1.5 0 0 1 17.5 22h-11A1.5 1.5 0 0 1 5 20.5z" fill="#e9edf3" />
+      <path d="M14.5 2v4.5H19" fill="#c9d3e3" />
+      <path d="M8 10h8M8 13h6M8 16h8M8 19h5" stroke-width="1.6" stroke-linecap="round" stroke="#f2545b" />
+      <path d="M8 10h3" stroke="#8a93a3" stroke-width="1.6" stroke-linecap="round" />
+      <path d="M5 3.5A1.5 1.5 0 0 1 6.5 2h8l4.5 4.5v14A1.5 1.5 0 0 1 17.5 22h-11A1.5 1.5 0 0 1 5 20.5z" fill="none" class="ink" />
+    </g>
+    <!-- containers: a shipping box, with what went wrong on its face -->
+    <g v-else-if="name === 'inc_ctr_cpu' || name === 'inc_ctr_mem' || name === 'inc_ctr_down'">
+      <path d="M12 2.8l8.5 4.6v9.2L12 21.2l-8.5-4.6V7.4z" fill="#3d7fb8" />
+      <path d="M3.5 7.4L12 12l8.5-4.6L12 2.8z" fill="#7fb6e3" />
+      <path d="M12 12v9.2" class="ink" />
+      <g v-if="name === 'inc_ctr_cpu'"><path d="M14 18.2v-3.4l2 -1.1v3.4zM17 16.6v-4.6l1.8-1v4.6z" fill="#f2545b" /></g>
+      <g v-else-if="name === 'inc_ctr_mem'"><path d="M13.8 18.4v-4l5-2.7v4z" fill="#f1a63a" /><path d="M15.3 17.6v-3M17.3 16.5v-3" stroke="#3a2306" stroke-width=".9" /></g>
+      <g v-else><circle cx="16.4" cy="15" r="3.3" fill="#f2545b" /><rect x="15.1" y="13.7" width="2.6" height="2.6" rx=".4" fill="#fff" /></g>
+      <path d="M12 2.8l8.5 4.6v9.2L12 21.2l-8.5-4.6V7.4zM3.5 7.4L12 12l8.5-4.6" fill="none" class="ink" />
+    </g>
     <circle v-else cx="12" cy="12" r="8" fill="#8a93a3" />
   </svg>
 </template>
