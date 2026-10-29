@@ -26,6 +26,7 @@ export { default as UiSegmented } from "./UiSegmented.vue";
 export { default as UiSheet } from "./UiSheet.vue";
 export { default as UiSpinner } from "./UiSpinner.vue";
 export { default as UiSpot } from "./UiSpot.vue";
+export { default as UiStatCard } from "./UiStatCard.vue";
 export { default as UiStars } from "./UiStars.vue";
 export { default as UiStatusDot } from "./UiStatusDot.vue";
 export { default as UiStepper } from "./UiStepper.vue";

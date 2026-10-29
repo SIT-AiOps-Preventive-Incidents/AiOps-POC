@@ -79,11 +79,11 @@ const KEY_RANK = { "Needs attention": 0, "Healthy · monitored": 1, "Monitored b
 
 // each number is a door: the drawing on its right says where it goes, and the card goes there
 const STATS = computed(() => [
-  { k: "machines", v: summary.value.total, go: "See them all", to: "/network/list", glyph: "vm", hue: "slate", badge: "arrow" },
-  { k: "monitored", v: summary.value.monitored, go: "Open hosts", to: "/computers", glyph: "server", hue: "mint", badge: "check", cls: summary.value.monitored ? "ok" : "" },
-  { k: "not monitored", v: summary.value.unmonitored, go: "Connect them", to: "/network/list", glyph: "device", hue: "sky", badge: "plus" },
-  { k: "need attention", v: summary.value.problems, go: "Open incidents", to: "/problems", glyph: "inc_hostdown", hue: "rose", badge: "alert", cls: summary.value.problems ? "bad" : "" },
-  { k: "networks", v: summary.value.networks, go: "By network", to: "/network/list", glyph: "router", hue: "lilac", badge: "arrow" },
+  { k: "Machines", v: summary.value.total, go: "See them all", to: "/network/list", theme: "violet", motif: "rack" },
+  { k: "Monitored", v: summary.value.monitored, go: "Open hosts", to: "/computers", theme: "green", motif: "radar" },
+  { k: "Not monitored", v: summary.value.unmonitored, go: "Connect them", to: "/network/list", theme: "blue", motif: "plug" },
+  { k: "Need attention", v: summary.value.problems, go: "Open incidents", to: "/problems", theme: "rose", motif: "dots" },
+  { k: "Networks", v: summary.value.networks, go: "By network", to: "/network/list", theme: "indigo", motif: "mesh" },
 ]);
 
 const view = computed(() => {
@@ -150,10 +150,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
     </UiPageHeader>
 
     <nav v-if="g" class="stats" aria-label="Fleet summary">
-      <router-link v-for="st in STATS" :key="st.k" :to="st.to" :class="['stat', st.cls]">
-        <span class="stat__t"><b>{{ st.v }}</b><span>{{ st.k }}</span><small>{{ st.go }}</small></span>
-        <UiSpot :glyph="st.glyph" :hue="st.hue" :badge="st.badge" :size="68" />
-      </router-link>
+      <UiStatCard v-for="st in STATS" :key="st.k" :label="st.k" :value="st.v" :sub="st.go" :to="st.to" :theme="st.theme" :motif="st.motif" />
     </nav>
     <section v-if="recs && recs.recommendations.length" class="recs">
       <div class="recs-head">
@@ -233,7 +230,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
 </template>
 <style scoped>
 /* same vital-signs tiles as the Overview, so the two pages read as one product; each re-groups the map */
-.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
 .stat { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 14px 18px 22px; background: var(--surface);
   box-shadow: var(--shadow-card); border-radius: 20px; color: var(--c-text); text-decoration: none; transition: transform var(--dur-fast) var(--ease); }
 .stat:hover { transform: translateY(-1px); box-shadow: var(--shadow-card), inset 0 0 0 1px color-mix(in srgb, var(--c-primary) 35%, transparent); }
