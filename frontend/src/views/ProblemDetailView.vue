@@ -151,7 +151,7 @@ async function openTrace(id) {
     </div>
     <UiSheet v-model="traceOpen" title="Request trace" :width="980"><TraceWaterfall :spans="trace || []" /></UiSheet>
   </div>
-  <div v-else class="page"><UiPageHeader title="Loading…" :back="{ to: '/problems', label: 'Incidents' }" /></div>
+  <div v-else class="page"><UiSkeletonPage variant="detail" /></div>
 </template>
 <style scoped>
 .rca { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px 14px; margin: 0; }

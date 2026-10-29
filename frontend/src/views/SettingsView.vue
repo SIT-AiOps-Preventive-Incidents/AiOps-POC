@@ -80,6 +80,7 @@ async function testTeams() {
     <UiCard><UiField v-model="s.discovery_ignore_containers" label="Containers that belong to the platform (not shown as services)" mono /></UiCard>
     <UiButton class="mt" @click="save">Save</UiButton>
   </div>
+  <div v-else class="page"><UiSkeletonPage variant="list" /></div>
 </template>
 <style scoped>
 .sel { background: var(--c-fill); border: 0; border-radius: var(--radius-sm); padding: 6px 10px; }

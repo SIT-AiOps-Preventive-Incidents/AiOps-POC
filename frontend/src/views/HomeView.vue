@@ -249,7 +249,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
         </section>
       </div>
     </template>
-    <UiWait v-else :title="t('Loading the overview', 'กำลังโหลดภาพรวม')" />
+    <UiSkeletonPage v-else variant="dashboard" />
   </div>
 </template>
 <style scoped>

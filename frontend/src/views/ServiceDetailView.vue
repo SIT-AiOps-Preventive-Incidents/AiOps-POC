@@ -73,6 +73,7 @@ async function remove() { await cat.removeService(props.name); router.push("/ser
       <template #footer><UiButton variant="plain" @click="confirmRemove = false">Cancel</UiButton><UiButton variant="tint" class="danger-btn" @click="remove">Remove</UiButton></template>
     </UiSheet>
   </div>
+  <div v-else class="page"><UiSkeletonPage variant="detail" /></div>
 </template>
 <style scoped>
 .log { font: 12px/1.5 var(--font-mono); padding: 4px 0; border-bottom: 0.5px solid var(--c-separator); display: flex; gap: 10px; }

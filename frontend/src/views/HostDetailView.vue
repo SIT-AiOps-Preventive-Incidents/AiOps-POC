@@ -112,7 +112,7 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
       </template>
     </UiSheet>
   </div>
-  <div v-else class="page"><UiPageHeader :title="name" subtitle="Loading…" :back="{ to: '/computers', label: 'Hosts' }" /></div>
+  <div v-else class="page"><UiSkeletonPage variant="detail" /></div>
 </template>
 <style scoped>
 .removing { display: flex; align-items: center; gap: 16px; }

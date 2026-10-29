@@ -71,6 +71,7 @@ const empty = computed(() => d.value && !d.value.groups.length);
       <span v-if="d" class="muted small">{{ d.summary.machines }} machines · {{ d.summary.segments }} segment{{ d.summary.segments === 1 ? "" : "s" }} · listening on {{ d.summary.listening_on.join(", ") || "-" }}</span>
     </div>
     <p v-if="error" class="bad small">{{ error }}</p>
+    <UiSkeletonPage v-if="!d && !error" :header="false" :rows="8" />
     <UiEmpty v-if="empty">No segment yet. Connect a Linux server from Add a host: its agent starts listening within a minute.</UiEmpty>
     <section v-for="g in d?.groups || []" :key="g.title" class="group">
       <div class="ghead">

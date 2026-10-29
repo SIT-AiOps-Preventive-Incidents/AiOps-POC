@@ -24,6 +24,8 @@ export { default as UiResourceRow } from "./UiResourceRow.vue";
 export { default as UiProgressRing } from "./UiProgressRing.vue";
 export { default as UiSegmented } from "./UiSegmented.vue";
 export { default as UiSheet } from "./UiSheet.vue";
+export { default as UiSkeleton } from "./UiSkeleton.vue";
+export { default as UiSkeletonPage } from "./UiSkeletonPage.vue";
 export { default as UiSpinner } from "./UiSpinner.vue";
 export { default as UiSpot } from "./UiSpot.vue";
 export { default as UiStatCard } from "./UiStatCard.vue";

@@ -13,7 +13,8 @@ const sections = [
 <template>
   <div class="page">
     <UiPageHeader eyebrow="Respond" title="Incidents" subtitle="The AI investigates each incident and tests a fix in a dry run. A fix is applied only after its owner approves it." />
-    <template v-for="s in sections" :key="s.key">
+    <UiSkeletonPage v-if="!store.loaded" :header="false" :rows="6" />
+    <template v-for="s in sections" v-else :key="s.key">
       <div class="section-label">{{ s.title }} ({{ store[s.key].length }})</div>
       <UiList>
         <ProblemRow v-for="p in store[s.key]" :key="p.id" :incident="p" />
