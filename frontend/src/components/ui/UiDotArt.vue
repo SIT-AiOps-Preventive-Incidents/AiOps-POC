@@ -1,8 +1,7 @@
 <script setup>
 // Halftone dot art for the edge of a card - generated, not an image, so it is crisp at any size and costs no request.
 //   wave    a field of dots rolling like cloth, nearer rows bigger and brighter (action cards)
-//   ribbon  nested squares twisting into depth, drawn as thin lines (the status card)
-//   sphere  a dotted globe lit from one side (support / settings cards)
+//   sphere  a dotted globe lit from one side (the status, connect and runbook cards)
 // Colour runs across the art from `from` to `to` (and `via`), and the whole thing fades out towards the text.
 import { computed, useId } from "vue";
 const props = defineProps({ variant: { type: String, default: "wave" }, from: { type: String, default: "#7c5cf6" },
@@ -27,21 +26,6 @@ const wave = computed(() => {
     }
   }
   return dots;
-});
-
-const ribbon = computed(() => {
-  const out = [], n = 34;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const s = 170 - t * 120, a = (t * 78 + props.seed * 9) * (Math.PI / 180);
-    const cx = 230 + Math.sin(t * 3) * 30, cy = 140 + Math.cos(t * 2.4) * 18;
-    const pts = [0, 1, 2, 3].map((k) => {
-      const ang = a + (k * Math.PI) / 2;
-      return `${(cx + Math.cos(ang) * s * 0.7).toFixed(1)},${(cy + Math.sin(ang) * s * 0.5).toFixed(1)}`;
-    });
-    out.push({ d: `M${pts.join(" L")} Z`, o: (0.12 + 0.5 * Math.sin(t * Math.PI)).toFixed(2) });
-  }
-  return out;
 });
 
 const sphere = computed(() => {
@@ -69,9 +53,8 @@ const maskDir = computed(() => ({ left: "to right", right: "to left", top: "to b
       </linearGradient>
       <mask v-if="maskDir" :id="`${id}m`"><rect :width="W" :height="H" :fill="`url(#${id}f)`" /></mask>
     </defs>
-    <g :mask="maskDir ? `url(#${id}m)` : undefined" :fill="`url(#${id}g)`" :stroke="variant === 'ribbon' ? `url(#${id}g)` : 'none'">
+    <g :mask="maskDir ? `url(#${id}m)` : undefined" :fill="`url(#${id}g)`">
       <template v-if="variant === 'wave'"><circle v-for="(d, i) in wave" :key="i" :cx="d.x" :cy="d.y" :r="d.r" :opacity="d.o" /></template>
-      <template v-else-if="variant === 'ribbon'"><path v-for="(p, i) in ribbon" :key="i" :d="p.d" fill="none" stroke-width="0.9" :opacity="p.o" /></template>
       <template v-else><circle v-for="(d, i) in sphere" :key="i" :cx="d.x" :cy="d.y" :r="d.r" :opacity="d.o" /></template>
     </g>
   </svg>

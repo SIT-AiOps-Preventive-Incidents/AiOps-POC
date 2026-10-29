@@ -105,7 +105,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
       <div class="board">
         <!-- status: do I need to act? -->
         <section :class="['card', 'welcome', `t-${headline.tone}`]">
-          <UiDotArt variant="ribbon" class="art art--ribbon" from="#6b4fd8" via="#8a6cf0" to="#3f7fd6" fade="left" :seed="2" />
+          <UiDotArt variant="sphere" class="art art--orb" from="#5a46c8" via="#6f8ff0" to="#2fc98b" fade="left" :seed="2" />
           <p class="welcome__k">{{ t("Right now", "ตอนนี้") }}</p>
           <h2 class="welcome__h">{{ headline.text }}</h2>
           <ul class="checks">
@@ -260,7 +260,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
 .muted { color: var(--c-text-2); }
 /* the halftone art sits at the card's edge, behind the words */
 .art { z-index: 0; opacity: 0.95; }
-.art--ribbon { right: -120px; top: -30px; width: 110%; height: 78%; opacity: 0.55; }
+.art--orb { right: -150px; top: -60px; width: 105%; height: 80%; opacity: 0.6; }
 .art--wave, .art--wave2 { right: -30px; bottom: -40px; width: 75%; height: 120%; }
 .art--sphere, .art--sphere2 { right: -50px; bottom: -70px; width: 70%; height: 150%; opacity: 0.8; }
 /* the right-edge chevron rail every resource card carries */

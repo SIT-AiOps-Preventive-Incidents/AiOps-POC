@@ -74,12 +74,14 @@
   --c-chart-5: #2fc98b;  /* disk */
 
   /* ---- type ---- */
-  --font: "Geist", "Noto Sans Thai", system-ui, -apple-system, sans-serif;
-  --font-th: "Noto Sans Thai", "Geist", system-ui, sans-serif;
+  /* Satoshi: a sharp geometric grotesque with real character in a, g, t - not the Inter/Geist every AI tool defaults to.
+     Thai falls back to IBM Plex Sans Thai (bundled), whose square terminals sit well next to it. */
+  --font: "Satoshi", "IBM Plex Sans Thai", system-ui, -apple-system, sans-serif;
+  --font-th: "IBM Plex Sans Thai", "Satoshi", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --fs-xs: 12px;  --fs-sm: 13px;  --fs-md: 14px;  --fs-lg: 16px;
   --fs-xl: 20px;  --fs-2xl: 26px; --fs-3xl: 34px; --fs-hero: 46px;
-  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 700; --fw-bold: 700;
   --lh-tight: 1.15; --lh-snug: 1.35; --lh-normal: 1.5;
 
   /* ---- spacing (4 px grid) ---- */
