@@ -35,11 +35,18 @@ async function load() {
 usePolling(load, 20000);
 
 const VIEWS = [{ value: "network", label: "Network" }, { value: "service", label: "Service" }, { value: "org", label: "Owner" }];
-const ICON = { gateway: "globe", connected: "server", "virtual machine": "cube", container: "apps", device: "hard_drive", "random MAC": "laptop" };
+const GLYPH = { gateway: "router", connected: "server", "virtual machine": "vm", container: "inc_ctr_cpu", device: "device", "random MAC": "device" };
 const KIND = { gateway: "Gateway", connected: "On RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Random MAC" };
-const sub = (i) => [i.name && i.name !== i.ip ? i.ip : null, i.vendor || (i.kind === "connected" ? null : "vendor unknown"), i.mac,
+const sub = (i) => [i.name && i.name !== i.ip ? i.ip : null, i.vendor || (i.kind === "connected" ? null : "vendor unknown"),
   i.services?.length ? `runs ${i.services.slice(0, 3).join(", ")}${i.services.length > 3 ? " …" : ""}` : null,
-  i.talks_with?.length ? `talks with ${i.talks_with.join(", ")}` : null, i.last_seen ? `heard ${ago(i.last_seen)}` : null].filter(Boolean).join(" · ");
+  i.talks_with?.length ? `talks with ${i.talks_with.join(", ")}` : null].filter(Boolean).join(" · ");
+const meta = (i) => [i.mac, i.last_seen ? `heard ${ago(i.last_seen)}` : null].filter(Boolean).join(" · ");
+const health = (i) => (i.kind === "connected" ? { tone: "ok", label: "On RadarOps" } : i.kind === "gateway" ? { tone: "info", label: "Gateway" }
+  : { tone: "neutral", label: "Not monitored", value: KIND[i.kind] || i.kind });
+const COUNT = { gateway: ["gateway", "gateways"], connected: ["on RadarOps", "on RadarOps"], "virtual machine": ["virtual machine", "virtual machines"],
+  container: ["container", "containers"], device: ["device", "devices"], "random MAC": ["random MAC", "random MACs"] };
+const counts = (g) => Object.entries(g.counts).map(([k, n]) => `${n} ${(COUNT[k] || [k, k])[n === 1 ? 0 : 1]}`).join(" · ");
+const monitor = (i) => router.push({ path: "/connect/computer", query: { address: i.ip, names: i.name || i.ip } });
 const empty = computed(() => d.value && !d.value.groups.length);
 </script>
 <template>
@@ -69,14 +76,15 @@ const empty = computed(() => d.value && !d.value.groups.length);
       <div class="ghead">
         <b>{{ g.title }}</b>
         <span v-if="g.gateway" class="muted small">gateway {{ g.gateway }} · heard by {{ g.seen_by.join(", ") }}</span>
-        <span class="pills"><UiPill v-for="(n, k) in g.counts" :key="k" :mark="false">{{ n }} {{ KIND[k] || k }}</UiPill></span>
+        <span class="counts">{{ counts(g) }}</span>
       </div>
       <UiList>
-        <UiListRow v-for="i in g.items" :key="`${g.title}-${i.ip}`" :title="i.name || i.ip" :subtitle="sub(i)"
-                   :to="i.aiops_host ? `/computers/${i.aiops_host}` : undefined">
-          <template #leading><UiAppTile :icon="ICON[i.kind] || 'hard_drive'" :size="34" /></template>
-          <template #accessory><UiPill :tone="i.kind === 'connected' ? 'ok' : i.kind === 'gateway' ? 'info' : 'neutral'">{{ KIND[i.kind] || i.kind }}</UiPill></template>
-        </UiListRow>
+        <UiResourceRow v-for="i in g.items" :key="`${g.title}-${i.ip}`" :title="i.name || i.ip" :subtitle="sub(i)" :meta="meta(i)"
+                       :glyph="GLYPH[i.kind] || 'device'" :to="i.aiops_host ? `/computers/${i.aiops_host}` : undefined"
+                       :tone="i.kind === 'connected' ? 'ok' : undefined">
+          <UiButton v-if="!i.aiops_host && i.kind !== 'gateway'" size="sm" variant="tint" icon="add" @click="monitor(i)">Monitor</UiButton>
+          <UiHealth v-bind="health(i)" />
+        </UiResourceRow>
       </UiList>
     </section>
   </div>
@@ -86,5 +94,5 @@ const empty = computed(() => d.value && !d.value.groups.length);
 .group { margin-bottom: 22px; }
 .ghead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 0 2px 8px; }
 .ghead b { font-size: var(--fs-lg); }
-.pills { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.counts { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); }
 </style>

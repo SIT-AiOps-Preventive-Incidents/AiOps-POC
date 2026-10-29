@@ -135,6 +135,45 @@ defineProps({ name: { type: String, required: true }, size: { type: Number, defa
       <circle cx="5.2" cy="17.5" r="1" fill="#e9edf3" />
       <path d="M14.5 3a5 5 0 0 0-4.7 6.7L3.6 15.9a2.1 2.1 0 0 0 3 3l6.2-6.2A5 5 0 0 0 19.5 8l-3 3-2.9-.5-.5-2.9 3-3a5 5 0 0 0-1.6-.6z" fill="none" class="ink" />
     </g>
+    <!-- ===== resources ===== -->
+    <!-- gateway / router: a puck with four arrows -->
+    <g v-else-if="name === 'router'">
+      <ellipse cx="12" cy="15" rx="9.5" ry="4.5" fill="#2a6f9e" />
+      <ellipse cx="12" cy="12.5" rx="9.5" ry="4.5" fill="#56b6ea" />
+      <path d="M12 10.3v-3M12 7.3l-1.3 1.3M12 7.3l1.3 1.3M8.5 12.5h-3M5.5 12.5l1.3-1.1M15.5 12.5h3M18.5 12.5l-1.3-1.1" stroke="#0b2233" stroke-width="1.3" stroke-linecap="round" />
+      <ellipse cx="12" cy="12.5" rx="9.5" ry="4.5" fill="none" class="ink" /><path d="M2.5 12.5V15M21.5 12.5V15" class="ink" />
+    </g>
+    <!-- a virtual machine: a window stacked on a host -->
+    <g v-else-if="name === 'vm'">
+      <rect x="2.5" y="14.5" width="19" height="6" rx="2" fill="#5b6b86" />
+      <circle cx="18" cy="17.5" r="1" fill="#4fd69c" />
+      <rect x="5" y="3" width="14" height="10" rx="2" fill="#f08a3c" />
+      <path d="M5 6.2h14" stroke="#7a3a0c" stroke-width="1.1" />
+      <path d="M8.5 9.5h4" stroke="#fff3e6" stroke-width="1.4" stroke-linecap="round" />
+      <rect x="5" y="3" width="14" height="10" rx="2" fill="none" class="ink" /><rect x="2.5" y="14.5" width="19" height="6" rx="2" fill="none" class="ink" />
+    </g>
+    <!-- a service: stacked blocks, an app made of parts -->
+    <g v-else-if="name === 'service'">
+      <rect x="3" y="12.5" width="8" height="8" rx="2" fill="#56b6ea" />
+      <rect x="13" y="12.5" width="8" height="8" rx="2" fill="#7b6fd0" />
+      <rect x="8" y="3.5" width="8" height="8" rx="2" fill="#2fc98b" />
+      <rect x="3" y="12.5" width="8" height="8" rx="2" fill="none" class="ink" /><rect x="13" y="12.5" width="8" height="8" rx="2" fill="none" class="ink" />
+      <rect x="8" y="3.5" width="8" height="8" rx="2" fill="none" class="ink" />
+    </g>
+    <!-- a device we cannot name: a small box with a status light -->
+    <g v-else-if="name === 'device'">
+      <rect x="3" y="6.5" width="18" height="11" rx="2.5" fill="#6b7280" />
+      <path d="M6 10.5h7M6 13.5h4" stroke="#d6dae1" stroke-width="1.4" stroke-linecap="round" />
+      <circle cx="17" cy="12" r="1.5" fill="#f1a63a" />
+      <rect x="3" y="6.5" width="18" height="11" rx="2.5" fill="none" class="ink" />
+    </g>
+    <!-- a process found running on a machine: a gear on a window -->
+    <g v-else-if="name === 'process'">
+      <rect x="2.5" y="4" width="19" height="16" rx="3" fill="#3f4a5e" />
+      <circle cx="12" cy="12.5" r="4" fill="#ffd36b" /><circle cx="12" cy="12.5" r="1.6" fill="#3f4a5e" />
+      <path d="M12 6.8v1.6M12 16.6v1.6M6.3 12.5h1.6M16.1 12.5h1.6" stroke="#ffd36b" stroke-width="1.6" stroke-linecap="round" />
+      <rect x="2.5" y="4" width="19" height="16" rx="3" fill="none" class="ink" />
+    </g>
     <!-- ===== incident kinds ===== -->
     <!-- failure rate: a chart line that breaks and drops into red -->
     <g v-else-if="name === 'inc_error'">

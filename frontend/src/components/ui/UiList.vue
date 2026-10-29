@@ -9,6 +9,6 @@ defineProps({ plain: Boolean });
 </template>
 <style>
 /* not scoped: any row component placed in the list gets the divider */
-.ui-list { background: var(--surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; }
+.ui-list { background: var(--surface); box-shadow: var(--shadow-card); border-radius: 20px; overflow: hidden; }
 .ui-list > * + * { border-top: 1px solid var(--c-separator); }
 </style>
