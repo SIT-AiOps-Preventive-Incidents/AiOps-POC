@@ -344,3 +344,35 @@ CREATE TABLE IF NOT EXISTS cloud_events (
   detail        TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS cloud_events_ts ON cloud_events (ts DESC);
+
+-- Release 2: automation people write themselves. Built-in skills keep their code; a team can switch any skill off,
+-- add instructions, or write its own skill (kinds + read-only tools + instructions). Skill sets scope skills to part
+-- of the estate. Runbooks can be written by hand (authored), not only learned. Playbooks route and escalate.
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS builtin BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS kinds TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS instructions TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS skill_sets (
+  id          SERIAL PRIMARY KEY,
+  name        TEXT NOT NULL UNIQUE,
+  scope       TEXT NOT NULL DEFAULT '',          -- service/host name patterns, comma separated (pay-*, checkout)
+  skills      TEXT[] NOT NULL DEFAULT '{}',
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE runbooks ADD COLUMN IF NOT EXISTS authored BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS playbooks (
+  id          SERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  trigger     JSONB NOT NULL DEFAULT '{}',       -- {kinds:[], min_severity, entity}
+  actions     JSONB NOT NULL DEFAULT '{}',       -- {owner_team, escalate_after_min}; never applies a fix
+  runs        INT NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS playbook_escalations (
+  incident_id INT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  playbook_id INT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
+  ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (incident_id, playbook_id)
+);

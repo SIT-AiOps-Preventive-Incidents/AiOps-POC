@@ -36,6 +36,7 @@ export const STEP_KIND = {
   memory: { icon: "book", color: "var(--c-chart-5)" },
   dryrun: { icon: "wrench", color: "var(--c-chart-5)" },
   guard: { icon: "shield", color: "var(--c-ok)" },
+  playbook: { icon: "list", color: "var(--c-warn)" },
   done: { icon: "checkmark", color: "var(--c-ok)" },
   info: { icon: "sparkle", color: "var(--c-text-3)" },
 };

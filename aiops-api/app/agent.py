@@ -15,7 +15,7 @@ import re
 import time
 from collections import Counter
 
-from . import db, llm, notify, remediation, repo, servicemap
+from . import automation, automation_store, db, llm, notify, remediation, repo, servicemap
 from . import telemetry as tm
 
 PLATFORM_HOST = os.environ.get("PLATFORM_HOST", "cp26pt1")
@@ -727,14 +727,16 @@ def grounding_problems(kind: str, facts: dict, action: dict, rc: str) -> tuple[l
     return hard, soft
 
 
-async def summarize(inc: dict, skill: str, facts: dict, action: dict, run: Run) -> dict:
+async def summarize(inc: dict, skill: str, facts: dict, action: dict, run: Run, extra: list[str] = (),
+                    instructions: str = "") -> dict:
     system = ("You are a senior DevOps/SRE engineer writing an incident root cause analysis for the on-call team. "
               "Base every statement ONLY on the findings. The remediation has NOT been executed yet. Reply with JSON only.")
     lessons_txt = "\n".join(f"- {l}" for l in lessons(skill)) or "- none"
-    fl = findings(inc["kind"], facts)
+    fl = findings(inc["kind"], facts) + list(extra)
+    team = f"\n\nThe team's instructions for this kind of incident:\n{instructions.strip()}" if instructions.strip() else ""
     user = (f"Alert: {inc['title']}\n\nFindings from metrics, traces, logs and deploy history:\n" +
             "\n".join(f"{i + 1}. {x}" for i, x in enumerate(fl)) +
-            f"\n\nLessons from engineers' feedback on earlier analyses:\n{lessons_txt}\n\n"
+            f"\n\nLessons from engineers' feedback on earlier analyses:\n{lessons_txt}{team}\n\n"
             f"Proposed fix (passed a dry run, NOT executed, waiting for the owner): {remediation.label(action)}\n\n"
             "Write JSON with keys:\n"
             '"root_cause": one sentence naming the component and what is wrong with it (the cause, not the fix),\n'
@@ -770,23 +772,51 @@ async def summarize(inc: dict, skill: str, facts: dict, action: dict, run: Run) 
             "runbook": [str(x)[:200] for x in rb][:6], "confidence": conf, "llm_ok": 1, "model": meta["model"]}
 
 
-async def pick_skill(inc: dict, run: Run) -> tuple[str, str]:
+async def pick_skill(inc: dict, run: Run, skills: list[dict]) -> tuple[str, str]:
+    """Choose among the skills the team allows for this incident's kind and entity (skill sets narrow the choice)."""
     rule = rule_skill(inc["kind"])
-    lst = "\n".join(f'- "{k}": {s["description"]}' for k, s in SKILLS.items())
+    eligible = automation.eligible_skills(inc["kind"], inc["entity"], skills, automation_store.skill_sets())
+    if not eligible:
+        return automation.choose_skill(eligible, None, rule)
+    if len(eligible) == 1:
+        return eligible[0], "the only skill your skill sets and switches allow for this incident"
+    by_id = {s["id"]: s for s in skills}
+    lst = "\n".join(f'- "{k}": {by_id[k]["description"] or by_id[k]["name"]}' for k in eligible)
     run.step("llm", "Incident classification & skill selection")
     out, meta = await llm.chat_json(
         "You are an SRE triage agent. Choose the single best investigation skill. Reply with JSON only.",
         f"Alert: {inc['title']} (signal type: {inc['kind']}, entity: {inc['entity']})\nSkills:\n{lst}\n"
         'Reply: {"skill": "<one id from the list>", "reason": "<max 12 words>"}', max_tokens=50, timeout=120)
     run.update_last(meta=meta, output=out)
-    choice = (out or {}).get("skill")
-    if choice in SKILLS:
-        reason = str(out.get("reason", ""))[:300]
-        if choice != rule:
-            # A tiny model can mis-route; the signal type is ground truth for which tools apply.
-            return rule, f"LLM suggested {choice} ({reason}); overridden by signal-type rule -> {rule}"
-        return choice, reason or "selected by LLM"
-    return rule, "LLM unavailable/invalid - rule-based selection by signal type"
+    skill, why = automation.choose_skill(eligible, (out or {}).get("skill"), rule)
+    if skill == (out or {}).get("skill") and out.get("reason"):
+        why = str(out["reason"])[:300]
+    return skill, why
+
+
+async def extra_evidence(run: Run, inc: dict, tools: list[str]) -> list[str]:
+    """A custom skill's own tools, run after its built-in base; each result goes to the LLM as one more finding."""
+    out = []
+    for t in tools:
+        args = automation.tool_args(t, inc["entity"], inc["entity_type"])
+        if args is None or t not in TOOLS:
+            run.step("info", f"{t} skipped", detail=f"needs a {automation.TOOL_CATALOG.get(t, {}).get('on')}, incident is about a {inc['entity_type']}")
+            continue
+        res = await run.tool(t, **args)
+        out.append(f"{automation.TOOL_CATALOG[t]['label']}: {json.dumps(res, default=str)[:400]}")
+    return out
+
+
+def apply_playbooks(inc: dict, run: Run, owner: str) -> str:
+    """Playbooks route the incident (owner team) and set its escalation clock. They never apply a fix."""
+    for p in automation.match_playbooks(inc, automation_store.playbooks()):
+        automation_store.count_run(p["id"])
+        ac = p.get("actions") or {}
+        if ac.get("owner_team"):
+            owner = ac["owner_team"]
+        esc = f", escalate after {ac['escalate_after_min']} min without approval" if ac.get("escalate_after_min") else ""
+        run.step("playbook", f"Playbook applied: {p['name']}", detail=f"owner {owner}{esc}")
+    return owner
 
 
 async def analyze(inc_id: int):
@@ -798,12 +828,17 @@ async def analyze(inc_id: int):
         repo.set_incident(inc_id, status="analyzing")
         run = Run(inc_id)
         run.step("info", "Agentic AI orchestrator started", detail=f"signal={inc['kind']} entity={inc['entity']}")
-        skill, reason = await pick_skill(inc, run)
-        sk = SKILLS[skill]
+        skills = automation_store.skills()
+        skill, reason = await pick_skill(inc, run, skills)
+        sk = next((s for s in skills if s["id"] == skill), None) or {"id": skill, **SKILLS[skill], "builtin": True, "instructions": ""}
         run.step("skill", f"Skill selected: {sk['name']} ({sk['category']})", detail=reason, tools=sk["tools"])
         repo.set_incident(inc_id, skill_id=skill, skill_reason=reason)
 
-        facts, cands = await PLAYBOOKS[skill](run, {**inc["signal"], "incident_id": inc_id})
+        base = skill if skill in PLAYBOOKS else (automation.base_skill(inc["kind"], skills) or rule_skill(inc["kind"]))
+        if base != skill:
+            run.step("info", f"{sk['name']} builds on {SKILLS[base]['name']}", detail="runs the built-in investigation, then its own tools")
+        facts, cands = await PLAYBOOKS[base](run, {**inc["signal"], "incident_id": inc_id})
+        extra = await extra_evidence(run, inc, automation.extra_tools(sk["tools"], SKILLS[base]["tools"])) if base != skill else []
         for c in cands:
             c["label"] = remediation.label(c)
         run.step("analysis", "Evidence correlated", facts=facts, candidates=cands)
@@ -845,12 +880,13 @@ async def analyze(inc_id: int):
             path = "known"
         else:
             run.step("memory", "No matching runbook - new incident, generating RCA & recommendation", detail=sig)
-            res = await summarize(inc, skill, facts, action, run)
+            res = await summarize(inc, skill, facts, action, run, extra, sk.get("instructions") or "")
             path = "new"
 
         origin = action["params"].get("service") or inc["entity"]
         title = f"{KIND_LABEL.get(inc['kind'], inc['kind'])} - root cause in {origin}" if origin != inc["entity"] \
             else inc["title"]
+        owner = apply_playbooks(inc, run, owner)
         run.step("done", f"RCA + dry-run plan ready - waiting for approval from owner {owner}", detail=action["label"])
         repo.save_analysis(inc_id, {
             "owner": owner, "status": "awaiting_approval", "analyzed_at": time.time(), "title": title, "path": path,

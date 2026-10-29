@@ -28,6 +28,7 @@ const NAV = computed(() => [
   { label: t("Automation", "อัตโนมัติ"), items: [
     { to: "/runbooks", label: t("Runbooks", "คู่มือแก้ไข"), icon: "book" },
     { to: "/skills", label: t("AI skills", "ทักษะ AI"), icon: "sparkle" },
+    { to: "/playbooks", label: t("Playbooks", "เพลย์บุ๊ก"), icon: "playbook" },
   ] },
   { label: t("Setup", "ตั้งค่า"), items: [
     { to: "/connect", label: t("Connect", "เชื่อมต่อ"), icon: "plug" },

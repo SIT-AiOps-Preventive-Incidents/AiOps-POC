@@ -79,6 +79,14 @@ const rough = computed(() => (props.size < 24 ? 0.55 : props.size < 40 ? 0.8 : 1
       <path d="M18 2l1.3 3.2 3.2 1.3-3.2 1.3L18 11l-1.3-3.2-3.2-1.3 3.2-1.3z" fill="#f6e29a" />
       <path d="M18 4.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z" fill="#fdf6d8" />
     </g>
+    <!-- playbooks: a clipboard of steps, one ticked -->
+    <g v-else-if="name === 'playbook'">
+      <rect x="4" y="3.5" width="16" height="18.5" rx="3" fill="#f9cba9" />
+      <rect x="6.5" y="6.5" width="11" height="13" rx="1.6" fill="#feebdd" />
+      <rect x="8.5" y="2" width="7" height="3.6" rx="1.4" fill="#efa274" />
+      <path d="M8.6 10.6l1.2 1.2 2-2.3" fill="none" stroke="#2fa877" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M13.5 10.8h2.5M8.8 14.6h7.2M8.8 17.2h5" stroke="#efa274" stroke-width="1.3" stroke-linecap="round" />
+    </g>
     <!-- connect: a plug -->
     <g v-else-if="name === 'plug'">
       <rect x="7.6" y="2" width="1.8" height="5.5" rx=".9" fill="#9ea9ba" />

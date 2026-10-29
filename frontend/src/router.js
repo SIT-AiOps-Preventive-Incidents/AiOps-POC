@@ -23,6 +23,7 @@ const routes = [
   { path: "/connect/service", component: () => import("@/views/ConnectServiceView.vue"), meta: { title: "Connect a service" } },
   { path: "/connect/website", component: () => import("@/views/ConnectWebsiteView.vue"), meta: { title: "Watch a website" } },
   { path: "/skills", component: () => import("@/views/SkillsView.vue"), meta: { title: "Skills" } },
+  { path: "/playbooks", component: () => import("@/views/PlaybooksView.vue"), meta: { title: "Playbooks" } },
   { path: "/runbooks", component: () => import("@/views/RunbooksView.vue"), meta: { title: "Runbooks" } },
   { path: "/notifications", component: () => import("@/views/NotificationsView.vue"), meta: { title: "Notifications" } },
   { path: "/deployments", component: () => import("@/views/DeploymentsView.vue"), meta: { title: "Deployments" } },

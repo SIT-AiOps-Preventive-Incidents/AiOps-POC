@@ -181,23 +181,25 @@ def deployments(service_name: str | None = None, since: float | None = None, lim
 # skills
 # =====================================================================================
 def seed_skills(skills: dict):
+    # built-in skills: their code-owned fields are refreshed; what a team changed (enabled, instructions) is kept
     for k, s in skills.items():
-        db.ex("""INSERT INTO skills(id, name, category, description) VALUES (%s,%s,%s,%s)
+        db.ex("""INSERT INTO skills(id, name, category, description, builtin, kinds) VALUES (%s,%s,%s,%s,true,%s)
                  ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, category=EXCLUDED.category,
-                 description=EXCLUDED.description""", (k, s["name"], s["category"], s["description"]))
+                 description=EXCLUDED.description, builtin=true, kinds=EXCLUDED.kinds""",
+              (k, s["name"], s["category"], s["description"], s["kinds"]))
         db.ex("DELETE FROM skill_tools WHERE skill_id=%s", (k,))
         for i, t in enumerate(s["tools"]):
             db.ex("INSERT INTO skill_tools(skill_id, seq, tool) VALUES (%s,%s,%s)", (k, i, t))
 
 
 def skill_stats() -> list[dict]:
-    return db.q("""SELECT sk.id, sk.name, sk.category, sk.description,
+    return db.q("""SELECT sk.id, sk.name, sk.category, sk.description, sk.builtin, sk.enabled, sk.kinds, sk.instructions,
         (SELECT array_agg(tool ORDER BY seq) FROM skill_tools WHERE skill_id=sk.id) AS tools,
         count(i.id) AS runs, round(avg(f.score)::numeric, 2) AS avg_score,
         round((avg(CASE WHEN f.rca_correct THEN 1 ELSE 0 END) FILTER (WHERE f.id IS NOT NULL))::numeric, 2) AS accuracy,
         round((avg(i.analysis_ms) / 1000.0)::numeric, 1) AS avg_analysis_s
       FROM skills sk LEFT JOIN incidents i ON i.skill_id=sk.id LEFT JOIN feedback f ON f.incident_id=i.id
-      GROUP BY sk.id ORDER BY sk.category, sk.name""")
+      GROUP BY sk.id ORDER BY sk.builtin DESC, sk.category, sk.name""")
 
 
 def lessons(skill_id: str) -> list[str]:
