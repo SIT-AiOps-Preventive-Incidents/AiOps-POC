@@ -3,6 +3,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import { applyTheme } from "./stores/ui";
+import { useAuthStore } from "./stores/auth";
 import * as ui from "./components/ui";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
@@ -25,6 +26,9 @@ window.addEventListener("load", () => setTimeout(() => sessionStorage.removeItem
 const app = createApp(App).use(createPinia()).use(router);
 // The design-system primitives are used on every page, so they are registered once, globally.
 for (const [name, component] of Object.entries(ui)) app.component(name, component);
+// v-can="'fleet.connect'": an action the signed-in role may not take is not shown (the server refuses it anyway)
+const applyCan = (el, b) => { el.style.display = useAuthStore().can(b.value) ? "" : "none"; };
+app.directive("can", { mounted: applyCan, updated: applyCan });
 app.mount("#app");
 
 // "Auto" theme: keep the browser chrome colour in step when the OS switches light/dark (dark is the default)

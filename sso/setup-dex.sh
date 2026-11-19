@@ -4,7 +4,7 @@
 # sso/demo-accounts.txt (mode 600). Neither file is committed.
 set -eu
 cd "$(dirname "$0")"
-PUBLIC_URL=${PUBLIC_URL:-http://cp26pt1.sit.kmutt.ac.th:8080}
+PUBLIC_URL=${SSO_REDIRECT_BASE:-https://cp26pt1.sit.kmutt.ac.th:8443}
 ISSUER=${SSO_ISSUER:-http://cp26pt1.sit.kmutt.ac.th:5556/dex}
 rnd() { head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 16; }
 bcrypt() { docker run --rm httpd:2.4-alpine htpasswd -bnBC 10 "" "$1" | tr -d ':\n'; }

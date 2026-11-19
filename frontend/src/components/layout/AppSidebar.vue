@@ -2,10 +2,12 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
+import { useAuthStore } from "@/stores/auth";
 import { THEMES, useUiStore } from "@/stores/ui";
 import { useI18n } from "@/lib/i18n";
 
 const app = useAppStore();
+const auth = useAuthStore();
 const ui = useUiStore();
 const route = useRoute();
 const { t } = useI18n();
@@ -31,12 +33,13 @@ const NAV = computed(() => [
     { to: "/playbooks", label: t("Playbooks", "เพลย์บุ๊ก"), icon: "playbook" },
   ] },
   { label: t("Setup", "ตั้งค่า"), items: [
-    { to: "/connect", label: t("Connect", "เชื่อมต่อ"), icon: "plug" },
+    ...(auth.can("fleet.connect") ? [{ to: "/connect", label: t("Connect", "เชื่อมต่อ"), icon: "plug" }] : []),
     { to: "/notifications", label: t("Notifications", "การแจ้งเตือน"), icon: "alert" },
-    { to: "/settings", label: t("Settings", "การตั้งค่า"), icon: "settings" },
+    ...(auth.can("settings.edit") ? [{ to: "/settings", label: t("Settings", "การตั้งค่า"), icon: "settings" }] : []),
+    ...(auth.can("admin") ? [{ to: "/access", label: t("Access", "สิทธิ์การเข้าถึง"), icon: "access" }] : []),
   ] },
   { label: t("Demo & tools", "เดโม่และเครื่องมือ"), items: [
-    { to: "/scenarios", label: t("Demo scenarios", "สถานการณ์เดโม่"), icon: "flash" },
+    ...(auth.can("demo.run") ? [{ to: "/scenarios", label: t("Demo scenarios", "สถานการณ์เดโม่"), icon: "flash" }] : []),
     { href: app.grafanaUrl, label: "Grafana", icon: "pulse" },
     { href: "/docs", label: t("API docs", "เอกสาร API"), icon: "book" },
     { to: "/pricing", label: t("Pricing", "ราคา"), icon: "tag" },

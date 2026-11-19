@@ -408,3 +408,18 @@ def test_password_sign_in_cannot_be_switched_off_until_an_admin_can_sign_in_with
     got = c.get("/api/v1/auth/sso").json()
     assert got["sso_label"] == "Sign in with KMUTT" and got["has_secret"] and "sso_client_secret" not in got
     assert got["redirect_uri"].endswith("/api/v1/auth/sso/callback")
+
+
+def test_the_redirect_url_follows_the_https_front_door_when_set(env, monkeypatch):
+    _, c = env
+    login(c, "admin@x.co", "admin password 1")
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", "https://radar.example:8443")
+    assert c.get("/api/v1/auth/sso").json()["redirect_uri"] == "https://radar.example:8443/api/v1/auth/sso/callback"
+
+
+def test_behind_https_the_session_cookie_is_secure(env):
+    _, c = env
+    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-forwarded-proto": "https"})
+    assert "secure" in r.headers["set-cookie"].lower()
+    r = login(c, "dev@x.co", "dev password 12")
+    assert "secure" not in r.headers["set-cookie"].lower()

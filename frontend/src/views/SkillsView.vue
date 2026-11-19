@@ -68,7 +68,7 @@ async function setSetEnabled(s, on) { await api.skillSets.update(s.id, { enabled
   <div class="page page--wide">
     <UiPageHeader eyebrow="Automation" title="AI skills"
                   subtitle="The AI picks one skill per incident. Every tool only reads data. Write your own skills, give any skill your team's instructions, and group skills for parts of your estate.">
-      <UiButton icon="add" @click="open()">New skill</UiButton>
+      <UiButton v-can="'automation.skills'" icon="add" @click="open()">New skill</UiButton>
     </UiPageHeader>
     <UiSkeletonPage v-if="!skills" />
     <template v-else>
@@ -78,15 +78,15 @@ async function setSetEnabled(s, on) { await api.skillSets.update(s.id, { enabled
         <div v-if="yours.length" class="grid">
           <article v-for="s in yours" :key="s.id" :class="['sk', { off: !s.enabled }]">
             <div class="sk__top"><UiGlyph name="sparkle" :size="34" /><div class="sk__t"><h4>{{ s.name }}</h4><p class="sub">{{ s.description || "Written by your team" }}</p></div>
-              <UiSwitch :model-value="s.enabled" :label="`Use ${s.name}`" @update:model-value="(v) => setEnabled(s, v)" /></div>
+              <UiSwitch v-can="'automation.skills'" :model-value="s.enabled" :label="`Use ${s.name}`" @update:model-value="(v) => setEnabled(s, v)" /></div>
             <div class="chips"><span v-for="k in s.kinds" :key="k" class="chip">{{ kindLabel(k) }}</span></div>
             <p v-if="s.instructions" class="note">{{ s.instructions }}</p>
             <div class="sk__foot"><span class="muted small">{{ (s.tools || []).length }} extra tool{{ (s.tools || []).length === 1 ? "" : "s" }} · used {{ s.runs }}× · rating {{ s.avg_score ?? "–" }}</span>
-              <div class="row"><UiButton size="sm" variant="tint" @click="open(s)">Edit</UiButton>
-                <UiButton size="sm" :variant="armed === `skill:${s.id}` ? 'danger' : 'ghost'" @click="remove('skill', s)">{{ armed === `skill:${s.id}` ? "Click to confirm" : "Delete" }}</UiButton></div></div>
+              <div class="row"><UiButton v-can="'automation.skills'" size="sm" variant="tint" @click="open(s)">Edit</UiButton>
+                <UiButton v-can="'automation.skills'" size="sm" :variant="armed === `skill:${s.id}` ? 'danger' : 'ghost'" @click="remove('skill', s)">{{ armed === `skill:${s.id}` ? "Click to confirm" : "Delete" }}</UiButton></div></div>
           </article>
         </div>
-        <button v-else type="button" class="empty" @click="open()">
+        <button v-can="'automation.skills'" v-else type="button" class="empty" @click="open()">
           <UiSpot glyph="sparkle" hue="sky" badge="plus" :size="64" />
           <span><b>Write your first skill</b><span class="muted">Say what to check for an incident kind, in your team's words. For example: "For payments, check the card gateway log before anything else."</span></span>
         </button>
@@ -95,14 +95,14 @@ async function setSetEnabled(s, on) { await api.skillSets.update(s.id, { enabled
       <!-- skill sets -->
       <section class="block">
         <div class="block__head"><div><h3>Skill sets</h3><p class="sub">Which skills investigate which services or hosts. An incident on <span class="mono">pay-*</span> uses only that set's skills, unless none of them fits its kind.</p></div>
-          <UiButton size="sm" variant="tint" icon="add" @click="openSet()">New skill set</UiButton></div>
+          <UiButton v-can="'automation.skills'" size="sm" variant="tint" icon="add" @click="openSet()">New skill set</UiButton></div>
         <div v-if="sets.length" class="sets">
           <div v-for="s in sets" :key="s.id" :class="['set', { off: !s.enabled }]">
             <div class="set__main"><b>{{ s.name }}</b><span class="mono small muted">{{ s.scope || "no scope" }}</span></div>
             <div class="chips"><span v-for="id in s.skills" :key="id" class="chip chip--sky">{{ nameOf(id) }}</span></div>
-            <div class="row"><UiSwitch :model-value="s.enabled" :label="`Use ${s.name}`" @update:model-value="(v) => setSetEnabled(s, v)" />
-              <UiButton size="sm" variant="ghost" @click="openSet(s)">Edit</UiButton>
-              <UiButton size="sm" :variant="armed === `set:${s.id}` ? 'danger' : 'ghost'" @click="remove('set', s)">{{ armed === `set:${s.id}` ? "Click to confirm" : "Delete" }}</UiButton></div>
+            <div class="row"><UiSwitch v-can="'automation.skills'" :model-value="s.enabled" :label="`Use ${s.name}`" @update:model-value="(v) => setSetEnabled(s, v)" />
+              <UiButton v-can="'automation.skills'" size="sm" variant="ghost" @click="openSet(s)">Edit</UiButton>
+              <UiButton v-can="'automation.skills'" size="sm" :variant="armed === `set:${s.id}` ? 'danger' : 'ghost'" @click="remove('set', s)">{{ armed === `set:${s.id}` ? "Click to confirm" : "Delete" }}</UiButton></div>
           </div>
         </div>
         <p v-else class="muted small">No skill sets. Every skill can investigate every service.</p>
@@ -115,13 +115,13 @@ async function setSetEnabled(s, on) { await api.skillSets.update(s.id, { enabled
           <article v-for="s in builtin" :key="s.id" :class="['sk', { off: !s.enabled }]">
             <div class="sk__top"><UiGlyph :name="s.category === 'Security' ? 'inc_auth' : s.category === 'Infrastructure' ? 'server' : 'service'" :size="34" />
               <div class="sk__t"><h4>{{ s.name }}</h4><p class="sub">{{ s.description }}</p></div>
-              <UiSwitch :model-value="s.enabled" :label="`Use ${s.name}`" @update:model-value="(v) => setEnabled(s, v)" /></div>
+              <UiSwitch v-can="'automation.skills'" :model-value="s.enabled" :label="`Use ${s.name}`" @update:model-value="(v) => setEnabled(s, v)" /></div>
             <div class="chips"><span v-for="k in s.kinds" :key="k" class="chip">{{ kindLabel(k) }}</span></div>
             <p v-if="s.instructions" class="note">{{ s.instructions }}</p>
             <div class="stats"><div><span>Used</span><b>{{ s.runs }}</b></div><div><span>Rating</span><b>{{ s.avg_score ?? "–" }}</b></div>
               <div><span>Correct</span><b>{{ s.accuracy == null ? "–" : `${Math.round(s.accuracy * 100)}%` }}</b></div><div><span>Takes</span><b>{{ s.avg_analysis_s ?? "–" }} s</b></div></div>
             <div v-if="s.lessons?.length" class="small lessons"><b>Learning from feedback</b><div v-for="l in s.lessons" :key="l" class="muted">· {{ l }}</div></div>
-            <div class="sk__foot"><span class="muted small mono">{{ (s.tools || []).length }} tools</span><UiButton size="sm" variant="tint" @click="open(s)">Instructions</UiButton></div>
+            <div class="sk__foot"><span class="muted small mono">{{ (s.tools || []).length }} tools</span><UiButton v-can="'automation.skills'" size="sm" variant="tint" @click="open(s)">Instructions</UiButton></div>
           </article>
         </div>
       </section>

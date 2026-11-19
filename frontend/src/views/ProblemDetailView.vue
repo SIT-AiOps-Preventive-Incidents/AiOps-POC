@@ -139,13 +139,13 @@ async function openTrace(id) {
 
     <!-- after-the-fact: feedback that trains the AI, and the incident's notification trail -->
     <div class="meta-row">
-      <FeedbackCard :incident="inc" />
+      <FeedbackCard v-can="'incident.rate'" :incident="inc" />
       <UiCard title="Notifications" icon="alert">
         <div v-for="n in inc.notifications" :key="n.id" class="small ntf"><UiStatusDot :tone="n.status && n.status.startsWith('sent') ? 'ok' : 'neutral'" :size="6" />{{ n.event.replace(/_/g, " ") }} · {{ clock(n.ts) }} · <span class="muted">{{ n.status }}</span></div>
         <p v-if="!inc.notifications.length" class="small muted">None sent</p>
         <div v-if="inc.status !== 'analyzing'" class="row row--wrap mt-2">
-          <UiButton variant="tint" size="sm" icon="arrow_sync" @click="store.reanalyze(inc.id).catch((e) => ui.toast(e.message))">Run analysis again</UiButton>
-          <UiButton v-if="!['resolved', 'closed', 'rejected'].includes(inc.status)" variant="plain" size="sm" @click="store.close(inc.id)">Close incident</UiButton>
+          <UiButton v-can="'incident.analyze'" variant="tint" size="sm" icon="arrow_sync" @click="store.reanalyze(inc.id).catch((e) => ui.toast(e.message))">Run analysis again</UiButton>
+          <UiButton v-can="'incident.update'" v-if="!['resolved', 'closed', 'rejected'].includes(inc.status)" variant="plain" size="sm" @click="store.close(inc.id)">Close incident</UiButton>
         </div>
       </UiCard>
     </div>

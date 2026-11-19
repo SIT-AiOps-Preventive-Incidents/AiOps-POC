@@ -1,5 +1,6 @@
 """Signing in and who may do what: password sign-in, single sign-on (OpenID Connect), your own session, and for
 admins the people, the roles and the permission matrix (rules in auth.py and rbac.py)."""
+import os
 import re
 import secrets
 import time
@@ -17,6 +18,9 @@ router = APIRouter(prefix="/api/v1", tags=["access"])
 THROTTLE = auth.Throttle()
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _meta_cache: dict = {}
+# The address people reach RadarOps at over https (e.g. https://cp26pt1.sit.kmutt.ac.th:8443). Providers such as Google
+# only send people back to an https address, so the redirect URL is built from this when it is set.
+REDIRECT_BASE = os.environ.get("SSO_REDIRECT_BASE", "").rstrip("/")
 
 
 def _check(errs: list[str]):
@@ -29,8 +33,9 @@ def _client(request: Request) -> tuple[str, str]:
 
 
 def _set_cookie(request: Request, response: Response, token: str):
+    https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_HOURS * 3600, httponly=True, samesite="lax",
-                        secure=request.url.scheme == "https", path="/")
+                        secure=https, path="/")
 
 
 def _me(u: dict) -> dict:
@@ -136,7 +141,7 @@ async def fetch_jwks(meta: dict) -> dict:
 
 
 def _redirect_uri(request: Request) -> str:
-    return str(request.base_url).rstrip("/") + "/api/v1/auth/sso/callback"
+    return (REDIRECT_BASE or str(request.base_url).rstrip("/")) + "/api/v1/auth/sso/callback"
 
 
 def _back_to_login(msg: str) -> RedirectResponse:

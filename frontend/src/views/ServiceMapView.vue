@@ -26,7 +26,7 @@ const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
 <template>
   <div class="page page--wide">
     <UiPageHeader eyebrow="Watch" title="Service map" subtitle="Every hop a request takes, left to right. Computers you connect show what runs on them below.">
-      <UiButton icon="play" :loading="busy" :disabled="!entry" @click="map.runTest()">{{ busy ? "Running test…" : "Send test request" }}</UiButton>
+      <UiButton v-can="'demo.run'" icon="play" :loading="busy" :disabled="!entry" @click="map.runTest()">{{ busy ? "Running test…" : "Send test request" }}</UiButton>
     </UiPageHeader>
     <div class="filter">
       <UiSegmented v-model="view" :options="VIEWS" label="View" />

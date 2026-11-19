@@ -53,7 +53,7 @@ const empty = computed(() => d.value && !d.value.groups.length);
   <div class="page">
     <UiPageHeader eyebrow="Fleet" title="Fleet list"
                   subtitle="Every machine across your networks, as a list. By default the agent only listens to the announcements each machine makes; use “Scan a segment” to also find the quiet ones on a network you are authorised to scan.">
-      <UiButton v-if="hosts.length" variant="tint" icon="search" @click="scanOpen = true">Scan a segment</UiButton>
+      <UiButton v-can="'fleet.scan'" v-if="hosts.length" variant="tint" icon="search" @click="scanOpen = true">Scan a segment</UiButton>
       <UiButton icon="flowchart" to="/network">Map</UiButton>
       <UiButton variant="tint" icon="cube" to="/network/3d">3D</UiButton>
     </UiPageHeader>
@@ -83,7 +83,7 @@ const empty = computed(() => d.value && !d.value.groups.length);
         <UiResourceRow v-for="i in g.items" :key="`${g.title}-${i.ip}`" :title="i.name || i.ip" :subtitle="sub(i)" :meta="meta(i)"
                        :glyph="GLYPH[i.kind] || 'device'" :to="i.aiops_host ? `/computers/${i.aiops_host}` : undefined"
                        :tone="i.kind === 'connected' ? 'ok' : undefined">
-          <UiButton v-if="!i.aiops_host && i.kind !== 'gateway'" size="sm" variant="tint" icon="add" @click="monitor(i)">Monitor</UiButton>
+          <UiButton v-can="'fleet.connect'" v-if="!i.aiops_host && i.kind !== 'gateway'" size="sm" variant="tint" icon="add" @click="monitor(i)">Monitor</UiButton>
           <UiHealth v-bind="health(i)" />
         </UiResourceRow>
       </UiList>

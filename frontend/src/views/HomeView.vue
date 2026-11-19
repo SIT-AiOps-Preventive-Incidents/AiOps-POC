@@ -204,7 +204,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
         </section>
 
         <!-- the switches that matter -->
-        <section class="card prefs">
+        <section v-can="'settings.edit'" class="card prefs">
           <h3>{{ t("Platform settings", "ตั้งค่าแพลตฟอร์ม") }}</h3>
           <template v-if="settings">
             <p class="prefs__sec">{{ t("Investigation", "การสืบสวน") }}</p>
@@ -218,7 +218,7 @@ const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้
           <UiButton variant="tint" block to="/settings" chevron class="prefs__all">{{ t("All settings", "การตั้งค่าทั้งหมด") }}</UiButton>
         </section>
 
-        <section class="card act">
+        <section v-can="'fleet.connect'" class="card act">
           <UiDotArt variant="sphere" class="art art--sphere" from="#acdcf3" via="#cbbcf4" to="#f5b6c2" :seed="1" fade="left" />
           <h3>{{ t("Connect", "เชื่อมต่อ") }}</h3>
           <p class="sub">{{ t("A server, an app, a website or a cloud", "เครื่อง แอป เว็บไซต์ หรือคลาวด์") }}</p>

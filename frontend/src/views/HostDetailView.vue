@@ -106,7 +106,7 @@ function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`)
       <template #footer>
         <UiButton variant="plain" @click="confirmRemove = false">{{ job ? "Close" : "Cancel" }}</UiButton>
         <UiButton v-if="!isAgent" variant="danger" @click="forget">Remove</UiButton>
-        <UiButton v-else-if="!job" variant="danger" @click="removeAgent">Remove agent</UiButton>
+        <UiButton v-can="'fleet.connect'" v-else-if="!job" variant="danger" @click="removeAgent">Remove agent</UiButton>
         <UiButton v-else-if="job.state === 'failed'" variant="danger" @click="forget">Forget it anyway</UiButton>
         <UiButton v-else-if="job.state === 'done'" @click="done">Done</UiButton>
       </template>

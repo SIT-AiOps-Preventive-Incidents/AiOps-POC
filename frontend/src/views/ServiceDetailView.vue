@@ -70,7 +70,7 @@ async function remove() { await cat.removeService(props.name); router.push("/ser
     <UiSheet :model-value="!!trace" title="Request trace" :width="980" @update:model-value="trace = null"><TraceWaterfall :spans="trace || []" /></UiSheet>
     <UiSheet v-model="confirmRemove" :title="`Remove ${d.service.service_name}?`">
       <p class="muted">RadarOps stops raising problems for it. Its history stays.</p>
-      <template #footer><UiButton variant="plain" @click="confirmRemove = false">Cancel</UiButton><UiButton variant="tint" class="danger-btn" @click="remove">Remove</UiButton></template>
+      <template #footer><UiButton variant="plain" @click="confirmRemove = false">Cancel</UiButton><UiButton v-can="'fleet.connect'" variant="tint" class="danger-btn" @click="remove">Remove</UiButton></template>
     </UiSheet>
   </div>
   <div v-else class="page"><UiSkeletonPage variant="detail" /></div>

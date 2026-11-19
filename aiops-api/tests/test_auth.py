@@ -145,8 +145,8 @@ def test_a_group_from_the_idp_picks_the_role_first_rule_wins_else_the_default():
 
 
 def test_only_allowed_email_domains_may_sign_in_when_a_list_is_set():
-    assert auth.domain_allowed("nok@sit.kmutt.ac.th", "kmutt.ac.th, b3tech.co.th")
-    assert auth.domain_allowed("p@b3tech.co.th", "kmutt.ac.th, b3tech.co.th")
+    assert auth.domain_allowed("nok@sit.kmutt.ac.th", "kmutt.ac.th, example.co.th")
+    assert auth.domain_allowed("p@example.co.th", "kmutt.ac.th, example.co.th")
     assert not auth.domain_allowed("x@gmail.com", "kmutt.ac.th")
     assert not auth.domain_allowed("x@evilkmutt.ac.th", "kmutt.ac.th")
     assert auth.domain_allowed("anyone@anywhere.io", "")

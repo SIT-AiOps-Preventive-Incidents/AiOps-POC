@@ -43,7 +43,7 @@ async function remove(r) {
   <div class="page page--wide">
     <UiPageHeader eyebrow="Automation" title="Runbooks"
                   subtitle="Fixes your team knows. The AI learns one each time a fix works and is rated 4-5 stars, and you can write your own. When the same problem comes back, the AI uses the runbook instead of starting over.">
-      <UiButton icon="add" @click="open()">Write a runbook</UiButton>
+      <UiButton v-can="'automation.runbooks'" icon="add" @click="open()">Write a runbook</UiButton>
     </UiPageHeader>
     <UiSkeletonPage v-if="!rbs" />
     <template v-else>
@@ -55,8 +55,8 @@ async function remove(r) {
           <template #accessory>
             <span :class="['src', r.authored ? 'src--team' : 'src--ai']">{{ r.authored ? "Team" : "AI" }}</span>
             <router-link v-if="r.source_incident_id" :to="`/problems/${r.source_incident_id}`" class="small">P-{{ r.source_incident_id }}</router-link>
-            <UiButton v-if="r.authored" size="sm" variant="ghost" @click="open(r)">Edit</UiButton>
-            <UiSwitch :model-value="r.enabled" :label="`Use RB-${r.id}`" @update:model-value="toggle(r)" />
+            <UiButton v-can="'automation.runbooks'" v-if="r.authored" size="sm" variant="ghost" @click="open(r)">Edit</UiButton>
+            <UiSwitch v-can="'automation.runbooks'" :model-value="r.enabled" :label="`Use RB-${r.id}`" @update:model-value="toggle(r)" />
           </template>
         </UiListRow>
         <UiEmpty v-if="!shown.length">{{ filter === "written" ? "No runbooks written yet. Write one for a problem your team already knows how to fix." : "No runbooks yet. Resolve a problem and rate it 4-5 stars, or write one." }}</UiEmpty>

@@ -152,13 +152,13 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
     <nav v-if="g" class="stats" aria-label="Fleet summary">
       <UiStatCard v-for="st in STATS" :key="st.k" :label="st.k" :value="st.v" :sub="st.go" :to="st.to" :theme="st.theme" :motif="st.motif" />
     </nav>
-    <section v-if="recs && recs.recommendations.length" class="recs">
+    <section v-if="recs && recs.recommendations.length" v-can="'fleet.connect'" class="recs">
       <div class="recs-head">
         <b>Suggested to monitor next</b>
         <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · RadarOps ranked them by what it would learn</span>
         <span v-if="picked.size" class="bulk-btn">
           <UiButton size="sm" variant="ghost" icon="dismiss" @click="picked = new Set()">Clear selection</UiButton>
-          <UiButton size="sm" icon="add" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
+          <UiButton v-can="'fleet.connect'" size="sm" icon="add" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>
         </span>
       </div>
       <div class="rec-row">
@@ -226,7 +226,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
         </dl>
         <p v-if="selected.cloud?.verdict?.text" :class="['verdict', `t-${selected.cloud.verdict.code}`]">{{ selected.cloud.verdict.text }}</p>
         <UiButton v-if="selected.link" size="sm" @click="open">Open</UiButton>
-        <UiButton v-else-if="selected.ip" size="sm" icon="add" @click="monitor">Monitor this machine</UiButton>
+        <UiButton v-can="'fleet.connect'" v-else-if="selected.ip" size="sm" icon="add" @click="monitor">Monitor this machine</UiButton>
       </aside>
     </div>
   </div>

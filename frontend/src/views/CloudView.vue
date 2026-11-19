@@ -81,7 +81,7 @@ const providerLabel = (id) => providers.value.find((p) => p.id === id)?.label ||
   <div class="page page--wide">
     <UiPageHeader eyebrow="Fleet" title="Cloud accounts"
                   subtitle="Every VM in the clouds you rent, read with a read-only credential and re-read every few minutes. Proxmox (GIST Starships Cloud), OpenStack, VMware Cloud Director, CloudStack, AWS, Azure and Google Cloud.">
-      <UiButton v-if="!adding" icon="add" @click="adding = true">Connect a cloud</UiButton>
+      <UiButton v-can="'fleet.cloud'" v-if="!adding" icon="add" @click="adding = true">Connect a cloud</UiButton>
     </UiPageHeader>
 
     <!-- connect -->
@@ -137,15 +137,15 @@ const providerLabel = (id) => providers.value.find((p) => p.id === id)?.label ||
         <p v-if="a.last_error" class="err small">{{ a.last_error }}</p>
         <div class="acc__foot">
           <span class="muted small">{{ a.last_sync_at ? `Read ${ago(a.last_sync_at)}` : "Not read yet" }}</span>
-          <div class="row"><UiButton size="sm" variant="tint" icon="arrow_sync" @click="sync(a)">Read now</UiButton>
-            <UiButton size="sm" :variant="armed === a.id ? 'danger' : 'ghost'" @click="remove(a)">{{ armed === a.id ? "Click to confirm" : "Disconnect" }}</UiButton></div>
+          <div class="row"><UiButton v-can="'fleet.cloud'" size="sm" variant="tint" icon="arrow_sync" @click="sync(a)">Read now</UiButton>
+            <UiButton v-can="'fleet.cloud'" size="sm" :variant="armed === a.id ? 'danger' : 'ghost'" @click="remove(a)">{{ armed === a.id ? "Click to confirm" : "Disconnect" }}</UiButton></div>
         </div>
       </section>
     </div>
     <section v-else-if="accounts && !adding" class="card empty">
       <UiGlyph name="cloud" :size="40" />
       <div><b>No cloud account yet</b><p class="muted">Connect one to see every VM you rent next to the machines on your own network.</p></div>
-      <UiButton icon="add" @click="adding = true">Connect a cloud</UiButton>
+      <UiButton v-can="'fleet.cloud'" icon="add" @click="adding = true">Connect a cloud</UiButton>
     </section>
     <p v-if="error" class="err">{{ error }}</p>
 
@@ -165,7 +165,7 @@ const providerLabel = (id) => providers.value.find((p) => p.id === id)?.label ||
           <span :class="['vd', `t-${verdictTone(i.verdict.code)}`]">{{ i.verdict.text }}</span>
           <span class="act">
             <UiButton v-if="i.aiops_host" size="sm" variant="tint" :to="`/computers/${i.aiops_host}`" chevron>Host</UiButton>
-            <UiButton v-else-if="i.state === 'running' && (i.private_ips[0] || i.public_ips[0])" size="sm" icon="add" @click="monitor(i)">Monitor</UiButton>
+            <UiButton v-can="'fleet.connect'" v-else-if="i.state === 'running' && (i.private_ips[0] || i.public_ips[0])" size="sm" icon="add" @click="monitor(i)">Monitor</UiButton>
           </span>
         </div>
       </div>

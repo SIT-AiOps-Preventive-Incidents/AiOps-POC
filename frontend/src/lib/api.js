@@ -15,6 +15,7 @@ async function request(method, path, body) {
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new CustomEvent("radarops:signed-out"));
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -105,4 +106,17 @@ export const api = {
     recommendations: () => get("/network/recommendations"),
     discovered: (view) => get(`/network/discovered${view ? `?view=${view}` : ""}`),
   },
+  auth: {
+    providers: () => get("/auth/providers"),
+    login: (body) => post("/auth/login", body),
+    logout: () => post("/auth/logout"),
+    me: () => get("/auth/me"),
+    updateMe: (body) => patch("/auth/me", body),
+    log: () => get("/auth/log"),
+    sso: { get: () => get("/auth/sso"), update: (body) => patch("/auth/sso", body), test: (body) => post("/auth/sso/test", body) },
+  },
+  users: { list: () => get("/users"), create: (body) => post("/users", body), update: (id, body) => patch(`/users/${id}`, body),
+    remove: (id) => del(`/users/${id}`) },
+  roles: { get: () => get("/roles"), saveMatrix: (matrix) => put("/roles/matrix", { matrix }), create: (body) => post("/roles", body),
+    rename: (id, label) => patch(`/roles/${enc(id)}`, { label }), remove: (id) => del(`/roles/${enc(id)}`) },
 };

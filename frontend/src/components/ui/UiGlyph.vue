@@ -109,6 +109,13 @@ const rough = computed(() => (props.size < 24 ? 0.55 : props.size < 40 ? 0.8 : 1
       <circle cx="12" cy="12" r="4.6" fill="#eef1f5" />
       <circle cx="12" cy="12" r="2.2" fill="#9ea9ba" />
     </g>
+    <!-- access: a shield with a keyhole -->
+    <g v-else-if="name === 'access'">
+      <path d="M12 2.5l8 3v6.2c0 4.9-3.4 8.6-8 9.8-4.6-1.2-8-4.9-8-9.8V5.5z" fill="#cbbcf4" />
+      <path d="M12 2.5l8 3v6.2c0 4.9-3.4 8.6-8 9.8z" fill="#a28be3" />
+      <circle cx="12" cy="10.6" r="2.3" fill="#eee8fd" />
+      <path d="M11 12.2h2l.6 4.2h-3.2z" fill="#eee8fd" />
+    </g>
     <!-- cloud: a cloud holding a small server -->
     <g v-else-if="name === 'cloud'">
       <path d="M7 19.5h10.5a4.5 4.5 0 0 0 .8-8.9 6.3 6.3 0 0 0-12.1-1.4A5.2 5.2 0 0 0 7 19.5z" fill="#acdcf3" />

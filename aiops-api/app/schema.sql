@@ -375,6 +375,8 @@ CREATE TABLE IF NOT EXISTS playbook_escalations (
   playbook_id INT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
   ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (incident_id, playbook_id)
+);
+
 -- Release 2.0: sign-in and access. People sign in with a password or single sign-on (OpenID Connect); a role's
 -- permissions are the ticks of the matrix in role_permissions (rules in app/rbac.py). Sessions keep only a hash.
 CREATE TABLE IF NOT EXISTS roles (

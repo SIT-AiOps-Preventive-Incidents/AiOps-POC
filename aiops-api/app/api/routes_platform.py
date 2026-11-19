@@ -5,7 +5,7 @@ import os
 import random
 
 import httpx
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from .. import datasets, db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
@@ -119,9 +119,19 @@ async def test_notification():
 
 
 # ---------------- settings ----------------
+def _visible_settings(perms: set) -> dict:
+    """Every role reads settings; sign-in settings have their own admin-only API, and the Teams webhook URL (it lets
+    anyone post into the channel) shows only to those who may edit settings."""
+    s = {k: v for k, v in db.settings().items() if not k.startswith("sso_") and k != "password_login"}
+    if s.get("teams_webhook") and not ({"settings.edit", "admin"} & perms):
+        s["teams_webhook"] = "set"
+    return s
+
+
 @router.get("/settings", tags=["settings"])
-async def get_settings():
-    return {"settings": db.settings(), "llm": await llm.status(), "public_url": PUBLIC_URL, "grafana_url": GRAFANA_URL,
+async def get_settings(request: Request):
+    user = getattr(request.state, "user", None)
+    return {"settings": _visible_settings(set(user["permissions"]) if user else set()), "llm": await llm.status(), "public_url": PUBLIC_URL, "grafana_url": GRAFANA_URL,
             "otlp_endpoint": OTLP_PUBLIC}
 
 

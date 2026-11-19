@@ -2,6 +2,7 @@
 // The owner's decision card: recommended fix + dry-run checklist + owner confirmation + approve / reject.
 import { computed, ref, watch } from "vue";
 import { clock } from "@/lib/format";
+import { useAuthStore } from "@/stores/auth";
 import { useIncidentStore } from "@/stores/incidents";
 import { useUiStore } from "@/stores/ui";
 import { approveLabel, consequence } from "@/lib/insight";
@@ -17,19 +18,19 @@ const cands = computed(() => inc.value.candidates || []);
 const pick = ref(0);
 const chosen = computed(() => cands.value[pick.value] || inc.value.action);
 const ownerOk = ref(false);
-const approver = ref(ui.prefs.approver || "");
+const auth = useAuthStore();       // the approver is whoever is signed in; the server records them from the session
+const mayDecide = computed(() => auth.can("incident.approve"));
 const comment = ref("");
 const busy = ref("");
 watch(() => inc.value.id, () => { pick.value = 0; ownerOk.value = false; });
-const canApprove = computed(() => chosen.value?.dry_run?.ok && ownerOk.value && approver.value.trim());
+const canApprove = computed(() => mayDecide.value && chosen.value?.dry_run?.ok && ownerOk.value);
 const ap = computed(() => inc.value.approval);
 const will = computed(() => consequence(chosen.value));
 
 async function decide(decision) {
   busy.value = decision;
-  ui.setPref("approver", approver.value.trim());
   try {
-    await store.decide(inc.value.id, { decision, candidate_id: chosen.value?.id, approver: approver.value.trim() || "owner",
+    await store.decide(inc.value.id, { decision, candidate_id: chosen.value?.id,
       owner_confirmed: ownerOk.value, comment: comment.value });
     ui.toast(decision === "approve" ? "Approved. Applying the fix." : "Rejected");
   } catch (e) {
@@ -64,8 +65,11 @@ async function decide(decision) {
       <!-- the decision: orange frames the one place that needs a person; the working area stays clean white -->
       <div class="decision">
         <div class="decision__h"><UiIcon name="person" :size="15" /><span>Your decision</span><span class="decision__tag">needs your approval</span></div>
-        <div class="decision__body">
-          <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
+        <div v-if="!mayDecide" class="decision__body">
+          <p class="caption dim"><UiIcon name="shield" :size="13" />Your role ({{ auth.me?.role_label }}) cannot approve or reject fixes. A developer, a manager or an admin can.</p>
+        </div>
+        <div v-else class="decision__body">
+          <p class="as">Deciding as <b>{{ auth.me?.name || auth.me?.email }}</b><span class="muted"> · {{ auth.me?.role_label }}</span></p>
           <label class="owner">
             <UiSwitch v-model="ownerOk" label="I am the owner" />
             <span><span class="b">I'm the owner of {{ inc.owner || "this service" }}</span><span class="small muted">and take responsibility for this fix</span></span>
@@ -75,7 +79,7 @@ async function decide(decision) {
             {{ approveLabel(chosen) }}</UiButton>
           <p :class="['caption', canApprove ? 'ok' : 'dim']">
             <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
-            {{ canApprove ? "RadarOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : !ownerOk ? "Turn on “I’m the owner” to enable approval." : "Enter your name to enable approval." }}
+            {{ canApprove ? "RadarOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : "Turn on “I’m the owner” to enable approval." }}
           </p>
           <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
           <UiField v-model="comment" class="cmt" label="Comment (optional)" placeholder="Why approve or reject" />
@@ -121,6 +125,7 @@ async function decide(decision) {
 .decision__tag { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-on-action); background: var(--c-action);
   padding: 1px 9px; border-radius: var(--radius-pill); }
 .decision__body { padding: 14px; }
+.as { font-size: var(--fs-sm); margin-bottom: 4px; }
 .decision__body :deep(.ui-field) { margin-bottom: 0; }
 .owner { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; padding-top: 14px; border-top: 1px solid var(--c-separator); cursor: pointer; }
 .owner .b { display: block; } .owner .small { display: block; }

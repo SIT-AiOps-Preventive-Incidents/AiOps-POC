@@ -49,7 +49,7 @@ const STARTERS = [
   <div class="page page--wide">
     <UiPageHeader eyebrow="Automation" title="Playbooks"
                   subtitle="Your team's rules for incidents: who gets which incident, and who hears about it when a fix waits too long for approval. A playbook never applies a fix; every fix waits for a person.">
-      <UiButton icon="add" @click="open()">New playbook</UiButton>
+      <UiButton v-can="'automation.playbooks'" icon="add" @click="open()">New playbook</UiButton>
     </UiPageHeader>
     <UiSkeletonPage v-if="!pbs" />
     <template v-else>
@@ -62,8 +62,8 @@ const STARTERS = [
           </div>
           <div class="pb__runs"><b>{{ p.runs }}</b><span>times applied</span></div>
           <div class="row">
-            <UiSwitch :model-value="p.enabled" :label="`Use ${p.name}`" @update:model-value="(v) => setEnabled(p, v)" />
-            <UiButton size="sm" variant="tint" @click="open(p)">Edit</UiButton>
+            <UiSwitch v-can="'automation.playbooks'" :model-value="p.enabled" :label="`Use ${p.name}`" @update:model-value="(v) => setEnabled(p, v)" />
+            <UiButton v-can="'automation.playbooks'" size="sm" variant="tint" @click="open(p)">Edit</UiButton>
           </div>
         </article>
       </div>
@@ -71,7 +71,7 @@ const STARTERS = [
         <h3>Start from one of these</h3>
         <p class="sub">Each opens in the editor, so you can change it before saving.</p>
         <div class="starters">
-          <button v-for="s in STARTERS" :key="s.name" type="button" class="starter" @click="open(); form = playbookForm(s)">
+          <button v-can="'automation.playbooks'" v-for="s in STARTERS" :key="s.name" type="button" class="starter" @click="open(); form = playbookForm(s)">
             <UiSpot glyph="playbook" hue="peach" badge="plus" :size="56" />
             <span><b>{{ s.name }}</b><span class="muted small">{{ playbookSentence(s) }}</span></span>
           </button>

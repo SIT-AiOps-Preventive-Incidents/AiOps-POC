@@ -76,7 +76,6 @@ async function removeRole(r) {
 // ---------------- people ----------------
 const people = ref(null);
 const loadPeople = async () => { people.value = await api.users.list(); };
-watch(tab, (v) => { if (v === "people" && !people.value) loadPeople(); if (v === "activity") loadLog(); if (v === "signin" && !sso.value) loadSso(); }, { immediate: true });
 async function patchUser(u, b) {
   try { await api.users.update(u.id, b); await loadPeople(); } catch (e) { ui.toast(e.message, "bad"); await loadPeople(); }
 }
@@ -131,6 +130,9 @@ const ACTION = { login: "Signed in", "login.fail": "Sign-in failed", logout: "Si
   "user.update": "Changed a person", "user.delete": "Removed a person", "user.sso_join": "Joined through SSO",
   "user.sso_link": "Linked SSO to an account", "user.sso_role": "Role set by an SSO rule", "sso.change": "Changed sign-in settings",
   "user.bootstrap": "First admin created" };
+// each section loads when it is first opened (declared last: it calls the loaders above)
+watch(tab, (v) => { if (v === "people" && !people.value) loadPeople(); if (v === "activity") loadLog(); if (v === "signin" && !sso.value) loadSso(); }, { immediate: true });
+
 function detail(e) {
   const d = e.detail || {};
   if (e.action === "matrix.change") return Object.entries(d).map(([r, c]) => `${roleLabel(r)}: ${changeLine(c)}`).join(" · ");
@@ -223,7 +225,7 @@ function detail(e) {
                               "OpenID Connect: Microsoft Entra ID, Google Workspace, Keycloak, Okta, Dex ... ลงทะเบียน RadarOps ที่ผู้ให้บริการด้วย redirect URL ด้านล่าง") }}</p>
           <div class="redirect"><span class="mono small">{{ sso.redirect_uri }}</span><UiButton size="sm" variant="ghost" icon="copy" @click="copy(sso.redirect_uri)">{{ t("Copy", "คัดลอก") }}</UiButton></div>
           <div class="two">
-            <UiField v-model="ssoForm.sso_issuer" mono :label="t('Issuer URL', 'Issuer URL')" placeholder="https://login.microsoftonline.com/<tenant>/v2.0" />
+            <UiField v-model="ssoForm.sso_issuer" mono :label="t('Issuer URL', 'Issuer URL')" placeholder="https://accounts.google.com" />
             <div class="testbtn"><UiButton variant="tint" :loading="testing" :disabled="!ssoForm.sso_issuer" @click="testSso">{{ t("Test", "ทดสอบ") }}</UiButton></div>
           </div>
           <div class="two">
@@ -233,7 +235,7 @@ function detail(e) {
           </div>
           <div class="two">
             <UiField v-model="ssoForm.sso_label" :label="t('Button text', 'ข้อความบนปุ่ม')" placeholder="Sign in with Microsoft" />
-            <UiField v-model="ssoForm.sso_allowed_domains" :label="t('Allowed email domains', 'โดเมนอีเมลที่อนุญาต')" :hint="t('optional, comma separated', 'ไม่บังคับ คั่นด้วยจุลภาค')" placeholder="kmutt.ac.th, b3tech.co.th" />
+            <UiField v-model="ssoForm.sso_allowed_domains" :label="t('Allowed email domains', 'โดเมนอีเมลที่อนุญาต')" :hint="t('optional, comma separated', 'ไม่บังคับ คั่นด้วยจุลภาค')" placeholder="kmutt.ac.th, example.com" />
           </div>
         </div>
 
@@ -242,9 +244,9 @@ function detail(e) {
           <p class="sub">{{ t("Checked at every sign-in, top to bottom; the first rule that matches sets the role. No match: a new person gets the default role and an existing one keeps theirs.",
                               "เช็คทุกครั้งที่เข้าระบบ จากบนลงล่าง กฎแรกที่ตรงจะกำหนดบทบาท ถ้าไม่ตรงเลย คนใหม่ได้บทบาทเริ่มต้น คนเดิมได้บทบาทเดิม") }}</p>
           <div v-for="(r, i) in ssoForm.sso_role_rules" :key="i" class="rule">
-            <select v-model="r.claim" class="sel" :aria-label="t('Claim', 'Claim')"><option value="groups">groups</option><option value="roles">roles</option><option value="email">email</option></select>
+            <select v-model="r.claim" class="sel" :aria-label="t('Claim', 'Claim')"><option value="groups">groups</option><option value="roles">roles</option><option value="email">email</option><option value="hd">hd (Google Workspace domain)</option></select>
             <span class="muted">{{ t("contains", "มีค่า") }}</span>
-            <input v-model="r.value" class="inp mono" :placeholder="r.claim === 'email' ? 'name@company.com' : 'radarops-admins'" :aria-label="t('Value', 'ค่า')">
+            <input v-model="r.value" class="inp mono" :placeholder="r.claim === 'email' ? 'name@company.com' : r.claim === 'hd' ? 'example.com' : 'radarops-admins'" :aria-label="t('Value', 'ค่า')">
             <span class="muted">→</span>
             <select v-model="r.role" class="sel" :aria-label="t('Role', 'บทบาท')"><option v-for="ro in roles?.roles || []" :key="ro.id" :value="ro.id">{{ ro.label }}</option></select>
             <UiButton size="sm" variant="ghost" icon="dismiss" :aria-label="t('Remove rule', 'ลบกฎ')" @click="ssoForm.sso_role_rules.splice(i, 1)" />
@@ -327,17 +329,17 @@ function detail(e) {
 .matrix-scroll { overflow-x: auto; }
 .matrix { border-collapse: separate; border-spacing: 0; width: 100%; font-size: var(--fs-sm); }
 .matrix th, .matrix td { border-bottom: 1px solid var(--c-border); }
-.matrix .rolecol { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; min-width: 180px; padding: 10px 16px;
+.matrix .rolecol { position: sticky; left: 0; z-index: 1; background: var(--c-surface); text-align: left; min-width: 150px; padding: 10px 14px;
   border-right: 1px solid var(--c-border); }
 .matrix thead .rolecol { vertical-align: bottom; color: var(--c-text-3); font-weight: var(--fw-medium); }
 .groups .g { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-3); font-weight: var(--fw-semibold);
   padding: 10px 8px 6px; text-align: center; border-left: 1px solid var(--c-border); }
-.perms th { padding: 6px 4px 10px; font-weight: var(--fw-medium); color: var(--c-text-2); vertical-align: bottom; min-width: 76px; cursor: help; }
+.perms th { padding: 6px 4px 10px; font-weight: var(--fw-medium); color: var(--c-text-2); vertical-align: bottom; min-width: 64px; cursor: help; font-size: 13px; }
 .perms th span { display: block; line-height: 1.25; }
 .matrix .sep { border-left: 1px solid var(--c-border); }
 .matrix td { text-align: center; padding: 0; }
 .matrix .hot { background: color-mix(in srgb, var(--c-primary) 7%, transparent); }
-.matrix tbody tr:hover td, .matrix tbody tr:hover .rolecol { background: color-mix(in srgb, var(--c-primary) 7%, var(--surface)); }
+.matrix tbody tr:hover td, .matrix tbody tr:hover .rolecol { background: color-mix(in srgb, var(--c-primary) 7%, var(--c-surface)); }
 .cell { display: flex; align-items: center; justify-content: center; height: 44px; cursor: pointer; }
 .cell input { width: 17px; height: 17px; accent-color: var(--c-primary); cursor: pointer; }
 .cell input:disabled { cursor: not-allowed; opacity: 0.55; }

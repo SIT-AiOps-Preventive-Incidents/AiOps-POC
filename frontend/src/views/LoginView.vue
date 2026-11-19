@@ -55,7 +55,7 @@ async function submit() {
         </form>
         <p v-if="!providers.password && !providers.sso.enabled" class="sub">{{ t("Sign-in is not set up. Ask an admin.", "ยังไม่ได้ตั้งค่าการเข้าสู่ระบบ ติดต่อผู้ดูแล") }}</p>
       </template>
-      <UiSkeleton v-else :lines="4" />
+      <div v-else class="sk"><UiSkeleton h="44px" r="12px" /><UiSkeleton w="60%" /><UiSkeleton h="40px" r="10px" /></div>
     </main>
   </div>
 </template>
@@ -68,5 +68,6 @@ h1 { font-size: 26px; font-weight: var(--fw-semibold); letter-spacing: -0.02em; 
 .err { color: var(--c-bad-text); background: var(--c-bad-bg); border-radius: var(--radius-md); padding: 10px 12px; font-size: var(--fs-sm); margin-bottom: 16px; }
 .or { display: flex; align-items: center; gap: 12px; color: var(--c-text-3); font-size: 12px; margin: 20px 0 4px; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--c-border); }
-.form :deep(.ui-button) { margin-top: 20px; }
+.form :deep(.ui-btn) { margin-top: 20px; }
+.sk { display: flex; flex-direction: column; gap: 12px; }
 </style>
