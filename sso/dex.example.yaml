@@ -1,0 +1,23 @@
+# Demo single sign-on provider (Dex, OpenID Connect) for RadarOps.
+# sso/setup-dex.sh turns this into sso/dex.yaml (git-ignored) with fresh passwords and a client secret.
+# In production, point RadarOps at your own provider instead (Microsoft Entra ID, Google, Keycloak ...):
+# Access > Sign-in in the app, or PATCH /api/v1/auth/sso.
+issuer: __ISSUER__
+storage:
+  type: memory
+web:
+  http: 0.0.0.0:5556
+oauth2:
+  skipApprovalScreen: true
+staticClients:
+  - id: radarops
+    name: RadarOps
+    secret: __CLIENT_SECRET__
+    redirectURIs:
+      - __PUBLIC_URL__/api/v1/auth/sso/callback
+enablePasswordDB: true
+staticPasswords:
+  - {email: admin@radarops.demo, username: admin, userID: 7c1a0f2e-0001-4000-8000-000000000001, hash: "__HASH_admin__"}
+  - {email: manager@radarops.demo, username: manager, userID: 7c1a0f2e-0002-4000-8000-000000000002, hash: "__HASH_manager__"}
+  - {email: developer@radarops.demo, username: developer, userID: 7c1a0f2e-0003-4000-8000-000000000003, hash: "__HASH_developer__"}
+  - {email: viewer@radarops.demo, username: viewer, userID: 7c1a0f2e-0004-4000-8000-000000000004, hash: "__HASH_viewer__"}

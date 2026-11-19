@@ -96,6 +96,38 @@ def host_expr(host: str, metric: str) -> str:
     }[metric]
 
 
+# Error log lines per minute (counted by the platform collector from every log it receives).
+LOG_ERRORS = "aiops_log_errors_total"
+
+
+def log_errors_expr(svc: str, window: str = "2m") -> str:
+    return f'sum(rate({LOG_ERRORS}{{service_name="{svc}"}}[{window}])) * 60'
+
+
+# Per-container usage, sent by the collector that Connect starts on each server (docker_stats, % of the machine).
+CONTAINER = {"cpu": "container_cpu_utilization_ratio", "mem": "container_memory_percent_ratio"}
+
+
+def container_expr(host: str, container: str, metric: str) -> str:
+    return f'max({CONTAINER[metric]}{{host_name="{host}",container_name="{container}"}})'
+
+
+async def container_count(host: str) -> float | None:
+    """How many containers this server is reporting right now (None/0 = it sends no container data)."""
+    return await prom_value(f'count({CONTAINER["cpu"]}{{host_name="{host}"}})')
+
+
+async def container_usage(host: str) -> list[dict]:
+    """[{name, cpu_pct, mem_pct}] for every container the server reports, busiest CPU first."""
+    rows: dict[str, dict] = {}
+    for m, key in (("cpu", "cpu_pct"), ("mem", "mem_pct")):
+        for r in await prom(f'max by (container_name) ({CONTAINER[m]}{{host_name="{host}"}})'):
+            n = r["metric"].get("container_name")
+            if n:
+                rows.setdefault(n, {"name": n, "cpu_pct": None, "mem_pct": None})[key] = round(float(r["value"][1]), 1)
+    return sorted(rows.values(), key=lambda x: -(x["cpu_pct"] or 0))
+
+
 async def error_rate_by_version(svc: str, window: str = "2m") -> list[dict]:
     sel = f'service_name="{svc}",{SRV}'
     errs = await prom(f'sum by (app_version, app_commit) (rate({CALLS}{{{sel},status_code="STATUS_CODE_ERROR"}}[{window}]))')
@@ -224,6 +256,26 @@ def error_origin(spans: list[dict]) -> list[dict]:
     for s in spans:
         children.setdefault(s["parent"], []).append(s)
     return [s for s in spans if s["error"] and not any(c["error"] for c in children.get(s["id"], []))]
+
+
+CLIENT_KINDS = (3, "SPAN_KIND_CLIENT")
+
+
+def unanswered_calls(spans: list[dict]) -> list[dict]:
+    """Client spans nobody answered: the call left the caller and no span of the callee came back. A service that
+    is down produces exactly this, and nothing else, because it cannot record a span of its own."""
+    parents = {s["parent"] for s in spans}
+    return [s for s in spans if s.get("kind") in CLIENT_KINDS and s["id"] not in parents]
+
+
+def answerer(spans: list[dict], call_name: str) -> str | None:
+    """In a trace where the call `call_name` was answered, the service that answered it."""
+    for s in spans:
+        if s["name"] == call_name and s.get("kind") in CLIENT_KINDS:
+            child = next((c for c in spans if c["parent"] == s["id"] and c["service"] != s["service"]), None)
+            if child:
+                return child["service"]
+    return None
 
 
 def self_time(spans: list[dict]) -> dict[str, float]:

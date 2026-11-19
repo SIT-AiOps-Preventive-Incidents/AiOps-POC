@@ -1,12 +1,13 @@
 """Everything else under /api/v1: overview, deployments, runbooks, skills, teams, notifications, settings,
 demo scenarios and the platform's own health."""
+import asyncio
 import os
 import random
 
 import httpx
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
-from .. import db, detector, health, llm, notify, remediation, repo
+from .. import datasets, db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
 from .errors import ApiError, not_found
 from .schemas import DeploymentIn, RunbookPatch
@@ -118,9 +119,19 @@ async def test_notification():
 
 
 # ---------------- settings ----------------
+def _visible_settings(perms: set) -> dict:
+    """Every role reads settings; sign-in settings have their own admin-only API, and the Teams webhook URL (it lets
+    anyone post into the channel) shows only to those who may edit settings."""
+    s = {k: v for k, v in db.settings().items() if not k.startswith("sso_") and k != "password_login"}
+    if s.get("teams_webhook") and not ({"settings.edit", "admin"} & perms):
+        s["teams_webhook"] = "set"
+    return s
+
+
 @router.get("/settings", tags=["settings"])
-async def get_settings():
-    return {"settings": db.settings(), "llm": await llm.status(), "public_url": PUBLIC_URL, "grafana_url": GRAFANA_URL,
+async def get_settings(request: Request):
+    user = getattr(request.state, "user", None)
+    return {"settings": _visible_settings(set(user["permissions"]) if user else set()), "llm": await llm.status(), "public_url": PUBLIC_URL, "grafana_url": GRAFANA_URL,
             "otlp_endpoint": OTLP_PUBLIC}
 
 
@@ -138,6 +149,12 @@ async def patch_settings(body: dict):
 SCENARIOS = ["bad_deploy", "instance_fault", "slow_db", "cpu_hog", "brute_force", "reset"]
 
 
+def _scenarios() -> list[str]:
+    """The shop faults need the shop; everything but `reset` is a shop fault."""
+    shop = SCENARIOS[:-1] if datasets.DATASET == "shop" else []
+    return shop + SCENARIOS[-1:]
+
+
 async def _post(url: str, body: dict):
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.post(url, json=body)
@@ -147,11 +164,17 @@ async def _post(url: str, body: dict):
 
 @router.get("/scenarios", tags=["demo"])
 async def list_scenarios():
-    return SCENARIOS
+    names = await asyncio.to_thread(_scenarios)
+    return await datasets.replay_cases() + names
 
 
 @router.post("/scenarios/{scenario}/runs", status_code=202, tags=["demo"], summary="Inject a fault (or reset)")
 async def run_scenario(scenario: str):
+    if scenario.startswith(datasets.PREFIX):
+        if scenario not in await datasets.replay_cases():
+            raise not_found("scenario", scenario)
+        await datasets.play(scenario)
+        return {"scenario": scenario, "status": "started"}
     if scenario not in SCENARIOS:
         raise not_found("scenario", scenario)
     if scenario == "bad_deploy":
@@ -171,6 +194,9 @@ async def run_scenario(scenario: str):
             "error_rate": 0.5, "error_msg": "RedisTimeoutError: session cache unreachable from frontend-b "
                                             "(connection pool stuck after network blip)"})
     elif scenario == "reset":
+        await datasets.reset()        # AnoMod replay back to the normal run
+        if datasets.DATASET != "shop":
+            return {"scenario": scenario, "status": "reset"}
         with open(remediation.BLOCKLIST, "w") as f:
             f.write("# managed by AIOps remediation (owner-approved block_ip actions)\n")
         await tm.container_exec(remediation.FW_CONTAINER, ["nginx", "-s", "reload"])

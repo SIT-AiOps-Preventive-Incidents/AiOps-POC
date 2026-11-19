@@ -1,10 +1,7 @@
 """/api/v1/services - applications AIOps watches (traced, network devices, discovered processes)."""
-import time
-
-import httpx
 from fastapi import APIRouter, Response
 
-from .. import health, repo
+from .. import autoreg, detector, health, repo
 from .. import telemetry as tm
 from .errors import ApiError, not_found
 from .schemas import ServiceIn, ServicePatch
@@ -31,23 +28,9 @@ async def create_service(body: ServiceIn, response: Response):
     return s
 
 
-@router.get("/discovered", summary="Telemetry that is arriving from services nobody registered yet")
+@router.get("/discovered", summary="Apps sending data right now that are not added yet (they are added within a minute)")
 async def discovered():
-    known = {s["service_name"] for s in repo.list_services(("service", "network", "process", "external"))}
-    seen: dict[str, float | None] = {}
-    for r in await tm.prom(f'sum by (service_name) (rate({tm.CALLS}{{span_kind="SPAN_KIND_SERVER"}}[15m]))'):
-        if r["metric"].get("service_name"):
-            seen[r["metric"]["service_name"]] = round(float(r["value"][1]), 3)
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            vals = (await c.get(f"{tm.LOKI}/loki/api/v1/label/service_name/values",
-                                params={"start": int((time.time() - 900) * 1e9)})).json().get("data", [])
-        for n in vals:
-            seen.setdefault(n, None)
-    except Exception:
-        pass
-    return [{"service_name": n, "rps": r} for n, r in sorted(seen.items())
-            if n not in known and n not in ("aiops-agent", "unknown_service")]
+    return await autoreg.pending()
 
 
 @router.get("/{name}", summary="Service detail: health, charts, endpoints, versions, traces, logs")
@@ -67,6 +50,7 @@ async def get_service(name: str):
                   "error_rate": round(emap.get(e["metric"].get("span_name"), 0) / float(e["value"][1]), 4)
                   if float(e["value"][1]) else 0} for e in eps]
     return {"service": s, "health": await health.service_health(s), "series": series, "endpoints": endpoints,
+            "normal": await detector.normal_ranges("service", name),
             "versions": await tm.error_rate_by_version(name, "5m"), "deployments": repo.deployments(name, limit=15),
             "logs": await tm.loki_logs(f'{{service_name="{name}"}}', minutes=15, limit=40),
             "traces": await tm.tempo_search(f'{{ resource.service.name = "{name}" }}', minutes=15, limit=15),

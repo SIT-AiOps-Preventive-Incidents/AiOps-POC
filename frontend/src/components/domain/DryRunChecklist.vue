@@ -1,6 +1,7 @@
 <script setup>
 // What the dry run checked, what it would change, and who would notice - nothing here has been applied.
-defineProps({ dryRun: Object });
+// effects=false when the caller already shows what will run and who notices
+defineProps({ dryRun: Object, effects: { type: Boolean, default: true } });
 </script>
 <template>
   <div v-if="dryRun" class="dr">
@@ -12,10 +13,10 @@ defineProps({ dryRun: Object });
         <span>{{ c.name }}<span class="dr__d">{{ c.detail }}</span></span>
       </li>
     </ul>
-    <UiDisclosure v-if="dryRun.changes?.length" :card="false" :title="`What will change (${dryRun.changes.length})`">
+    <UiDisclosure v-if="effects && dryRun.changes?.length" :card="false" :title="`What will change (${dryRun.changes.length})`">
       <pre class="dr__pre">{{ dryRun.changes.join("\n") }}</pre>
     </UiDisclosure>
-    <div v-if="dryRun.impact" class="small mt-2"><span class="muted">Impact:</span> {{ dryRun.impact }}</div>
+    <div v-if="effects && dryRun.impact" class="small mt-2"><span class="muted">Impact:</span> {{ dryRun.impact }}</div>
   </div>
 </template>
 <style scoped>

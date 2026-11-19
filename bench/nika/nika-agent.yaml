@@ -1,0 +1,6 @@
+# Registers the agent with NIKA:  uv run nika agent add <this dir>   (undo: nika agent remove aiopsone-net)
+id: aiopsone-net
+class: netagent.agent:AIOpsOneNetAgent
+providers: [custom]          # no LLM is called; NIKA still asks for a provider name
+supports_max_tokens: false
+default_model: rules

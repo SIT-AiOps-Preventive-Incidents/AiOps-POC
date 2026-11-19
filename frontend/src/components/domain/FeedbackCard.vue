@@ -25,7 +25,7 @@ async function send() {
     <div class="line"><span>Root cause was correct</span><UiSwitch v-model="correct" label="Root cause was correct" /></div>
     <UiField v-model="comment" label="What should the AI learn?" multiline />
     <UiButton variant="tint" class="mt-2" :loading="busy" @click="send">Send feedback</UiButton>
-    <p class="small dim mt-2">4-5 stars on a resolved problem saves it as a runbook. Low scores teach the AI for next time.</p>
+    <p class="small dim mt-2">4 or 5 stars on a resolved incident saves it as a runbook. Low scores teach the AI for next time.</p>
   </UiCard>
 </template>
 <style scoped>

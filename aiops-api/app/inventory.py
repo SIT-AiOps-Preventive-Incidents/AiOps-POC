@@ -9,7 +9,7 @@ Connecting a computer is enough to see what runs on it:
 """
 import re
 
-from . import db, repo
+from . import collector, db, netseg, repo
 
 # OS / desktop noise that listens on a port but is not a "service" anyone runs on purpose.
 IGNORE_PROCESSES = {
@@ -40,6 +40,10 @@ def _ignored(proc: str, port: int) -> bool:
             or port >= 49152 or port in (22, 53, 631))
 
 
+# switches/routers of the demo network lab run as containers too; they are network assets (see netdisco), not services
+NETWORK_DEVICE_IMAGES = ("aiops-netnode",)
+
+
 def platform_ignores() -> set[str]:
     raw = db.setting("discovery_ignore_containers") or ""
     return {x.strip() for x in raw.split(",") if x.strip()}
@@ -53,15 +57,17 @@ def ingest(host: str, inv: dict) -> dict:
     ips = sorted(set(inv.get("ips") or []))
     db.ex("UPDATE hosts SET ip_addresses=%s, last_inventory_at=now() WHERE name=%s", (ips, host))
 
-    db.ex("UPDATE hosts SET auto_instrument=%s WHERE name=%s", (db.J(inv["ebpf"]) if inv.get("ebpf") else None, host))
+    status = {**(inv.get("ebpf") or {}), **({"collector": inv["collector"]} if inv.get("collector") else {}),
+              **({"netwatch": inv["netwatch"]} if inv.get("netwatch") else {})}
+    db.ex("UPDATE hosts SET auto_instrument=%s WHERE name=%s", (db.J(status) if status else None, host))
     found, listeners = [], {}  # (port) -> service_name, for matching local connections
     # ---- containers ----
     traced_by_container = {i["container"]: s["service_name"] for s in repo.list_services(("service", "network"))
                            for i in s["instances"] if i.get("container")}
-    ignore = platform_ignores() | {"aiops-ebpf"}  # the agent's own eBPF tracer
+    ignore = platform_ignores() | set(collector.OWN)  # the agent's own eBPF tracer and log collector
     for c in inv.get("containers") or []:
         name = c.get("name", "")
-        if not name or name in ignore:
+        if not name or name in ignore or (c.get("image") or "").startswith(NETWORK_DEVICE_IMAGES):
             continue
         svc = traced_by_container.get(name)
         if svc:  # already traced: just record that it runs on this host
@@ -69,9 +75,12 @@ def ingest(host: str, inv: dict) -> dict:
             found.append(svc)
             continue
         svc = _slug(name)
-        if not repo.service(svc):
-            repo.create_service(svc, display_name=name, kind="process", source="discovered",
-                                language=_lang(c.get("image", ""), name), owner=owner)
+        lang = collector.runtime_of(c) or _lang(c.get("image", ""), name)
+        existing = repo.service(svc)
+        if not existing:
+            repo.create_service(svc, display_name=name, kind="process", source="discovered", language=lang, owner=owner)
+        elif lang and not existing.get("language"):  # found before the agent could tell what it runs
+            repo.update_service(svc, language=lang)
         repo.ensure_instance(svc, name, host=host, container=name)
         found.append(svc)
 
@@ -110,7 +119,14 @@ def ingest(host: str, inv: dict) -> dict:
         if dst and dst != src:
             repo.upsert_connection(src, dst, host)
             edges += 1
-    return {"host": host, "services": sorted(set(found)), "edges": edges, "instrument": _targets(listeners)}
+    netseg.ingest(host, inv)  # segments and neighbours heard on the wire (passive)
+    repo.prune_host_inventory(host)  # drop this host's instances we no longer see, and any now-empty discovered process
+    containers = [c for c in inv.get("containers") or [] if c.get("name") not in ignore]
+    out = {"host": host, "services": sorted(set(found)), "edges": edges,
+           "instrument": _targets(listeners) + collector.trace_targets(containers)}
+    if containers:  # logs + per-container metrics for everything running in Docker here
+        out["collector"] = collector.config(host, containers)
+    return out
 
 
 def _targets(listeners: dict) -> list[dict]:
@@ -156,4 +172,13 @@ def _remote_listeners() -> dict:
                      JOIN hosts h ON h.id=i.host_id JOIN services s ON s.id=i.service_id WHERE i.port IS NOT NULL"""):
         for ip in r["ip_addresses"] or []:
             out[(ip, r["port"])] = r["service_name"]
+    return out
+
+
+def with_uninstall(out: dict, host: dict) -> dict:
+    """Tell the agent to remove itself once someone pressed Remove agent - and start nothing new meanwhile."""
+    if host.get("uninstall_requested_at"):
+        out.pop("collector", None)
+        out["instrument"] = []
+        out["uninstall"] = True
     return out

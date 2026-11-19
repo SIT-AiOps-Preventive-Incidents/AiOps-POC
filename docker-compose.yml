@@ -27,7 +27,7 @@ services:
     user: "0"
     command:
       - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.retention.time=3d
+      - --storage.tsdb.retention.time=8d
       - --web.enable-lifecycle
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -129,6 +129,11 @@ services:
       GRAFANA_URL: ${GRAFANA_URL:-http://cp26pt1.sit.kmutt.ac.th:3001}
       DATABASE_URL: postgresql://aiops:aiops@postgres:5432/aiops
       PLATFORM_HOST: cp26pt1
+      DEMO_DATASET: ${DEMO_DATASET:-shop}          # shop | anomod (replay/anomod/switch.sh sets it in .env)
+      ANOMOD_REPLAY_URL: http://anomod-replay:8000
+      RADAROPS_ADMIN_EMAIL: ${RADAROPS_ADMIN_EMAIL:-admin@radarops.local}   # first admin; password in /data/initial-admin-password
+      SSO_REDIRECT_BASE: ${SSO_REDIRECT_BASE:-https://cp26pt1.sit.kmutt.ac.th:8443}   # single sign-on comes back over https
+    extra_hosts: ["cp26pt1.sit.kmutt.ac.th:host-gateway"]   # reach the demo SSO provider at the same URL as browsers
     volumes:
       - api-data:/data
       - ./prometheus/targets:/targets
@@ -196,7 +201,32 @@ services:
     environment: {SERVICE: loadgen}
     depends_on: [edge-fw, edge-lb, checkout, payment, inventory]
 
+  # HTTPS in front of RadarOps (:8443), certificate from Caddy's own CA (the VM is not reachable from the internet, so
+  # no public certificate). Single sign-on providers such as Google only send people back to an https address.
+  https:
+    image: caddy:2.8.4-alpine
+    container_name: https
+    command: ["caddy", "reverse-proxy", "--from", "https://cp26pt1.sit.kmutt.ac.th:8443", "--to", "aiops-api:8080", "--internal-certs"]
+    ports: ["8443:8443"]
+    volumes: ["caddy-data:/data"]
+    mem_limit: 64m
+    restart: unless-stopped
+    networks: [aiops]
+
+  # Demo single sign-on provider (OpenID Connect). Run sso/setup-dex.sh once first; it writes sso/dex.yaml.
+  dex:
+    image: ghcr.io/dexidp/dex:v2.41.1
+    container_name: dex
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    volumes: ["./sso/dex.yaml:/etc/dex/config.yaml:ro"]
+    ports: ["5556:5556"]
+    mem_limit: 64m
+    restart: unless-stopped
+    profiles: ["sso"]
+    networks: [aiops]
+
 volumes:
+  caddy-data:
   prom-data:
   loki-data:
   tempo-data:

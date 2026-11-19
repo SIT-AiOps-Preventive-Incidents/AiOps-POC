@@ -52,13 +52,17 @@ async def host_health(h: dict, problems: dict | None = None) -> dict:
     up, cpu, mem, disk, load = await asyncio.gather(*(tm.prom_value(tm.host_expr(h["name"], m))
                                                       for m in ("up", "cpu", "mem", "disk", "load")))
     pid = problems.get(h["name"])
-    if up is None or (up == 0 and h.get("kind") == "workstation"):
-        status = "offline" if h.get("agent") == "aiops-agent" else "no-data"
-    else:
-        status = "down" if up == 0 else ("problem" if pid else "healthy")
     services = [r["service_name"] for r in db.q("""SELECT DISTINCT s.service_name FROM service_instances i
                  JOIN services s ON s.id=i.service_id JOIN hosts hh ON hh.id=i.host_id WHERE hh.name=%s ORDER BY 1""",
                                                 (h["name"],))]
+    if h.get("agent") == "anomod-replay":
+        # a stand-in machine for a replayed AnoMod service: it reports no host metrics, so it is as healthy as its service
+        pid = pid or next((problems[s] for s in services if s in problems), None)
+        status = "problem" if pid else "healthy"
+    elif up is None or (up == 0 and h.get("kind") == "workstation"):
+        status = "offline" if h.get("agent") == "aiops-agent" else "no-data"
+    else:
+        status = "down" if up == 0 else ("problem" if pid else "healthy")
     return {**h, "up": up, "cpu": cpu, "mem": mem, "disk": disk, "load": load, "status": status,
             "problem_id": pid, "services": services}
 

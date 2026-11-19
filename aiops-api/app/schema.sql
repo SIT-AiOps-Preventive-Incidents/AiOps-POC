@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS hosts (
   address      TEXT NOT NULL DEFAULT '',
   os           TEXT NOT NULL DEFAULT '',
   arch         TEXT NOT NULL DEFAULT '',
-  agent        TEXT NOT NULL DEFAULT 'aiops-agent' CHECK (agent IN ('aiops-agent', 'node_exporter')),
+  agent        TEXT NOT NULL DEFAULT 'aiops-agent' CHECK (agent IN ('aiops-agent', 'node_exporter', 'anomod-replay')),
   kind         TEXT NOT NULL DEFAULT 'server' CHECK (kind IN ('server', 'workstation')),
   environment  TEXT NOT NULL DEFAULT 'production',
   ip_addresses TEXT[] NOT NULL DEFAULT '{}',
@@ -260,3 +260,169 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Release 1.1: automatic (eBPF) instrumentation. How a service is traced, and what the host's agent reports about it.
 ALTER TABLE services ADD COLUMN IF NOT EXISTS instrumentation TEXT;   -- NULL = not traced, 'sdk' = OpenTelemetry SDK, 'ebpf' = traced by the host agent
 ALTER TABLE hosts    ADD COLUMN IF NOT EXISTS auto_instrument JSONB;  -- last eBPF status from the agent: {state, services, error, version}
+
+-- Release 1.2: servers connected from the platform over SSH. AIOps signs in once with the user's password or key,
+-- then keeps a data channel open with its own key (limited to two loopback ports). host_key = the server's SSH key
+-- seen on first contact, checked on every reconnect. No password or user key is ever stored.
+CREATE TABLE IF NOT EXISTS ssh_links (
+  host_name    TEXT PRIMARY KEY,
+  address      TEXT NOT NULL,
+  port         INT  NOT NULL DEFAULT 22,
+  username     TEXT NOT NULL,
+  host_key     TEXT NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_connected_at TIMESTAMPTZ
+);
+
+-- Release 1.3: "Remove agent" from the web page. Set when someone asks; the agent removes itself on its next
+-- report (collector, eBPF tracer, autostart, the platform key) and then the host row is deleted.
+ALTER TABLE hosts ADD COLUMN IF NOT EXISTS uninstall_requested_at TIMESTAMPTZ;
+
+-- Release 1.4: "Your network". Segments each connected server sits on, and the neighbours its passive watcher heard
+-- over ARP (nothing is scanned). talks_with = processes on the server that had a connection to the neighbour.
+CREATE TABLE IF NOT EXISTS net_segments (
+  cidr       TEXT NOT NULL,
+  host_name  TEXT NOT NULL,
+  iface      TEXT NOT NULL DEFAULT '',
+  gateway    TEXT,
+  last_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (cidr, host_name)
+);
+CREATE TABLE IF NOT EXISTS net_neighbors (
+  cidr       TEXT NOT NULL,
+  ip         TEXT NOT NULL,
+  mac        TEXT,
+  name       TEXT,
+  seen_by    TEXT,
+  talks_with TEXT[] NOT NULL DEFAULT '{}',
+  first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (cidr, ip)
+);
+
+-- Release 1.4: each replayed AnoMod service sits on its own stand-in machine (agent 'anomod-replay', no host metrics).
+ALTER TABLE hosts DROP CONSTRAINT IF EXISTS hosts_agent_check;
+ALTER TABLE hosts ADD CONSTRAINT hosts_agent_check CHECK (agent IN ('aiops-agent', 'node_exporter', 'anomod-replay'));
+
+-- Release 2: cloud inventory. A customer's cloud account (read-only credential, sealed), every instance it lists,
+-- and what changed between reads. Instances are kept after deletion (gone_at) so the Fleet keeps its history.
+CREATE TABLE IF NOT EXISTS cloud_accounts (
+  id            SERIAL PRIMARY KEY,
+  provider      TEXT NOT NULL CHECK (provider IN ('proxmox', 'openstack', 'vcd', 'cloudstack', 'aws', 'azure', 'gcp')),
+  name          TEXT NOT NULL UNIQUE,
+  config        JSONB NOT NULL DEFAULT '{}',     -- endpoint, region, project: nothing secret
+  secret        TEXT NOT NULL,                   -- Fernet-sealed credential, never returned by the API
+  status        TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'ok', 'error')),
+  last_sync_at  TIMESTAMPTZ,
+  last_error    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS cloud_instances (
+  account_id    INT NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+  instance_id   TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  state         TEXT NOT NULL,                   -- running | stopped | starting | stopping | error | deleted | unknown
+  private_ips   TEXT[] NOT NULL DEFAULT '{}',
+  public_ips    TEXT[] NOT NULL DEFAULT '{}',
+  networks      TEXT[] NOT NULL DEFAULT '{}',
+  zone          TEXT,
+  size          TEXT,
+  created_at    TIMESTAMPTZ,                     -- when the provider created it
+  tags          JSONB NOT NULL DEFAULT '{}',
+  first_seen    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  gone_at       TIMESTAMPTZ,                     -- no longer listed by the provider
+  PRIMARY KEY (account_id, instance_id)
+);
+CREATE TABLE IF NOT EXISTS cloud_events (
+  id            SERIAL PRIMARY KEY,
+  account_id    INT NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+  ts            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind          TEXT NOT NULL CHECK (kind IN ('added', 'removed', 'state')),
+  instance_id   TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  detail        TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS cloud_events_ts ON cloud_events (ts DESC);
+
+-- Release 2: automation people write themselves. Built-in skills keep their code; a team can switch any skill off,
+-- add instructions, or write its own skill (kinds + read-only tools + instructions). Skill sets scope skills to part
+-- of the estate. Runbooks can be written by hand (authored), not only learned. Playbooks route and escalate.
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS builtin BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS kinds TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE skills ADD COLUMN IF NOT EXISTS instructions TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS skill_sets (
+  id          SERIAL PRIMARY KEY,
+  name        TEXT NOT NULL UNIQUE,
+  scope       TEXT NOT NULL DEFAULT '',          -- service/host name patterns, comma separated (pay-*, checkout)
+  skills      TEXT[] NOT NULL DEFAULT '{}',
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE runbooks ADD COLUMN IF NOT EXISTS authored BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS playbooks (
+  id          SERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  trigger     JSONB NOT NULL DEFAULT '{}',       -- {kinds:[], min_severity, entity}
+  actions     JSONB NOT NULL DEFAULT '{}',       -- {owner_team, escalate_after_min}; never applies a fix
+  runs        INT NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS playbook_escalations (
+  incident_id INT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  playbook_id INT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
+  ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (incident_id, playbook_id)
+);
+
+-- Release 2.0: sign-in and access. People sign in with a password or single sign-on (OpenID Connect); a role's
+-- permissions are the ticks of the matrix in role_permissions (rules in app/rbac.py). Sessions keep only a hash.
+CREATE TABLE IF NOT EXISTS roles (
+  id          TEXT PRIMARY KEY,
+  label       TEXT NOT NULL,
+  builtin     BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id     TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission  TEXT NOT NULL,
+  PRIMARY KEY (role_id, permission)
+);
+CREATE TABLE IF NOT EXISTS users (
+  id             SERIAL PRIMARY KEY,
+  email          TEXT NOT NULL UNIQUE,
+  name           TEXT NOT NULL DEFAULT '',
+  role_id        TEXT NOT NULL REFERENCES roles(id),
+  password_hash  TEXT,                              -- NULL: single sign-on only
+  sso_issuer     TEXT,
+  sso_subject    TEXT,
+  active         BOOLEAN NOT NULL DEFAULT true,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_login_at  TIMESTAMPTZ,
+  UNIQUE (sso_issuer, sso_subject)
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash  TEXT PRIMARY KEY,                     -- SHA-256 of the cookie; the token itself is never stored
+  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at  TIMESTAMPTZ NOT NULL,
+  ip          TEXT,
+  user_agent  TEXT,
+  via         TEXT NOT NULL DEFAULT 'password' CHECK (via IN ('password', 'sso'))
+);
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS sso_pending (
+  state       TEXT PRIMARY KEY,
+  nonce       TEXT NOT NULL,
+  verifier    TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS access_log (
+  id      SERIAL PRIMARY KEY,
+  ts      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  actor   TEXT,
+  action  TEXT NOT NULL,
+  detail  JSONB NOT NULL DEFAULT '{}'
+);

@@ -2,10 +2,11 @@
 import asyncio
 import time
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from .. import agent, db, detector, notify, remediation, repo, servicemap
 from .errors import ApiError, not_found
+from .guard import current_user
 from .schemas import ApprovalIn, FeedbackIn, IncidentPatch
 
 router = APIRouter(prefix="/api/v1/incidents", tags=["incidents"])
@@ -70,7 +71,11 @@ async def _verify(iid: int, approval_id: int):
 
 
 @router.post("/{iid}/approvals", status_code=201, summary="Owner approves (fix runs after a pre-flight dry run) or rejects")
-async def decide(iid: int, body: ApprovalIn):
+async def decide(iid: int, body: ApprovalIn, request: Request):
+    who = current_user(request)
+    approver = ((who.get("name") or who.get("email")) if who else body.approver).strip()
+    if not approver:
+        raise ApiError(422, "say who is deciding")
     inc = _get(iid)
     if inc["status"] not in WAITING:
         raise ApiError(409, f"incident is '{inc['status']}', not waiting for a decision")
@@ -80,7 +85,7 @@ async def decide(iid: int, body: ApprovalIn):
         raise not_found("candidate", body.candidate_id)
 
     if body.decision == "reject":
-        repo.record_approval(iid, cand and cand["id"], "rejected", body.approver, inc["owner"], body.comment)
+        repo.record_approval(iid, cand and cand["id"], "rejected", approver, inc["owner"], body.comment)
         repo.set_incident(iid, status="rejected", resolved_at=time.time())
         await notify.send(iid, "rejected")
         return _get(iid)
@@ -97,10 +102,10 @@ async def decide(iid: int, body: ApprovalIn):
         failed = [c for c in pre["checks"] if not c["ok"]]
         raise ApiError(422, "pre-flight dry run failed - nothing was changed", code="preflight_failed",
                        details={"failed_checks": failed, "dry_run_id": pre_id})
-    approval_id = repo.record_approval(iid, cand["id"], "approved", body.approver, inc["owner"], body.comment, pre_id)
+    approval_id = repo.record_approval(iid, cand["id"], "approved", approver, inc["owner"], body.comment, pre_id)
     repo.set_incident(iid, status="remediating")
     try:
-        res = await remediation.execute(action, iid, body.approver)
+        res = await remediation.execute(action, iid, approver)
     except Exception as e:
         res = {"ok": False, "detail": f"{type(e).__name__}: {e}"}
     repo.record_execution(approval_id, res["ok"], res["detail"])

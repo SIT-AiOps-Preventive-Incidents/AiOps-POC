@@ -5,3 +5,8 @@ __pycache__/
 edge/*.dryrun.conf
 prometheus/targets/infra.json
 prometheus/targets/.infra.json.tmp
+
+# single sign-on demo: generated with secrets by sso/setup-dex.sh
+sso/dex.yaml
+sso/dex.yaml.tmp
+sso/demo-accounts.txt

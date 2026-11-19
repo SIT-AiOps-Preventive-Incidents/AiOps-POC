@@ -181,23 +181,25 @@ def deployments(service_name: str | None = None, since: float | None = None, lim
 # skills
 # =====================================================================================
 def seed_skills(skills: dict):
+    # built-in skills: their code-owned fields are refreshed; what a team changed (enabled, instructions) is kept
     for k, s in skills.items():
-        db.ex("""INSERT INTO skills(id, name, category, description) VALUES (%s,%s,%s,%s)
+        db.ex("""INSERT INTO skills(id, name, category, description, builtin, kinds) VALUES (%s,%s,%s,%s,true,%s)
                  ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, category=EXCLUDED.category,
-                 description=EXCLUDED.description""", (k, s["name"], s["category"], s["description"]))
+                 description=EXCLUDED.description, builtin=true, kinds=EXCLUDED.kinds""",
+              (k, s["name"], s["category"], s["description"], s["kinds"]))
         db.ex("DELETE FROM skill_tools WHERE skill_id=%s", (k,))
         for i, t in enumerate(s["tools"]):
             db.ex("INSERT INTO skill_tools(skill_id, seq, tool) VALUES (%s,%s,%s)", (k, i, t))
 
 
 def skill_stats() -> list[dict]:
-    return db.q("""SELECT sk.id, sk.name, sk.category, sk.description,
+    return db.q("""SELECT sk.id, sk.name, sk.category, sk.description, sk.builtin, sk.enabled, sk.kinds, sk.instructions,
         (SELECT array_agg(tool ORDER BY seq) FROM skill_tools WHERE skill_id=sk.id) AS tools,
         count(i.id) AS runs, round(avg(f.score)::numeric, 2) AS avg_score,
         round((avg(CASE WHEN f.rca_correct THEN 1 ELSE 0 END) FILTER (WHERE f.id IS NOT NULL))::numeric, 2) AS accuracy,
         round((avg(i.analysis_ms) / 1000.0)::numeric, 1) AS avg_analysis_s
       FROM skills sk LEFT JOIN incidents i ON i.skill_id=sk.id LEFT JOIN feedback f ON f.incident_id=i.id
-      GROUP BY sk.id ORDER BY sk.category, sk.name""")
+      GROUP BY sk.id ORDER BY sk.builtin DESC, sk.category, sk.name""")
 
 
 def lessons(skill_id: str) -> list[str]:
@@ -412,7 +414,11 @@ def kpis() -> dict:
         count(*) AS total, count(*) FILTER (WHERE status='awaiting_approval') AS awaiting_approval,
         avg(extract(epoch FROM detected_at - started_at)) AS mttd_s,
         avg(extract(epoch FROM analyzed_at - detected_at)) AS mtta_s,
-        avg(extract(epoch FROM resolved_at - detected_at)) FILTER (WHERE status='resolved') AS mttr_s FROM incidents""",
+        avg(extract(epoch FROM resolved_at - detected_at)) FILTER (WHERE status='resolved') AS mttr_s,
+        avg(analysis_ms) / 1000.0 AS investigate_s,
+        (SELECT avg(extract(epoch FROM e.verified_at - a.decided_at)) FROM approvals a
+           JOIN executions e ON e.approval_id = a.id
+          WHERE a.decision = 'approved' AND e.verified) AS fix_s FROM incidents""",
                (list(CLOSED),))
     r["avg_score"] = db.val("SELECT round(avg(score)::numeric, 1) FROM feedback")
     return {k: (round(v, 1) if isinstance(v, float) else v) for k, v in r.items()}
@@ -493,8 +499,44 @@ def discovered_edges(max_age_s: int = 600) -> list[dict]:
                    WHERE c.last_seen > now() - make_interval(secs => %s)""", (max_age_s,))
 
 
+def prune_host_inventory(host: str, max_age_s: int = 3600) -> None:
+    """A reporting host prunes what it no longer runs: drop this host's service instances not seen in the last
+    `max_age_s` (a removed container/listener stops being reported), then delete discovered *process* services
+    left with no instances anywhere. Only runs on a host that is actively reporting, so a brief agent outage
+    never wipes a host's services; external DBs and SNMP network devices (no instances) are left alone."""
+    db.ex("""DELETE FROM service_instances i USING hosts h
+             WHERE i.host_id=h.id AND h.name=%s AND i.last_seen < now() - make_interval(secs => %s)""",
+          (host, max_age_s))
+    db.ex("""DELETE FROM services s WHERE s.source='discovered' AND s.kind='process'
+             AND NOT EXISTS (SELECT 1 FROM service_instances i WHERE i.service_id=s.id)""")
+
+
 def open_problem_targets() -> list[dict]:
     """Open incidents with the entity and the service/instance their recommended fix targets (for map badges)."""
     return db.q("""SELECT i.id, i.entity_name AS entity, c.params FROM incidents i
                    LEFT JOIN remediation_candidates c ON c.incident_id=i.id AND c.rank=0
                    WHERE i.status <> ALL(%s) ORDER BY i.id""", (list(CLOSED),))
+
+
+# =====================================================================================
+# servers connected from the platform (remote.py)
+# =====================================================================================
+def save_ssh_link(name: str, address: str, port: int, username: str, host_key: str):
+    db.ex("""INSERT INTO ssh_links(host_name, address, port, username, host_key) VALUES (%s,%s,%s,%s,%s)
+             ON CONFLICT (host_name) DO UPDATE SET address=EXCLUDED.address, port=EXCLUDED.port,
+             username=EXCLUDED.username, host_key=EXCLUDED.host_key""", (name, address, port, username, host_key))
+
+
+def ssh_link(name: str) -> dict | None:
+    return db.one("SELECT * FROM ssh_links WHERE host_name=%s", (name,))
+
+
+def ssh_links() -> list[dict]:
+    return db.q("SELECT * FROM ssh_links ORDER BY host_name")
+
+
+def delete_ssh_link(name: str) -> bool:
+    if not ssh_link(name):
+        return False
+    db.ex("DELETE FROM ssh_links WHERE host_name=%s", (name,))
+    return True

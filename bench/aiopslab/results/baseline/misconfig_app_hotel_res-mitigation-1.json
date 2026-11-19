@@ -1,0 +1,15 @@
+{
+ "agent": "baseline",
+ "problem": "misconfig_app_hotel_res-mitigation-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "TTM": 2384.867994785309,
+  "steps": 15,
+  "in_tokens": 25353,
+  "out_tokens": 1417,
+  "success": false
+ },
+ "steps": 30,
+ "wall_s": 2594.7,
+ "trace": null
+}

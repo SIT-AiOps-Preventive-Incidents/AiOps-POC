@@ -2,8 +2,9 @@
 import asyncio
 from fastapi import APIRouter, Response
 
-from .. import agent, health, inventory, repo
+from .. import agent, db, health, inventory, remote, repo
 from .. import telemetry as tm
+from .. import detector
 from ..detector import PLATFORM_HOST
 from .errors import ApiError, not_found
 from .schemas import HostIn, HostRegistration, Inventory
@@ -53,7 +54,15 @@ async def post_inventory(name: str, body: Inventory):
     except KeyError:
         raise not_found("host", name)
     out["promoted"] = await inventory.promote_traced(out["instrument"])
+    out = inventory.with_uninstall(out, repo.host(name) or {})
+    if name in _PENDING_SCAN:  # one active sweep of its own segment was asked for; tell the agent exactly once
+        _PENDING_SCAN.discard(name)
+        out["netscan"] = True
     return out
+
+
+# Hosts the operator asked to sweep once, cleared when the agent next reports (so it sweeps exactly once).
+_PENDING_SCAN: set[str] = set()
 
 
 @router.get("/{name}", summary="Host detail: charts, services on it, busiest processes / containers")
@@ -66,20 +75,66 @@ async def get_host(name: str):
     async def nothing():
         return None
     # everything below is independent - fetch it concurrently (container stats alone take ~2 s)
-    *ranges, procs, services, host_h, containers = await asyncio.gather(
+    *ranges, procs, services, host_h, containers, normal = await asyncio.gather(
         *(tm.prom_range(tm.host_expr(name, m), minutes=60, step=30) for m in metrics),
         agent.t_getTopProcesses(name) if h["agent"] == "aiops-agent" else nothing(),
         health.services_health(), health.host_health(h),
-        tm.containers(with_stats=True) if name == PLATFORM_HOST else nothing())
+        tm.containers(with_stats=True) if name == PLATFORM_HOST else nothing(),
+        detector.normal_ranges("host", name))
     series = {m: r[0]["points"] if r else [] for m, r in zip(metrics, ranges)}
-    return {"host": host_h, "series": series, "processes": (procs or {}).get("processes", []),
+    from .. import fleet, netseg
+    segs, _, all_hosts = netseg.load()
+    return {"host": host_h, "series": series, "normal": normal, "processes": (procs or {}).get("processes", []),
             "services": [s for s in services if name in s["hosts"]], "containers": containers or [],
+            "neighbours": fleet.neighbours(name, segs, all_hosts),  # other monitored machines on its network(s)
             "incidents": [i for i in repo.list_incidents(limit=200) if i["entity"] == name][:10]}
 
 
-@router.delete("/{name}", status_code=204, summary="Stop watching a host")
+@router.delete("/{name}", status_code=204, summary="Stop watching a host (the agent, if any, keeps running)")
 async def delete_host(name: str):
     if not repo.delete_host(name):
         raise not_found("host", name)
+    await _forget_link(name)
+    write_targets()
+    return Response(status_code=204)
+
+
+async def _forget_link(name: str):
+    if repo.ssh_link(name):
+        await remote.stop_link(name)
+        repo.delete_ssh_link(name)
+
+
+@router.post("/{name}/uninstall", status_code=202, summary="Remove agent: the agent removes itself on its next report")
+async def request_uninstall(name: str):
+    h = repo.host(name)
+    if not h:
+        raise not_found("host", name)
+    if h["agent"] != "aiops-agent":  # nothing runs there that belongs to AIOps
+        await delete_host(name)
+        return {"state": "removed"}
+    db.ex("UPDATE hosts SET uninstall_requested_at=COALESCE(uninstall_requested_at, now()) WHERE name=%s", (name,))
+    return {"state": "requested", "requested_at": (repo.host(name) or {}).get("uninstall_requested_at")}
+
+
+@router.post("/{name}/netscan", status_code=202,
+             summary="Ask the agent to do ONE active ARP sweep of its own segment (authorised networks only)")
+async def request_netscan(name: str):
+    h = repo.host(name)
+    if not h:
+        raise not_found("host", name)
+    if h["agent"] != "aiops-agent":
+        raise ApiError(409, "only a host running the AIOps agent can sweep its own segment")
+    _PENDING_SCAN.add(name)   # the agent picks this up on its next report (within a minute) and sweeps once
+    return {"state": "requested"}
+
+
+@router.post("/{name}/uninstalled", status_code=204, summary="Agent: I removed myself - forget this host")
+async def uninstalled(name: str):
+    h = repo.host(name)
+    if not h or not h.get("uninstall_requested_at"):  # only after someone pressed Remove agent
+        raise not_found("pending removal of host", name)
+    repo.delete_host(name)
+    await _forget_link(name)
     write_targets()
     return Response(status_code=204)

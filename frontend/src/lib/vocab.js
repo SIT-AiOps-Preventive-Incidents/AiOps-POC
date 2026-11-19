@@ -1,9 +1,9 @@
 // Domain vocabulary: how backend states map to words, tones and icons. One place to change wording.
 
 export const INCIDENT_STATUS = {
-  open: { label: "New", tone: "warn" },
+  open: { label: "Detected", tone: "bad" },
   analyzing: { label: "AI investigating", tone: "ai" },
-  awaiting_approval: { label: "Needs approval", tone: "ai" },
+  awaiting_approval: { label: "Waiting for you", tone: "action" },
   remediating: { label: "Applying fix", tone: "info" },
   verifying: { label: "Checking fix", tone: "info" },
   resolved: { label: "Resolved", tone: "ok" },
@@ -15,23 +15,28 @@ export const ACTIVE = ["open", "analyzing", "remediating", "verifying", "remedia
 export const CLOSED = ["resolved", "rejected", "closed"];
 
 export const INCIDENT_KIND = {
-  error_rate: { icon: "warning", color: "var(--c-bad)", label: "Failure rate increase" },
-  latency: { icon: "clock", color: "var(--c-warn)", label: "Slow responses" },
-  host_cpu: { icon: "developer_board", color: "var(--c-chart-4)", label: "CPU saturation" },
-  host_mem: { icon: "developer_board", color: "var(--c-chart-4)", label: "Memory saturation" },
-  host_disk: { icon: "hard_drive", color: "var(--c-chart-4)", label: "Low disk space" },
-  host_down: { icon: "server", color: "var(--c-bad)", label: "Host unavailable" },
-  auth_bruteforce: { icon: "shield", color: "var(--c-chart-5)", label: "Password attack" },
+  error_rate: { glyph: "inc_error", icon: "warning", color: "var(--c-bad)", label: "Failure rate increase" },
+  latency: { glyph: "inc_latency", icon: "clock", color: "var(--c-warn)", label: "Slow responses" },
+  host_cpu: { glyph: "inc_cpu", icon: "developer_board", color: "var(--c-chart-4)", label: "CPU saturation" },
+  host_mem: { glyph: "inc_mem", icon: "developer_board", color: "var(--c-chart-4)", label: "Memory saturation" },
+  host_disk: { glyph: "inc_disk", icon: "hard_drive", color: "var(--c-chart-4)", label: "Low disk space" },
+  host_down: { glyph: "inc_hostdown", icon: "server", color: "var(--c-bad)", label: "Host unavailable" },
+  auth_bruteforce: { glyph: "inc_auth", icon: "shield", color: "var(--c-chart-5)", label: "Password attack" },
+  log_errors: { glyph: "inc_logs", icon: "list", color: "var(--c-bad)", label: "Error logs increase" },
+  container_cpu: { glyph: "inc_ctr_cpu", icon: "cube", color: "var(--c-chart-4)", label: "Container CPU saturation" },
+  container_mem: { glyph: "inc_ctr_mem", icon: "cube", color: "var(--c-chart-4)", label: "Container memory saturation" },
+  container_down: { glyph: "inc_ctr_down", icon: "cube", color: "var(--c-bad)", label: "Container stopped" },
 };
 
 export const STEP_KIND = {
   tool: { icon: "search", color: "var(--c-primary)" },
   llm: { icon: "sparkle", color: "var(--c-ai)" },
-  skill: { icon: "wand", color: "var(--c-warn)" },
+  skill: { icon: "wand", color: "var(--c-chart-4)" },
   analysis: { icon: "list", color: "var(--c-chart-5)" },
   memory: { icon: "book", color: "var(--c-chart-5)" },
   dryrun: { icon: "wrench", color: "var(--c-chart-5)" },
   guard: { icon: "shield", color: "var(--c-ok)" },
+  playbook: { icon: "list", color: "var(--c-warn)" },
   done: { icon: "checkmark", color: "var(--c-ok)" },
   info: { icon: "sparkle", color: "var(--c-text-3)" },
 };

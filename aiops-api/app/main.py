@@ -12,12 +12,14 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agent, db, detector, repo, seed
-from .api import errors, routes_hosts, routes_incidents, routes_map, routes_platform, routes_services
+from . import agent, auth_store, autoreg, cloudinv, datasets, db, detector, escalation, remote, repo, seed, synthetic
+from .netdisco import service as netdisco
+from .api import errors, guard, routes_auth, routes_automation, routes_checks, routes_cloud, routes_connect, routes_hosts, routes_incidents, routes_insights, routes_map, routes_network, routes_platform, routes_services
 from .api.schemas import HostRegistration
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("asyncssh").setLevel(logging.WARNING)  # one line per forwarded connection otherwise
 APP_DIR = os.path.dirname(__file__)
 WEB_DIST = os.environ.get("WEB_DIST", os.path.join(APP_DIR, "web"))
 AGENT_DIST = os.path.join(APP_DIR, "agent_dist")
@@ -40,12 +42,16 @@ async def rotate_edge_logs():
 @asynccontextmanager
 async def lifespan(_):
     db.init()
+    auth_store.seed()   # built-in roles + their default ticks, and the first admin
     repo.seed_skills(agent.SKILLS)
     if seed.migrate_sqlite():
         logging.info("imported legacy SQLite data")
-    seed.ensure_demo()
+    datasets.ensure()   # the shop, or AnoMod's SocialNetwork (DEMO_DATASET)
     routes_hosts.write_targets()
-    tasks = [asyncio.create_task(detector.loop()), asyncio.create_task(rotate_edge_logs())]
+    remote.start_all()   # re-open the data channels of servers connected from the platform
+    tasks = [asyncio.create_task(detector.loop()), asyncio.create_task(rotate_edge_logs()),
+             asyncio.create_task(netdisco.loop()), asyncio.create_task(synthetic.loop()),
+             asyncio.create_task(autoreg.loop()), asyncio.create_task(cloudinv.loop()), asyncio.create_task(escalation.loop())]   # apps sending data are added on their own
     yield
     for t in tasks:
         t.cancel()
@@ -54,7 +60,8 @@ async def lifespan(_):
 app = FastAPI(title="AIOps One API", version="1.0.0", lifespan=lifespan,
               description="Agentic root cause analysis: services, hosts, service map, incidents, approvals.")
 errors.install(app)
-for r in (routes_platform, routes_services, routes_hosts, routes_map, routes_incidents):
+guard.install(app)   # every request: which permission it needs, and whether the signed-in role has it
+for r in (routes_auth, routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network, routes_checks, routes_connect, routes_cloud, routes_insights, routes_automation):
     app.include_router(r.router)
 
 
@@ -79,6 +86,11 @@ async def agent_py():
     return _dist("aiops-agent.py")
 
 
+@app.get("/install/netwatch.py", response_class=PlainTextResponse, include_in_schema=False)
+async def netwatch_py():
+    return _dist("netwatch.py")
+
+
 # ---------------- compatibility for agents installed before /api/v1 ----------------
 @app.get("/api/ping", include_in_schema=False)
 async def ping():
@@ -98,4 +110,10 @@ if os.path.isdir(WEB_DIST):
 
     @app.get("/", include_in_schema=False)
     async def index():
-        return FileResponse(os.path.join(WEB_DIST, "index.html"))
+        # assets are content-hashed and cache forever; the page that names them must be re-checked
+        # on every load, or browsers keep showing the previous release after a deploy
+        return FileResponse(os.path.join(WEB_DIST, "index.html"), headers={"Cache-Control": "no-cache"})
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def favicon():
+        return FileResponse(os.path.join(WEB_DIST, "favicon.svg"), media_type="image/svg+xml")

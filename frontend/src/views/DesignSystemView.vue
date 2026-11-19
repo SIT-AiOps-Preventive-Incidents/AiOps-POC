@@ -8,6 +8,8 @@ const COLORS = [
   ["Charts", ["--c-chart-1", "--c-chart-2", "--c-chart-3", "--c-chart-4", "--c-chart-5"]],
 ];
 const TYPE = [["--fs-3xl", "Large title"], ["--fs-2xl", "KPI value"], ["--fs-xl", "Section title"], ["--fs-lg", "Card headline"], ["--fs-md", "Body"], ["--fs-sm", "Secondary"], ["--fs-xs", "Caption"]];
+// the only spacing steps in use - gaps and paddings read from here so section spacing never drifts between pages
+const SPACE = [["--sp-1", "4"], ["--sp-2", "8"], ["--sp-3", "12"], ["--sp-4", "16"], ["--sp-5", "20"], ["--sp-6", "24"], ["--sp-7", "28"], ["--sp-8", "32"], ["--sp-10", "40"], ["--sp-12", "48"]];
 const values = ref({});
 onMounted(() => {
   const cs = getComputedStyle(document.documentElement);
@@ -20,27 +22,45 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Design System" subtitle="Tokens and components every page is built from. Light Azure blue on Apple system greys, SF system font, iOS inset lists. Rendered live from the code." />
+    <UiPageHeader eyebrow="Demo & tools" title="Design system" subtitle="Tokens and components every page is built from, rendered live from the code. Dark first, three steps of near-black, one sky-blue accent for the system and your next action; green, amber and red only for status. Cards share one anatomy: name, what it is, a status line, one measure." />
     <div class="section-label">Color tokens</div>
     <UiCard v-for="[group, list] in COLORS" :key="group" :title="group" class="mb">
       <div class="swatches"><div v-for="v in list" :key="v" class="sw"><span :style="{ background: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ values[v] }}</small></div></div>
     </UiCard>
-    <div class="section-label">Typography (system font: SF Pro / Sukhumvit Set)</div>
+    <div class="section-label">Typography (IBM Plex Sans · IBM Plex Sans Thai)</div>
     <UiCard><div v-for="[v, l] in TYPE" :key="v" class="type"><span :style="{ fontSize: `var(${v})` }">{{ l }} อ่านง่าย</span><code class="muted">{{ v }} · {{ values[v] }}</code></div></UiCard>
+    <div class="section-label">Spacing (4 px grid — the only gaps and paddings in use)</div>
+    <UiCard><div class="spacing"><div v-for="[v, px] in SPACE" :key="v" class="sp"><span class="sp__bar" :style="{ width: `var(${v})` }" /><code>{{ v }}</code><small class="muted">{{ px }}px</small></div></div></UiCard>
     <div class="section-label">Buttons</div>
-    <UiCard><div class="row row--wrap"><UiButton>Primary</UiButton><UiButton variant="tint">Tint</UiButton><UiButton variant="plain">Plain</UiButton><UiButton variant="danger">Danger</UiButton>
-      <UiButton variant="ghost" icon="play">With icon</UiButton><UiButton loading>Loading</UiButton><UiButton disabled>Disabled</UiButton><UiButton size="sm">Small</UiButton></div>
-      <UiButton size="lg" block class="mt">Large · full width (primary decision)</UiButton></UiCard>
+    <UiCard>
+      <p class="small muted" style="margin:-2px 0 10px">Each kind has one job. Icons are Microsoft Fluent SVGs, drawn in the current text colour, so one icon works on any button — and each one names the action.</p>
+      <div class="btns">
+        <UiButton variant="primary" icon="add">Add a server</UiButton>
+        <UiButton variant="action" icon="checkmark">Review fix</UiButton>
+        <UiButton variant="tint" icon="flowchart">On the map</UiButton>
+        <UiButton variant="plain">Cancel</UiButton>
+        <UiButton variant="danger" icon="dismiss">Remove agent</UiButton>
+        <UiButton variant="ghost" icon="settings" aria-label="Settings" />
+      </div>
+      <div class="btns mt">
+        <UiButton size="sm" icon="play">Small</UiButton>
+        <UiButton size="md" icon="play">Medium</UiButton>
+        <UiButton size="lg" icon="play">Large</UiButton>
+        <UiButton icon="search" loading>Working…</UiButton>
+        <UiButton icon="add" disabled>Disabled</UiButton>
+      </div>
+      <UiButton size="lg" variant="action" icon="checkmark" block class="mt">Approve and apply the fix — your turn</UiButton>
+    </UiCard>
     <div class="section-label">Status</div>
-    <UiCard><div class="row row--wrap"><UiPill tone="ok">Resolved</UiPill><UiPill tone="bad">Fix didn't work</UiPill><UiPill tone="warn">New</UiPill><UiPill tone="ai">Needs approval</UiPill>
+    <UiCard><div class="row row--wrap"><UiPill tone="ok">Resolved</UiPill><UiPill tone="bad">Fix didn't work</UiPill><UiPill tone="warn">New</UiPill><UiPill tone="action">Waiting for you</UiPill>
       <UiPill tone="info">Checking fix</UiPill><UiPill>Closed</UiPill><UiPill tone="solid-bad">Critical</UiPill><UiPill tone="solid-warn">Major</UiPill>
       <UiStatusDot tone="ok" /><UiStatusDot tone="bad" /><UiStatusDot tone="warn" /><UiStatusDot /></div>
-      <UiStepper :steps="steps" class="mt" /></UiCard>
+      <div class="mt"><UiStepper :steps="steps" /></div></UiCard>
     <div class="section-label">Lists, tiles and logos</div>
     <UiList>
       <UiListRow to="/design" title="Payment Service" subtitle="v1.2.0 · 2.4 req/s · p95 95 ms"><template #leading><UiAppTile logo="python" status="ok" /></template><template #accessory>0.0% errors</template></UiListRow>
       <UiListRow to="/design" title="napat-mac" subtitle="CPU 17% · Memory 73% · Disk 92%"><template #leading><UiAppTile logo="apple" status="bad" /></template><template #accessory><UiPill tone="bad">Problem</UiPill></template></UiListRow>
-      <UiListRow title="Failure rate increase" subtitle="P-12 · payment · 2 min ago" detail="Deployment v1.3.0 (commit d38c590) of payment introduced a regression"><template #leading><UiAppTile icon="warning" color="var(--c-bad)" /></template><template #accessory><UiPill tone="ai">Needs approval</UiPill></template></UiListRow>
+      <UiListRow title="Failure rate increase" subtitle="P-12 · payment · 2 min ago" detail="Deployment v1.3.0 (commit d38c590) of payment introduced a regression"><template #leading><UiAppTile icon="warning" color="var(--c-bad)" /></template><template #accessory><UiPill tone="action">Waiting for you</UiPill></template></UiListRow>
     </UiList>
     <div class="grid grid--4 mt"><UiTile label="Open problems" :value="1" hint="14 in total" tone="bad" /><UiTile label="Time to detect" value="42 s" hint="average" />
       <UiMeter label="CPU" :value="42" /><UiMeter label="Disk" :value="92" /></div>
@@ -63,4 +83,9 @@ const steps = [{ label: "Detected", time: "10:02", state: "done" }, { label: "An
 .sw { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .sw span { height: 44px; border-radius: 10px; box-shadow: inset 0 0 0 0.5px var(--c-separator); }
 .type { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 0.5px solid var(--c-separator); }
+.spacing { display: grid; gap: 10px; }
+.sp { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.sp__bar { height: 14px; background: var(--c-primary-tint-2); border-radius: 3px; flex: none; }
+.sp code { min-width: 64px; }
+.btns { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 </style>

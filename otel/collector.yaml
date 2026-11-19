@@ -30,6 +30,8 @@ receivers:
 processors:
   memory_limiter: {check_interval: 2s, limit_mib: 300}
   batch: {timeout: 2s}
+  # the log counts arrive as per-batch deltas; Prometheus needs running totals to take a rate
+  deltatocumulative: {}
 
 connectors:
   # RED metrics (rate / errors / duration) derived from traces, tagged with the
@@ -42,6 +44,18 @@ connectors:
       - name: app.version
       - name: app.commit
     metrics_flush_interval: 10s
+  # Log lines as metrics, per service and host, so "more error logs than usual" can be learned and detected like
+  # any other metric - also for apps that send no traces. Error = an error-or-worse severity, or the words in the
+  # body when the app writes plain text.
+  count/logs:
+    logs:
+      aiops.log.records:
+        description: Log lines received
+      aiops.log.errors:
+        description: Log lines at error level or worse
+        conditions:
+          - 'severity_number >= SEVERITY_NUMBER_ERROR'
+          - 'severity_number == SEVERITY_NUMBER_UNSPECIFIED and IsString(body) and IsMatch(body, "(?i)\\b(error|exception|fatal|panic|traceback|critical)\\b")'
 
 exporters:
   prometheus:
@@ -72,7 +86,11 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [prometheus/push]
+    metrics/logcount:
+      receivers: [count/logs]
+      processors: [memory_limiter, deltatocumulative, batch]
+      exporters: [prometheus/push]
     logs:
       receivers: [otlp, filelog/firewall, filelog/lb]
       processors: [memory_limiter, batch]
-      exporters: [otlphttp/loki]
+      exporters: [otlphttp/loki, count/logs]

@@ -1,17 +1,17 @@
 <script setup>
+// A host in a list: a drawn machine (or its OS logo), its load as three small numbers, and its health.
 import { computed } from "vue";
 import { HEALTH_TONE, osLogo } from "@/lib/vocab";
 const props = defineProps({ host: { type: Object, required: true } });
-const line = computed(() => {
-  const h = props.host;
-  if (h.status === "offline") return "Offline";
-  if (h.status === "no-data") return "Waiting for first data";
-  return `CPU ${Math.round(h.cpu)}% · Memory ${Math.round(h.mem)}% · Disk ${Math.round(h.disk)}%${h.services?.length ? ` · ${h.services.length} services` : ""}`;
-});
+const h = computed(() => props.host);
+const line = computed(() => (h.value.status === "offline" ? "Offline" : h.value.status === "no-data" ? "Waiting for first data"
+  : `CPU ${Math.round(h.value.cpu)}% · Memory ${Math.round(h.value.mem)}% · Disk ${Math.round(h.value.disk)}%`));
+const health = computed(() => (h.value.problem_id ? { tone: "bad", label: "Problem", value: `P-${h.value.problem_id} open` }
+  : { tone: HEALTH_TONE[h.value.status] || "neutral", label: { healthy: "Healthy", offline: "Offline", "no-data": "Waiting", down: "Down" }[h.value.status] || h.value.status }));
 </script>
 <template>
-  <UiListRow :to="`/computers/${host.name}`" :title="host.name" :subtitle="line">
-    <template #leading><UiAppTile :logo="osLogo(host.os)" :icon="host.kind === 'workstation' ? 'laptop' : 'server'" :status="HEALTH_TONE[host.status]" /></template>
-    <template #accessory><UiPill v-if="host.problem_id" tone="bad">Problem</UiPill></template>
-  </UiListRow>
+  <UiResourceRow :to="`/computers/${h.name}`" :title="h.name" :subtitle="line" :meta="h.services?.length ? `${h.services.length} services` : undefined"
+                 :logo="osLogo(h.os)" :glyph="h.kind === 'workstation' ? 'laptop' : 'server'" :tone="HEALTH_TONE[h.status]">
+    <UiHealth :tone="health.tone" :label="health.label" :value="health.value" />
+  </UiResourceRow>
 </template>

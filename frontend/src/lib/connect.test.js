@@ -1,0 +1,97 @@
+// Run with: npm test (node --test, no extra dependencies)
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { bulkBody, connectBody, hostName, installCommand, missing, missingCred, parseTargets, progress } from "./connect.js";
+
+const form = (o = {}) => ({ name: "", address: " 203.0.113.10 ", port: "", user: "poc", auth: "password", password: "pw", key: "", passphrase: "", ebpf: true, ...o });
+const steps = (...states) => states.map((state, i) => ({ key: `s${i}`, label: `Step ${i}`, state }));
+
+test("a machine that runs the command itself gets the plain one-line install", () => {
+  assert.equal(installCommand({ origin: "http://cp26pt1.sit.kmutt.ac.th:8080", name: "db-01" }),
+    "curl -fsSL http://cp26pt1.sit.kmutt.ac.th:8080/install/agent.sh | AIOPS_HOST_NAME=db-01 sh");
+});
+
+test("the name is optional: it comes from the address when left empty", () => {
+  assert.equal(hostName("", "203.0.113.10"), "203-0-113-10");
+  assert.equal(hostName("", " ESG.prod.example.com "), "esg-prod-example-com");
+  assert.equal(hostName("ESG 360 Prod", "203.0.113.10"), "esg-360-prod");
+});
+
+test("the form asks for what is missing, one thing at a time", () => {
+  assert.equal(missing(form({ address: " " })), "Enter the server address");
+  assert.equal(missing(form({ user: "" })), "Enter the user to sign in as");
+  assert.equal(missing(form({ password: "" })), "Enter the password");
+  assert.equal(missing(form({ auth: "key" })), "Choose the key file");
+  assert.equal(missing(form()), null);
+});
+
+test("only the chosen way to sign in is sent", () => {
+  const p = connectBody(form({ key: "left-over" }));
+  assert.deepEqual(p, { name: "203-0-113-10", address: "203.0.113.10", port: 22, user: "poc", ebpf: true, password: "pw" });
+  const k = connectBody(form({ name: "esg360-prod", auth: "key", key: "KEY", passphrase: "pp", port: "2222", ebpf: false }));
+  assert.deepEqual(k, { name: "esg360-prod", address: "203.0.113.10", port: 2222, user: "poc", ebpf: false, private_key: "KEY", passphrase: "pp" });
+});
+
+test("the ring fills with finished steps and is only full when everything is done", () => {
+  assert.equal(progress(null).value, 0);
+  assert.equal(progress({ state: "running", steps: steps("pending", "pending", "pending", "pending") }).value, 0);
+  const mid = progress({ state: "running", steps: steps("done", "running", "pending", "pending") });
+  assert.equal(mid.value, 0.375);                       // 1 done + half of the running one, out of 4
+  assert.equal(mid.label, "Step 1");
+  assert.ok(progress({ state: "running", steps: steps("done", "done", "done", "running") }).value < 1);
+  assert.deepEqual(progress({ state: "done", steps: steps("done", "done", "done", "done") }), { value: 1, label: "Connected", state: "done" });
+  const bad = progress({ state: "failed", error: "nope", steps: steps("done", "failed", "pending", "pending") });
+  assert.equal(bad.state, "failed");
+  assert.equal(bad.value, 0.25);
+});
+
+test("removing an agent shows the same ring: asked, agent removes itself, gone", async () => {
+  const { removal } = await import("./connect.js");
+  assert.equal(removal({ requestedAt: null }), null);
+  const asked = removal({ requestedAt: 1000, now: 1010, gone: false });
+  assert.deepEqual(asked.steps.map((s) => s.state), ["done", "running", "pending"]);
+  assert.equal(asked.state, "running");
+  assert.equal(removal({ requestedAt: 1000, now: 1200, gone: false }).state, "failed");   // no answer in 2 minutes
+  const done = removal({ requestedAt: 1000, now: 1050, gone: true });
+  assert.equal(done.state, "done");
+  assert.equal(progress(done).value, 1);
+});
+
+test("the connect page accepts one address or many (bulk) from the Fleet", () => {
+  assert.deepEqual(parseTargets("10.4.82.40"), [{ address: "10.4.82.40" }]);
+  assert.deepEqual(parseTargets("10.4.82.40, 10.4.82.41 ,10.4.82.42"),
+    [{ address: "10.4.82.40" }, { address: "10.4.82.41" }, { address: "10.4.82.42" }]);
+  assert.deepEqual(parseTargets("10.4.82.40,10.4.82.41", "db2.sit.kmutt.ac.th,"),
+    [{ address: "10.4.82.40", name: "db2-sit-kmutt-ac-th" }, { address: "10.4.82.41" }]);
+  assert.deepEqual(parseTargets(""), []);
+});
+
+test("bulk connect sends one shared credential for every target", () => {
+  const f = form({ user: "poc", port: "2222", ebpf: false });
+  const targets = [{ address: "10.4.82.40", name: "db2" }, { address: "10.4.82.41" }];
+  assert.deepEqual(bulkBody(f, targets),
+    { targets, port: 2222, user: "poc", ebpf: false, password: "pw" });
+  const k = bulkBody(form({ user: "poc", auth: "key", key: "KEY", passphrase: "pp" }), targets);
+  assert.deepEqual(k, { targets, port: 22, user: "poc", ebpf: true, private_key: "KEY", passphrase: "pp" });
+});
+
+test("the shared credential still has to be complete, but no single address is needed", () => {
+  assert.equal(missingCred(form({ user: "" })), "Enter the user to sign in as");
+  assert.equal(missingCred(form({ password: "" })), "Enter the password");
+  assert.equal(missingCred(form({ auth: "key" })), "Choose the key file");
+  assert.equal(missingCred(form()), null);
+});
+
+test("per-machine sign-in: each target carries its own user and password, nothing shared is sent", () => {
+  const targets = [{ address: "10.0.0.1", name: "a" }, { address: "10.0.0.2" }];
+  const per = { "10.0.0.1": { user: "ubuntu", password: "x" }, "10.0.0.2": { user: "admin", password: "y" } };
+  assert.deepEqual(bulkBody(form({ perMachine: true, port: "22" }), targets, per), { port: 22, ebpf: true,
+    targets: [{ address: "10.0.0.1", name: "a", user: "ubuntu", password: "x" }, { address: "10.0.0.2", user: "admin", password: "y" }] });
+});
+
+test("per-machine sign-in names the first machine still missing a user or password", () => {
+  const targets = [{ address: "10.0.0.1", name: "a" }, { address: "10.0.0.2" }];
+  assert.equal(missingCred(form({ perMachine: true }), targets, { "10.0.0.1": { user: "u", password: "p" } }),
+    "Enter the user and password for 10.0.0.2");
+  assert.equal(missingCred(form({ perMachine: true }), targets, { "10.0.0.1": { user: "u", password: "p" }, "10.0.0.2": { user: "v", password: "q" } }), null);
+});

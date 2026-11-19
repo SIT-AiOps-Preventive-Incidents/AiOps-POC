@@ -8,10 +8,11 @@ from . import db, repo
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8080")
 
 COLORS = {"detected": "attention", "rca_ready": "warning", "resolved": "good", "rejected": "default",
-          "remediation_failed": "attention"}
+          "remediation_failed": "attention", "escalation": "attention"}
 TITLES = {"detected": "Problem detected", "rca_ready": "RCA + dry run ready - owner approval required",
           "resolved": "Problem resolved", "rejected": "Remediation rejected",
-          "remediation_failed": "Remediation did not fix the problem"}
+          "remediation_failed": "Remediation did not fix the problem",
+          "escalation": "Escalated - the fix is still waiting for approval"}
 
 
 def _card(inc: dict, event: str) -> dict:

@@ -7,16 +7,23 @@ const st = computed(() => props.host.auto_instrument || null);
 const traced = computed(() => props.services.filter((s) => s.instrumentation === "ebpf"));
 const waiting = computed(() => (st.value?.services || []).filter((n) => !traced.value.some((s) => s.service === n)));
 const mac = computed(() => /darwin|mac/i.test(props.host.os || ""));
+const col = computed(() => st.value?.collector || null);
 </script>
 <template>
   <div class="auto" aria-live="polite">
-    <UiWait v-if="st?.state === 'running' && !waiting.length && traced.length" done title="Traced automatically">
-      {{ traced.length }} service{{ traced.length === 1 ? "" : "s" }} on this computer send traces with no code change (eBPF).
-    </UiWait>
-    <UiWait v-else-if="st && ['running', 'starting'].includes(st.state)" title="Tracing the services found here…">
-      Watching {{ st.services.length }} port{{ st.services.length === 1 ? "" : "s" }} with eBPF.
-      <template v-if="waiting.length"> Each service turns into a traced service after its first request: {{ waiting.join(", ") }}.</template>
-    </UiWait>
+    <!-- healthy: quiet one-line confirmations with a check, not a filled green banner -->
+    <p v-if="col?.state === 'running'" class="line ok">
+      <UiIcon name="checkmark_circle" filled :size="16" />Logs &amp; container metrics collected
+      <span class="muted">· per-container CPU, memory, network via OpenTelemetry Collector</span></p>
+    <p v-else-if="col?.state === 'starting'" class="line"><UiSpinner :size="14" />Starting log &amp; metric collection…</p>
+    <p v-else-if="col?.error" class="line muted"><UiIcon name="alert" :size="15" />Logs: {{ col.error }}</p>
+
+    <p v-if="st?.state === 'running' && !waiting.length && traced.length" class="line ok">
+      <UiIcon name="checkmark_circle" filled :size="16" />Traced automatically
+      <span class="muted">· {{ traced.length }} service{{ traced.length === 1 ? "" : "s" }} send traces with no code change (eBPF)</span></p>
+    <p v-else-if="st && ['running', 'starting'].includes(st.state)" class="line"><UiSpinner :size="14" />Tracing the services found here…
+      <span class="muted">watching {{ st.services.length }} port{{ st.services.length === 1 ? "" : "s" }} with eBPF<template v-if="waiting.length"> · each becomes traced after its first request: {{ waiting.join(", ") }}</template></span></p>
+
     <div v-else class="note">
       <UiIcon name="flash" :size="18" />
       <div>
@@ -29,7 +36,11 @@ const mac = computed(() => /darwin|mac/i.test(props.host.os || ""));
   </div>
 </template>
 <style scoped>
-.note { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: var(--c-fill); color: var(--c-text-2); }
-.note b { color: var(--c-text); }
-.note p { margin: 2px 0 0; }
+.line { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--c-text); padding: 4px 0; }
+.line + .line { border-top: 1px solid var(--c-separator); }
+.line .muted { font-weight: var(--fw-regular, 400); }
+.line.ok > .ui-icon { color: var(--c-ok); }
+.line.muted { color: var(--c-text-3); } .line.muted > .ui-icon { color: var(--c-text-3); }
+.note { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radius-lg); background: var(--c-fill); color: var(--c-text-2); margin-top: 8px; }
+.note b { color: var(--c-text); } .note p { margin: 2px 0 0; }
 </style>

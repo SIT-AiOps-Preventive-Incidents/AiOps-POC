@@ -13,12 +13,13 @@ import os
 import platform
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
 import urllib.request
 
-VERSION = "1.2.0"
+VERSION = "1.5.1"
 DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(DIR, "config.json")))
 HOST, OTLP, API = CFG["host"], CFG["otlp"].rstrip("/"), CFG.get("api", "").rstrip("/")
@@ -155,7 +156,134 @@ def inventory():
         p = line.split("\t")
         if len(p) >= 2:
             containers.append({"name": p[0], "image": p[1], "ports": p[2] if len(p) > 2 else ""})
-    return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers}
+    details = container_details([c["name"] for c in containers])
+    for c in containers:
+        c.update(details.get(c["name"], {}))
+    return {"ips": ip_addresses(), "listeners": uniq, "connections": conns[:500], "containers": containers,
+            "interfaces": interfaces(), "neighbors": neighbors()}
+
+
+# ---------------- your network: the segment this machine sits on (passive, nothing is scanned) ----------------
+NET_SKIP = ("lo", "docker", "br-", "veth", "virbr", "cni", "flannel", "kube", "tun", "tap", "wg", "tailscale", "zt")
+NAMES = {}
+
+
+def interfaces():
+    if DARWIN:
+        return []
+    try:
+        addrs = json.loads(sh(["ip", "-j", "addr", "show"]) or "[]")
+        routes = json.loads(sh(["ip", "-j", "route", "show", "default"]) or "[]")
+    except ValueError:
+        return []
+    gw = {r.get("dev"): r.get("gateway") for r in routes}
+    out = []
+    for a in addrs:
+        name = a.get("ifname", "")
+        if name.startswith(NET_SKIP):
+            continue
+        for ai in a.get("addr_info") or []:
+            if ai.get("family") == "inet" and ai.get("scope") == "global":
+                out.append({"name": name, "cidr": f"{ai['local']}/{ai['prefixlen']}", "mac": a.get("address"),
+                            "gateway": gw.get(name)})
+    return out
+
+
+def _name(ip):
+    """Reverse DNS, cached; slow or missing answers are skipped."""
+    if ip not in NAMES:
+        import concurrent.futures as cf
+        with cf.ThreadPoolExecutor(1) as ex:
+            try:
+                NAMES[ip] = ex.submit(socket.gethostbyaddr, ip).result(timeout=1)[0]
+            except Exception:
+                NAMES[ip] = None
+    return NAMES[ip]
+
+
+def neighbors():
+    """What the passive watcher heard over ARP, plus the kernel's own neighbour table."""
+    if DARWIN:
+        return []
+    seen = {}
+    try:
+        for ip, v in json.load(open(os.path.join(DIR, "net", "neighbors.json"))).items():
+            seen[ip] = {"ip": ip, "mac": v.get("mac"), "last_seen": v.get("last_seen")}
+    except (OSError, ValueError):
+        pass
+    try:
+        for n in json.loads(sh(["ip", "-j", "neigh", "show"]) or "[]"):
+            dev = n.get("dev", "")
+            if n.get("lladdr") and not dev.startswith(NET_SKIP) and n.get("dst", "").count(".") == 3:
+                seen.setdefault(n["dst"], {"ip": n["dst"], "mac": n["lladdr"], "last_seen": time.time()})
+    except ValueError:
+        pass
+    new = [ip for ip in seen if ip not in NAMES][:16]
+    for ip in new:
+        _name(ip)
+    for ip, n in seen.items():
+        n["name"] = NAMES.get(ip)
+    return list(seen.values())[:1000]
+
+
+NETWATCH_IMAGE = CFG.get("netwatch_image", "python:3.12-alpine")
+NETWATCH_NAME = "aiops-netwatch"
+NETWATCH = {"state": "disabled", "error": None}
+
+
+def netwatch_apply():
+    """Run the passive ARP listener (CAP_NET_RAW only, 48 MB, a tenth of a CPU)."""
+    if DARWIN or str(CFG.get("netwatch", "auto")).lower() in ("off", "0", "false", "no"):
+        NETWATCH.update(state="disabled", error=None)
+        return
+    if not shutil.which("docker") or subprocess.run(["docker", "info"], capture_output=True).returncode != 0:
+        NETWATCH.update(state="unavailable", error="Docker is not installed or this user cannot run it")
+        return
+    script = os.path.join(DIR, "netwatch.py")
+    try:
+        code = urllib.request.urlopen(f"{API}/install/netwatch.py", timeout=15).read()
+        if not os.path.exists(script) or open(script, "rb").read() != code:
+            with open(script, "wb") as f:
+                f.write(code)
+    except Exception as e:
+        if not os.path.exists(script):
+            NETWATCH.update(state="error", error=f"cannot download the watcher: {e}")
+            return
+    net = os.path.join(DIR, "net")
+    os.makedirs(net, exist_ok=True)
+    os.chmod(net, 0o770)  # the watcher writes here through this user's group - it has no root file rights
+    digest = hashlib.sha1(open(script, "rb").read() + NETWATCH_IMAGE.encode()).hexdigest()[:12]
+    cur = sh(["docker", "inspect", "-f", '{{index .Config.Labels "aiops.cfg"}} {{.State.Running}}', NETWATCH_NAME]).split()
+    if cur == [digest, "true"]:
+        NETWATCH.update(state="running", error=None)
+        return
+    sh(["docker", "rm", "-f", NETWATCH_NAME])
+    r = subprocess.run(["docker", "run", "-d", "--name", NETWATCH_NAME, "--restart", "unless-stopped",
+                        "--label", f"aiops.cfg={digest}", "--network=host", "--cap-drop", "ALL", "--cap-add", "NET_RAW",
+                        "--group-add", str(os.getgid()),
+                        "--memory", "48m", "--cpus", "0.1", "-v", f"{script}:/w/netwatch.py:ro",
+                        "-v", f"{os.path.join(DIR, 'net')}:/out", NETWATCH_IMAGE, "python3", "/w/netwatch.py",
+                        "/out/neighbors.json"], capture_output=True, text=True, timeout=600)
+    if r.returncode == 0:
+        NETWATCH.update(state="starting", error=None)
+        print(f"{time.strftime('%H:%M:%S')} network watcher started (listens to ARP only)", flush=True)
+    else:
+        NETWATCH.update(state="error", error=(r.stderr or r.stdout).strip()[-300:])
+
+
+def container_details(names):
+    """Container id (to find its log file) and the NAMES of its environment variables (official images declare their
+    runtime there: NODE_VERSION, JAVA_HOME ...). Values are dropped here and never leave this machine."""
+    if not names:
+        return {}
+    out = {}
+    fmt = "{{.Name}}\t{{.Id}}\t{{range .Config.Env}}{{.}}\x1f{{end}}"
+    for line in sh(["docker", "inspect", "--format", fmt] + names).splitlines():
+        p = line.split("\t", 2)  # an environment value may itself contain tabs
+        if len(p) == 3:
+            keys = sorted({kv.split("=", 1)[0] for kv in p[2].split("\x1f") if kv})
+            out[p[0].lstrip("/")] = {"id": p[1], "env_keys": keys}
+    return out
 
 
 def push_inventory():
@@ -163,10 +291,96 @@ def push_inventory():
         return
     inv = inventory()
     inv["ebpf"] = EBPF
+    inv["collector"] = COLLECTOR
+    inv["netwatch"] = NETWATCH
     req = urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/inventory", data=json.dumps(inv).encode(),
                                  method="POST", headers={"Content-Type": "application/json"})
     reply = json.loads(urllib.request.urlopen(req, timeout=15).read() or b"{}")
+    if reply.get("uninstall"):  # someone pressed Remove agent on the web page
+        self_uninstall()
     ebpf_apply(reply.get("instrument") or [])
+    collector_apply(reply.get("collector"))
+    netwatch_apply()
+    if reply.get("netscan"):  # operator pressed "Scan this segment": ask the watcher to do one active ARP pass
+        try:
+            net = os.path.join(DIR, "net")
+            os.makedirs(net, exist_ok=True)
+            open(os.path.join(net, "scan.request"), "w").close()
+            print(f"{time.strftime('%H:%M:%S')} active segment sweep requested", flush=True)
+        except OSError as e:
+            print(f"could not request sweep: {e}", flush=True)
+
+
+def self_uninstall():
+    """Remove everything AIOps put on this machine, tell the platform, then stop. Same as uninstall.sh."""
+    print(f"{time.strftime('%H:%M:%S')} removing myself (asked from the AIOps web page)", flush=True)
+    sh(["docker", "rm", "-f", EBPF_NAME, COLLECTOR_NAME, NETWATCH_NAME])
+    cron = sh(["crontab", "-l"])
+    if "aiops-agent.py" in cron:
+        keep = "".join(l + "\n" for l in cron.splitlines() if "aiops-agent.py" not in l)
+        subprocess.run(["crontab", "-"], input=keep, text=True, capture_output=True)
+    ak = os.path.expanduser("~/.ssh/authorized_keys")
+    try:  # the key AIOps used to keep its data channel open (connected from the web page)
+        lines = open(ak).read().splitlines(keepends=True)
+        kept = [l for l in lines if not l.rstrip().endswith(" aiops-platform")]
+        if len(kept) != len(lines):
+            with open(ak, "w") as f:
+                f.writelines(kept)
+    except OSError:
+        pass
+    try:
+        urllib.request.urlopen(urllib.request.Request(f"{API}/api/v1/hosts/{HOST}/uninstalled", data=b"", method="POST"),
+                               timeout=15).read()
+    except Exception as e:
+        print(f"could not tell the platform: {e}", flush=True)
+    plist = os.path.expanduser("~/Library/LaunchAgents/com.aiops.agent.plist")
+    shutil.rmtree(DIR, ignore_errors=True)
+    if DARWIN and os.path.exists(plist):
+        os.remove(plist)
+        subprocess.run(["launchctl", "remove", "com.aiops.agent"], capture_output=True)  # ends this process too
+    os._exit(0)
+
+
+# ---------------- logs + container metrics (OpenTelemetry Collector) ----------------
+COLLECTOR_IMAGE = CFG.get("collector_image", "otel/opentelemetry-collector-contrib:0.120.0")
+COLLECTOR_NAME = "aiops-otelcol"
+COLLECTOR_CFG = os.path.join(DIR, "otelcol.json")
+COLLECTOR = {"state": "disabled", "error": None, "version": COLLECTOR_IMAGE.rsplit(":", 1)[-1]}
+
+
+def collector_apply(cfg):
+    """Run the collector with the config the platform wrote for this server (which containers' logs to read)."""
+    if DARWIN or not cfg:
+        COLLECTOR.update(state="disabled" if DARWIN else "idle", error=None)
+        return
+    if not shutil.which("docker") or subprocess.run(["docker", "info"], capture_output=True).returncode != 0:
+        COLLECTOR.update(state="unavailable", error="Docker is not installed or this user cannot run it")
+        return
+    api = sh(["docker", "version", "--format", "{{.Server.APIVersion}}"]).strip() or "1.44"
+    cfg = cfg.replace("%OTLP%", OTLP).replace("%DOCKER_API%", api)
+    digest = hashlib.sha1((cfg + COLLECTOR_IMAGE).encode()).hexdigest()[:12]
+    cur = sh(["docker", "inspect", "-f", '{{index .Config.Labels "aiops.cfg"}} {{.State.Running}}', COLLECTOR_NAME]).split()
+    if cur == [digest, "true"]:
+        COLLECTOR.update(state="running", error=None)
+        return
+    with open(COLLECTOR_CFG, "w") as f:
+        f.write(cfg)
+    sh(["docker", "rm", "-f", COLLECTOR_NAME])
+    # read-only: container log files and the Docker API for per-container stats. Capped, so on a busy production
+    # machine only the collector can be killed if it grows, never the apps.
+    r = subprocess.run(["docker", "run", "-d", "--name", COLLECTOR_NAME, "--restart", "unless-stopped",
+                        "--label", f"aiops.cfg={digest}", "--memory", CFG.get("collector_memory", "256m"),
+                        "--cpus", str(CFG.get("collector_cpus", "0.5")), "--network=host", "--user", "0:0",
+                        "-v", f"{COLLECTOR_CFG}:/etc/otelcol/config.json:ro",
+                        "-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
+                        "-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
+                        COLLECTOR_IMAGE, "--config=/etc/otelcol/config.json"],
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode == 0:
+        COLLECTOR.update(state="starting", error=None)
+        print(f"{time.strftime('%H:%M:%S')} collector started (logs + container metrics)", flush=True)
+    else:
+        COLLECTOR.update(state="error", error=(r.stderr or r.stdout).strip()[-300:])
 
 
 # ---------------- automatic tracing (eBPF) ----------------
@@ -194,6 +408,8 @@ def ebpf_config(targets):
              "discovery:", "  exclude_otel_instrumented_services: true", "  instrument:"]
     for t in targets:
         lines += [f"    - open_ports: {int(t['port'])}", f"      name: {json.dumps(t['service'])}"]
+        if t.get("exe"):  # two apps on the same port inside their containers: told apart by their program
+            lines += [f"      exe_path: {json.dumps(t['exe'])}"]
     lines += ["ebpf:", "  context_propagation: headers",
               "otel_traces_export:", f"  endpoint: {OTLP}", ""]
     return "\n".join(lines)
@@ -219,6 +435,8 @@ def ebpf_apply(targets):
         f.write(cfg)
     sh(["docker", "rm", "-f", EBPF_NAME])
     r = subprocess.run(["docker", "run", "-d", "--name", EBPF_NAME, "--restart", "unless-stopped", "--label", f"aiops.cfg={digest}",
+                        # capped, so on a busy production machine only the tracer is killed if it grows, never the apps
+                        "--memory", CFG.get("ebpf_memory", "384m"), "--cpus", str(CFG.get("ebpf_cpus", "0.5")),
                         "--privileged", "--pid=host", "--network=host", "-v", f"{EBPF_CFG}:/config.yml:ro",
                         "-v", "/sys/fs/bpf:/sys/fs/bpf", "-e", "BEYLA_CONFIG_PATH=/config.yml",
                         "-e", f"OTEL_RESOURCE_ATTRIBUTES=host.name={HOST}", EBPF_IMAGE],

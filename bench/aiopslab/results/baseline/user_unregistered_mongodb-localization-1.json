@@ -1,0 +1,17 @@
+{
+ "agent": "baseline",
+ "problem": "user_unregistered_mongodb-localization-1",
+ "model": "qwen2.5:1.5b-16k",
+ "results": {
+  "Localization Accuracy": 0.0,
+  "success": false,
+  "is_subset": false,
+  "TTL": 5766.462444067001,
+  "steps": 15,
+  "in_tokens": 17180,
+  "out_tokens": 5338
+ },
+ "steps": 30,
+ "wall_s": 5913.3,
+ "trace": null
+}

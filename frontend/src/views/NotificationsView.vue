@@ -8,7 +8,7 @@ usePolling(async () => { rows.value = await api.notifications.list(); }, 10000);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Notifications" subtitle="Cards sent to Microsoft Teams. Add the Teams link in Settings." />
+    <UiPageHeader eyebrow="Setup" title="Notifications" subtitle="Cards sent to Microsoft Teams. Add the Teams link in Settings." />
     <UiList>
       <UiListRow v-for="n in rows" :key="n.id" :to="n.incident_id ? `/problems/${n.incident_id}` : '/settings'"
                  :title="`${n.event.replace(/_/g, ' ')}${n.incident_id ? ` · P-${n.incident_id}` : ''}`" :subtitle="n.status">

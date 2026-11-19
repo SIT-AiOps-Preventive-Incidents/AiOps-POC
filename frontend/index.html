@@ -3,15 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f2f2f7">
-  <title>AIOps One</title>
+  <meta name="theme-color" content="#08090a">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=sentinel">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap">
+  <title>RadarOps</title>
   <script>
     // apply the saved theme before the first paint (no white flash in dark mode)
     try {
       var t = (JSON.parse(localStorage.getItem("aiops.prefs")) || {}).theme;
-      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-      if (t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches))
-        document.querySelector('meta[name="theme-color"]').setAttribute("content", "#000000");
+      // dark is the default; "light" forces paper, "auto" follows the OS
+      if (t === "light" || t === "auto") document.documentElement.dataset.theme = t;
+      if (t === "light" || (t === "auto" && matchMedia("(prefers-color-scheme: light)").matches))
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", "#e9e9e7");
     } catch (e) {}
   </script>
 </head>

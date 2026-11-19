@@ -1,8 +1,11 @@
 <script setup>
 // The owner's decision card: recommended fix + dry-run checklist + owner confirmation + approve / reject.
 import { computed, ref, watch } from "vue";
+import { clock } from "@/lib/format";
+import { useAuthStore } from "@/stores/auth";
 import { useIncidentStore } from "@/stores/incidents";
 import { useUiStore } from "@/stores/ui";
+import { approveLabel, consequence } from "@/lib/insight";
 import DryRunChecklist from "./DryRunChecklist.vue";
 
 const props = defineProps({ incident: { type: Object, required: true } });
@@ -15,18 +18,19 @@ const cands = computed(() => inc.value.candidates || []);
 const pick = ref(0);
 const chosen = computed(() => cands.value[pick.value] || inc.value.action);
 const ownerOk = ref(false);
-const approver = ref(ui.prefs.approver || "");
+const auth = useAuthStore();       // the approver is whoever is signed in; the server records them from the session
+const mayDecide = computed(() => auth.can("incident.approve"));
 const comment = ref("");
 const busy = ref("");
 watch(() => inc.value.id, () => { pick.value = 0; ownerOk.value = false; });
-const canApprove = computed(() => chosen.value?.dry_run?.ok && ownerOk.value && approver.value.trim());
+const canApprove = computed(() => mayDecide.value && chosen.value?.dry_run?.ok && ownerOk.value);
 const ap = computed(() => inc.value.approval);
+const will = computed(() => consequence(chosen.value));
 
 async function decide(decision) {
   busy.value = decision;
-  ui.setPref("approver", approver.value.trim());
   try {
-    await store.decide(inc.value.id, { decision, candidate_id: chosen.value?.id, approver: approver.value.trim() || "owner",
+    await store.decide(inc.value.id, { decision, candidate_id: chosen.value?.id,
       owner_confirmed: ownerOk.value, comment: comment.value });
     ui.toast(decision === "approve" ? "Approved. Applying the fix." : "Rejected");
   } catch (e) {
@@ -39,37 +43,62 @@ async function decide(decision) {
 }
 </script>
 <template>
-  <UiCard :title="waiting || investigating ? 'Recommended fix' : 'Fix'">
-    <UiWait v-if="investigating" title="The AI is investigating" :subtitle="`${inc.steps.length} steps so far · usually 1-3 minutes`" />
+  <UiCard :title="waiting || investigating ? 'Recommended fix' : 'Fix'" :icon="waiting || investigating ? 'wrench' : undefined">
+    <UiWait v-if="investigating" title="The AI is investigating" :subtitle="`${inc.steps.length} steps so far, usually 1 to 3 minutes`" />
 
     <template v-else-if="waiting && chosen">
-      <div class="fix"><div class="small muted">{{ pick === 0 ? "AI recommends" : "You picked" }}</div><div class="fix__a">{{ chosen.label }}</div></div>
-      <DryRunChecklist class="mt" :dry-run="chosen.dry_run" />
-      <div class="owner">
-        <div><div class="b">I'm the owner</div><div class="small muted">{{ inc.owner || "unassigned" }} approves this fix</div></div>
-        <UiSwitch v-model="ownerOk" label="I am the owner" />
+      <div class="fix">
+        <span class="fix__tag"><UiIcon name="sparkle" :size="13" />{{ pick === 0 ? "AI recommends" : "You picked" }}</span>
+        <div class="fix__a">{{ chosen.label }}</div>
       </div>
-      <UiField v-model="approver" label="Your name" placeholder="e.g. Napat" autocomplete="name" />
-      <UiButton class="mt" size="lg" block :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
-        {{ chosen.type === "manual" ? "Acknowledge - I'll handle it" : "Approve fix" }}</UiButton>
-      <div class="row row--between mt-2">
-        <UiButton variant="danger" :loading="busy === 'reject'" @click="decide('reject')">Reject</UiButton>
-        <span class="small dim">Checked again right before it runs</span>
+      <section v-if="will" class="will" aria-label="If you approve">
+        <div class="will__t"><UiIcon name="play" :size="13" />If you approve</div>
+        <p v-if="will.manual" class="small">Nothing runs automatically. You confirm that you will follow the runbook yourself.</p>
+        <template v-else>
+          <p class="small">RadarOps will run:</p>
+          <pre class="will__cmd">{{ will.runs.join("\n") || chosen.label }}</pre>
+          <p v-if="will.impact" class="small"><span class="muted">Who notices:</span> {{ will.impact }}</p>
+        </template>
+      </section>
+      <DryRunChecklist class="mt" :dry-run="chosen.dry_run" :effects="false" />
+
+      <!-- the decision: orange frames the one place that needs a person; the working area stays clean white -->
+      <div class="decision">
+        <div class="decision__h"><UiIcon name="person" :size="15" /><span>Your decision</span><span class="decision__tag">needs your approval</span></div>
+        <div v-if="!mayDecide" class="decision__body">
+          <p class="caption dim"><UiIcon name="shield" :size="13" />Your role ({{ auth.me?.role_label }}) cannot approve or reject fixes. A developer, a manager or an admin can.</p>
+        </div>
+        <div v-else class="decision__body">
+          <p class="as">Deciding as <b>{{ auth.me?.name || auth.me?.email }}</b><span class="muted"> · {{ auth.me?.role_label }}</span></p>
+          <label class="owner">
+            <UiSwitch v-model="ownerOk" label="I am the owner" />
+            <span><span class="b">I'm the owner of {{ inc.owner || "this service" }}</span><span class="small muted">and take responsibility for this fix</span></span>
+          </label>
+          <UiButton variant="action" size="lg" block icon="checkmark" :class="{ 'is-waiting': !canApprove }"
+                    :disabled="!canApprove" :loading="busy === 'approve'" @click="decide('approve')">
+            {{ approveLabel(chosen) }}</UiButton>
+          <p :class="['caption', canApprove ? 'ok' : 'dim']">
+            <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
+            {{ canApprove ? "RadarOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : "Turn on “I’m the owner” to enable approval." }}
+          </p>
+          <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
+          <UiField v-model="comment" class="cmt" label="Comment (optional)" placeholder="Why approve or reject" />
+        </div>
       </div>
+
       <UiDisclosure v-if="cands.length > 1" :card="false" :title="`Other options (${cands.length - 1})`" class="mt-2">
         <label v-for="(c, i) in cands" :key="c.id" :class="['alt', { sel: i === pick, blocked: !c.dry_run?.ok }]">
           <input type="radio" name="cand" :checked="i === pick" :disabled="!c.dry_run?.ok" @change="pick = i">
-          <span><b>{{ c.label }}</b><span v-if="i === 0" class="small muted"> · recommended</span>
+          <span><b>{{ c.label }}</b><span v-if="i === 0" class="small muted"> (recommended)</span>
             <span :class="['small', 'block', c.dry_run?.ok ? 'ok' : 'bad']">{{ c.dry_run?.ok ? "Dry run passed" : "Dry run failed: " + (c.dry_run?.checks || []).filter((x) => !x.ok).map((x) => x.name).join(", ") }}</span></span>
         </label>
       </UiDisclosure>
-      <UiField v-model="comment" label="Comment (optional)" placeholder="Why approve or reject" />
     </template>
 
     <template v-else>
       <div class="fix"><div class="fix__a">{{ inc.action?.label || "No action" }}</div></div>
       <dl v-if="ap" class="kv mt">
-        <dt>{{ ap.decision === "rejected" ? "Rejected by" : "Approved by" }}</dt><dd>{{ ap.approver }}<span v-if="ap.owner"> for {{ ap.owner }}</span></dd>
+        <dt>{{ ap.decision === "rejected" ? "Rejected by" : "Approved by" }}</dt><dd>{{ ap.approver }}<span v-if="ap.owner"> for {{ ap.owner }}</span><span class="muted"> · {{ clock(ap.decided_at) }}</span></dd>
         <template v-if="ap.preflight"><dt>Re-checked</dt><dd :class="ap.preflight.ok ? 'ok' : 'bad'">{{ ap.preflight.ok ? "Dry run passed again before applying" : "Pre-flight failed" }}</dd></template>
         <template v-if="ap.execution"><dt>Result</dt><dd :class="ap.execution.ok ? 'ok' : 'bad'">{{ ap.execution.detail }}</dd></template>
         <template v-if="ap.execution && ap.execution.verified != null"><dt>Verified</dt><dd :class="ap.execution.verified ? 'ok' : 'bad'">{{ ap.execution.verified ? "Metrics back to normal" : "Still abnormal" }}</dd></template>
@@ -79,12 +108,40 @@ async function decide(decision) {
   </UiCard>
 </template>
 <style scoped>
-.fix { border-radius: 12px; background: var(--c-primary-tint); padding: 14px 16px; }
+.fix { border-radius: var(--radius-md); background: var(--c-primary-tint); padding: 12px 14px; }
+.fix__tag { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-primary); margin-bottom: 2px; }
 .fix__a { font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
-.owner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 0.5px solid var(--c-separator); border-bottom: 0.5px solid var(--c-separator); margin: 14px 0 4px; }
-.b { font-weight: var(--fw-semibold); }
-.alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-top: 6px; background: var(--c-fill); }
-.alt.sel { background: var(--c-primary-tint); box-shadow: inset 0 0 0 1.5px var(--c-primary); }
+.b { font-weight: var(--fw-semibold); display: block; }
+.will { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--c-border); }
+.will__t { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--c-action-text, var(--c-action)); margin-bottom: 4px; }
+.will p { margin: 4px 0; }
+.will__cmd { background: var(--c-fill); border-radius: 8px; padding: 8px 10px; font: 12px/1.5 var(--font-mono); white-space: pre-wrap; margin: 4px 0; }
+
+/* the decision: orange frames the one place that needs a person; a clean white body does the work */
+.decision { margin-top: 16px; border: 1.5px solid var(--c-action); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); }
+.decision__h { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: var(--c-action-bg); color: var(--c-action-text);
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold); border-bottom: 1px solid color-mix(in srgb, var(--c-action) 25%, transparent); }
+.decision__h .ui-icon { color: var(--c-action); }
+.decision__tag { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-on-action); background: var(--c-action);
+  padding: 1px 9px; border-radius: var(--radius-pill); }
+.decision__body { padding: 14px; }
+.as { font-size: var(--fs-sm); margin-bottom: 4px; }
+.decision__body :deep(.ui-field) { margin-bottom: 0; }
+.owner { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; padding-top: 14px; border-top: 1px solid var(--c-separator); cursor: pointer; }
+.owner .b { display: block; } .owner .small { display: block; }
+/* the Approve button, not yet enabled: a faded version of itself, not dead grey */
+.decision .ui-btn.is-waiting:disabled { background: color-mix(in srgb, var(--c-action) 12%, var(--c-surface)); color: var(--c-action-text); box-shadow: none; }
+.caption { display: flex; align-items: center; gap: 6px; margin: 9px 2px 12px; font-size: var(--fs-xs); }
+.caption.ok { color: var(--c-ok-text); } .caption.ok .ui-icon { color: var(--c-ok); }
+.caption.dim { color: var(--c-text-3); } .caption.dim .ui-icon { color: var(--c-text-3); }
+/* Reject: quiet, never competes with Approve */
+.reject { color: var(--c-text-2); }
+.reject:hover:not(:disabled) { background: var(--c-bad-bg); color: var(--c-bad-text); }
+.cmt { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--c-separator); }
+/* phones: keep the decision in reach while scrolling the evidence */
+@media (max-width: 640px) { .decision { position: sticky; bottom: 0; z-index: 2; } }
+.alt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; margin-top: 6px; background: var(--c-fill); }
+.alt.sel { background: var(--c-primary-tint); box-shadow: inset 0 0 0 1px var(--c-primary); }
 .alt.blocked { opacity: 0.6; cursor: not-allowed; }
 .alt input { margin-top: 4px; }
 .block { display: block; }

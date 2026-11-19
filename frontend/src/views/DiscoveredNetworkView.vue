@@ -1,0 +1,99 @@
+<script setup>
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { usePolling } from "@/composables/usePolling";
+import { api } from "@/lib/api";
+import { ago } from "@/lib/format";
+import { useUiStore } from "@/stores/ui";
+
+const ui = useUiStore();
+const route = useRoute();
+const router = useRouter();
+const scanOpen = ref(false);
+const authorised = ref(false);
+const scanning = ref(false);
+const hosts = computed(() => d.value?.summary.listening_on || []);
+async function requestScan() {
+  scanning.value = true;
+  try {
+    await Promise.all(hosts.value.map((h) => api.hosts.netscan(h)));
+    ui.toast("Scan requested. Results appear within a minute.");
+    scanOpen.value = false; authorised.value = false;
+  } catch (e) {
+    ui.toast(e.message);
+  } finally {
+    scanning.value = false;
+  }
+}
+const view = ref(["network", "service", "org"].includes(route.query.view) ? route.query.view : "network");
+watch(view, (v) => { router.replace({ query: v === "network" ? {} : { view: v } }); load(); });
+const d = ref(null);
+const error = ref("");
+async function load() {
+  try { d.value = await api.network.discovered(view.value); error.value = ""; } catch (e) { error.value = e.message; }
+}
+usePolling(load, 20000);
+
+const VIEWS = [{ value: "network", label: "Network" }, { value: "service", label: "Service" }, { value: "org", label: "Owner" }];
+const GLYPH = { gateway: "router", connected: "server", "virtual machine": "vm", container: "inc_ctr_cpu", device: "device", "random MAC": "device" };
+const KIND = { gateway: "Gateway", connected: "On RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Random MAC" };
+const sub = (i) => [i.name && i.name !== i.ip ? i.ip : null, i.vendor || (i.kind === "connected" ? null : "vendor unknown"),
+  i.services?.length ? `runs ${i.services.slice(0, 3).join(", ")}${i.services.length > 3 ? " …" : ""}` : null,
+  i.talks_with?.length ? `talks with ${i.talks_with.join(", ")}` : null].filter(Boolean).join(" · ");
+const meta = (i) => [i.mac, i.last_seen ? `heard ${ago(i.last_seen)}` : null].filter(Boolean).join(" · ");
+const health = (i) => (i.kind === "connected" ? { tone: "ok", label: "On RadarOps" } : i.kind === "gateway" ? { tone: "info", label: "Gateway" }
+  : { tone: "neutral", label: "Not monitored", value: KIND[i.kind] || i.kind });
+const COUNT = { gateway: ["gateway", "gateways"], connected: ["on RadarOps", "on RadarOps"], "virtual machine": ["virtual machine", "virtual machines"],
+  container: ["container", "containers"], device: ["device", "devices"], "random MAC": ["random MAC", "random MACs"] };
+const counts = (g) => Object.entries(g.counts).map(([k, n]) => `${n} ${(COUNT[k] || [k, k])[n === 1 ? 0 : 1]}`).join(" · ");
+const monitor = (i) => router.push({ path: "/connect/computer", query: { address: i.ip, names: i.name || i.ip } });
+const empty = computed(() => d.value && !d.value.groups.length);
+</script>
+<template>
+  <div class="page">
+    <UiPageHeader eyebrow="Fleet" title="Fleet list"
+                  subtitle="Every machine across your networks, as a list. By default the agent only listens to the announcements each machine makes; use “Scan a segment” to also find the quiet ones on a network you are authorised to scan.">
+      <UiButton v-can="'fleet.scan'" v-if="hosts.length" variant="tint" icon="search" @click="scanOpen = true">Scan a segment</UiButton>
+      <UiButton icon="flowchart" to="/network">Map</UiButton>
+      <UiButton variant="tint" icon="cube" to="/network/3d">3D</UiButton>
+    </UiPageHeader>
+    <UiSheet v-model="scanOpen" title="Scan a segment once">
+      <p class="muted">By default RadarOps only listens. This asks each connected server ({{ hosts.join(", ") }}) to send one round of ARP requests across <b>its own network segment</b> to find machines that stay quiet. It never touches another network and never probes a service port.</p>
+      <p class="muted mt-2">Only do this on a network you are authorised to scan. On a shared network, get the owner's permission first.</p>
+      <div class="row mt"><UiSwitch v-model="authorised" label="I am authorised to scan this network" /><span>I am authorised to scan this network</span></div>
+      <template #footer>
+        <UiButton variant="plain" @click="scanOpen = false">Cancel</UiButton>
+        <UiButton :disabled="!authorised || scanning" @click="requestScan">{{ scanning ? "Requesting…" : "Scan once" }}</UiButton>
+      </template>
+    </UiSheet>
+    <div class="bar">
+      <UiSegmented v-model="view" :options="VIEWS" label="Group by" />
+      <span v-if="d" class="muted small">{{ d.summary.machines }} machines · {{ d.summary.segments }} segment{{ d.summary.segments === 1 ? "" : "s" }} · listening on {{ d.summary.listening_on.join(", ") || "-" }}</span>
+    </div>
+    <p v-if="error" class="bad small">{{ error }}</p>
+    <UiSkeletonPage v-if="!d && !error" :header="false" :rows="8" />
+    <UiEmpty v-if="empty">No segment yet. Connect a Linux server from Add a host: its agent starts listening within a minute.</UiEmpty>
+    <section v-for="g in d?.groups || []" :key="g.title" class="group">
+      <div class="ghead">
+        <b>{{ g.title }}</b>
+        <span v-if="g.gateway" class="muted small">gateway {{ g.gateway }} · heard by {{ g.seen_by.join(", ") }}</span>
+        <span class="counts">{{ counts(g) }}</span>
+      </div>
+      <UiList>
+        <UiResourceRow v-for="i in g.items" :key="`${g.title}-${i.ip}`" :title="i.name || i.ip" :subtitle="sub(i)" :meta="meta(i)"
+                       :glyph="GLYPH[i.kind] || 'device'" :to="i.aiops_host ? `/computers/${i.aiops_host}` : undefined"
+                       :tone="i.kind === 'connected' ? 'ok' : undefined">
+          <UiButton v-can="'fleet.connect'" v-if="!i.aiops_host && i.kind !== 'gateway'" size="sm" variant="tint" icon="add" @click="monitor(i)">Monitor</UiButton>
+          <UiHealth v-bind="health(i)" />
+        </UiResourceRow>
+      </UiList>
+    </section>
+  </div>
+</template>
+<style scoped>
+.bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.group { margin-bottom: 22px; }
+.ghead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 0 2px 8px; }
+.ghead b { font-size: var(--fs-lg); }
+.counts { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-3); }
+</style>

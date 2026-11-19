@@ -29,9 +29,22 @@ DEFAULT_SETTINGS = {
     "cpu_threshold": "70",
     "mem_threshold": "90",
     "disk_threshold": "90",
+    "log_err_threshold": "20",    # error log lines/min, while a service's normal is still being learned
+    "ccpu_threshold": "90",       # one container's CPU % of its machine, while learning
+    "cmem_threshold": "90",
     "auth_fail_per_min": "40",
+    # how far from normal counts as a problem: low (fewer alerts) | normal | high (catch more)
+    "sensitivity": "normal",
+    "cloud_sync_s": "300",
+    # Insights: what an hour of disruption costs the business, and how long a root cause takes by hand
+    "downtime_cost_per_hour": "10000",
+    "manual_rca_minutes": "45",
+    "currency": "THB",       # how often every connected cloud account is re-read
     "verify_after_s": "60",
     # the platform's own containers are not part of the monitored application
+    # network discovery: addresses of real switches/routers to poll over SNMP (lab nodes are found by label)
+    "net_devices": "",
+    "net_snmp_community": "public",
     "discovery_ignore_containers": "aiops-api,ollama,prometheus,loki,tempo,grafana,otel-collector,node-exporter,postgres,loadgen",
 }
 

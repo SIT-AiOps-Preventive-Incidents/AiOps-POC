@@ -9,7 +9,7 @@ const color = (d) => (d.profile === "bad" ? "var(--c-bad)" : d.author.startsWith
 </script>
 <template>
   <div class="page">
-    <UiPageHeader title="Deployments" subtitle="Versions and commits reported by CI. The AI uses them to tie a problem to the change behind it." />
+    <UiPageHeader eyebrow="Watch" title="Deployments" subtitle="Versions and commits reported by CI. The AI uses them to tie a problem to the change behind it." />
     <UiList>
       <UiListRow v-for="d in rows" :key="d.id" :title="`${d.service} v${d.version} · ${d.commit_hash}`" :subtitle="`${d.author} · ${d.message}`">
         <template #leading><UiAppTile icon="branch" :color="color(d)" /></template>
