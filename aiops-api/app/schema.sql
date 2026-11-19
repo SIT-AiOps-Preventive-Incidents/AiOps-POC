@@ -375,4 +375,52 @@ CREATE TABLE IF NOT EXISTS playbook_escalations (
   playbook_id INT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
   ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (incident_id, playbook_id)
+-- Release 2.0: sign-in and access. People sign in with a password or single sign-on (OpenID Connect); a role's
+-- permissions are the ticks of the matrix in role_permissions (rules in app/rbac.py). Sessions keep only a hash.
+CREATE TABLE IF NOT EXISTS roles (
+  id          TEXT PRIMARY KEY,
+  label       TEXT NOT NULL,
+  builtin     BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id     TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission  TEXT NOT NULL,
+  PRIMARY KEY (role_id, permission)
+);
+CREATE TABLE IF NOT EXISTS users (
+  id             SERIAL PRIMARY KEY,
+  email          TEXT NOT NULL UNIQUE,
+  name           TEXT NOT NULL DEFAULT '',
+  role_id        TEXT NOT NULL REFERENCES roles(id),
+  password_hash  TEXT,                              -- NULL: single sign-on only
+  sso_issuer     TEXT,
+  sso_subject    TEXT,
+  active         BOOLEAN NOT NULL DEFAULT true,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_login_at  TIMESTAMPTZ,
+  UNIQUE (sso_issuer, sso_subject)
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash  TEXT PRIMARY KEY,                     -- SHA-256 of the cookie; the token itself is never stored
+  user_id     INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at  TIMESTAMPTZ NOT NULL,
+  ip          TEXT,
+  user_agent  TEXT,
+  via         TEXT NOT NULL DEFAULT 'password' CHECK (via IN ('password', 'sso'))
+);
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS sso_pending (
+  state       TEXT PRIMARY KEY,
+  nonce       TEXT NOT NULL,
+  verifier    TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS access_log (
+  id      SERIAL PRIMARY KEY,
+  ts      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  actor   TEXT,
+  action  TEXT NOT NULL,
+  detail  JSONB NOT NULL DEFAULT '{}'
 );

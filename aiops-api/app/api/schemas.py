@@ -74,7 +74,7 @@ class DeploymentIn(BaseModel):
 class ApprovalIn(BaseModel):
     decision: Literal["approve", "reject"]
     candidate_id: int | None = None
-    approver: str = Field(min_length=1, max_length=80)
+    approver: str = Field(default="", max_length=80)   # ignored when someone is signed in: the session names them
     owner_confirmed: bool = False
     comment: str = ""
 

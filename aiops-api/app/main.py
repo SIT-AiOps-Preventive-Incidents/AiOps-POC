@@ -12,9 +12,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agent, autoreg, cloudinv, datasets, db, detector, escalation, remote, repo, seed, synthetic
+from . import agent, auth_store, autoreg, cloudinv, datasets, db, detector, escalation, remote, repo, seed, synthetic
 from .netdisco import service as netdisco
-from .api import errors, routes_automation, routes_checks, routes_cloud, routes_connect, routes_hosts, routes_incidents, routes_insights, routes_map, routes_network, routes_platform, routes_services
+from .api import errors, guard, routes_auth, routes_automation, routes_checks, routes_cloud, routes_connect, routes_hosts, routes_incidents, routes_insights, routes_map, routes_network, routes_platform, routes_services
 from .api.schemas import HostRegistration
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,7 @@ async def rotate_edge_logs():
 @asynccontextmanager
 async def lifespan(_):
     db.init()
+    auth_store.seed()   # built-in roles + their default ticks, and the first admin
     repo.seed_skills(agent.SKILLS)
     if seed.migrate_sqlite():
         logging.info("imported legacy SQLite data")
@@ -59,7 +60,8 @@ async def lifespan(_):
 app = FastAPI(title="AIOps One API", version="1.0.0", lifespan=lifespan,
               description="Agentic root cause analysis: services, hosts, service map, incidents, approvals.")
 errors.install(app)
-for r in (routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network, routes_checks, routes_connect, routes_cloud, routes_insights, routes_automation):
+guard.install(app)   # every request: which permission it needs, and whether the signed-in role has it
+for r in (routes_auth, routes_platform, routes_services, routes_hosts, routes_map, routes_incidents, routes_network, routes_checks, routes_connect, routes_cloud, routes_insights, routes_automation):
     app.include_router(r.router)
 
 
