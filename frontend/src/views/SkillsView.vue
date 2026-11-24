@@ -131,7 +131,7 @@ async function setSetEnabled(s, on) { await api.skillSets.update(s.id, { enabled
     <UiSheet :model-value="!!editing" :title="isBuiltin ? editing?.name : editing?.id ? `Edit ${editing.name}` : 'New skill'" :width="640"
              @update:model-value="editing = null">
       <template v-if="editing">
-        <p v-if="isBuiltin" class="sub">The tools of a built-in skill are part of RadarOps. What you can change: whether it runs, and what the AI should keep in mind.</p>
+        <p v-if="isBuiltin" class="sub">The tools of a built-in skill are part of SIT-AIOPS. What you can change: whether it runs, and what the AI should keep in mind.</p>
         <template v-else>
           <UiField v-model="form.name" label="Name" placeholder="e.g. Payments errors" />
           <UiField v-model="form.description" label="What it is for" hint="optional" placeholder="Card payments failing or slow" />

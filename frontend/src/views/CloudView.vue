@@ -111,7 +111,7 @@ const providerLabel = (id) => providers.value.find((p) => p.id === id)?.label ||
           </div>
         </div>
         <aside class="least">
-          <p class="least__k">Give RadarOps only this</p>
+          <p class="least__k">Give SIT-AIOPS only this</p>
           <p class="least__v">{{ spec.role }}.</p>
           <p class="least__k">What it reads</p>
           <p class="least__v">The list of VMs, their power state, addresses, network and size. It never starts, stops or changes anything.</p>

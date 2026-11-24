@@ -42,7 +42,7 @@ const monitorMany = () => {
 const VW = 1180, PAD = 20, CHIP_W = 176, CHIP_H = 34, GAP = 10, LANE_HEAD = 34, LANE_PAD = 12, BOX_H = 46, HUB_W = 210;
 const short = (s) => (s || "").replace(/\.sit\.kmutt\.ac\.th$/i, "");
 const GROUPS = [{ value: "network", label: "Network" }, { value: "location", label: "Location" }, { value: "owner", label: "Owner" }, { value: "status", label: "Status" }, { value: "coverage", label: "Monitoring" }];
-const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on RadarOps", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Device", service: "Service",
+const KIND = { internet: "Internet", gateway: "Gateway", hub: "Network", connected: "Server on SIT-AIOPS", "virtual machine": "Virtual machine", container: "Container", device: "Device", "random MAC": "Device", service: "Service",
   "cloud instance": "Cloud VM", cloud: "Cloud account" };
 const isProblem = (s) => ["problem", "down", "error"].includes(s);
 const statusDot = (m) => (isProblem(m.status) || ["agent_silent", "error"].includes(m.cloud?.verdict?.code || m.cloud?.verdict) ? "bad"
@@ -72,10 +72,10 @@ function groupKey(m) {
   if (group.value === "location") return m.cloud?.account ? `Cloud · ${m.cloud.account}` : "On-premises networks";
   if (group.value === "owner") return m.owner || "No owner";
   if (group.value === "status") return isProblem(m.status) ? "Needs attention" : m.monitored ? "Healthy · monitored" : "Discovered · not monitored";
-  if (group.value === "coverage") return m.monitored ? "Monitored by RadarOps" : "Not monitored yet";
+  if (group.value === "coverage") return m.monitored ? "Monitored by SIT-AIOPS" : "Not monitored yet";
   return m.cidr;
 }
-const KEY_RANK = { "Needs attention": 0, "Healthy · monitored": 1, "Monitored by RadarOps": 1, "Discovered · not monitored": 2, "Not monitored yet": 2, "No owner": 9 };
+const KEY_RANK = { "Needs attention": 0, "Healthy · monitored": 1, "Monitored by SIT-AIOPS": 1, "Discovered · not monitored": 2, "Not monitored yet": 2, "No owner": 9 };
 
 // each number is a door: the drawing on its right says where it goes, and the card goes there
 const STATS = computed(() => [
@@ -155,7 +155,7 @@ const monitor = () => router.push({ path: "/connect/computer", query: { address:
     <section v-if="recs && recs.recommendations.length" v-can="'fleet.connect'" class="recs">
       <div class="recs-head">
         <b>Suggested to monitor next</b>
-        <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · RadarOps ranked them by what it would learn</span>
+        <span class="muted small">{{ recs.count }} machine{{ recs.count === 1 ? "" : "s" }} worth connecting · SIT-AIOPS ranked them by what it would learn</span>
         <span v-if="picked.size" class="bulk-btn">
           <UiButton size="sm" variant="ghost" icon="dismiss" @click="picked = new Set()">Clear selection</UiButton>
           <UiButton v-can="'fleet.connect'" size="sm" icon="add" @click="monitorMany">Monitor {{ picked.size }} selected</UiButton>

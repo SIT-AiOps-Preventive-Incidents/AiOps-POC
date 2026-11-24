@@ -38,7 +38,7 @@ async function submit() {
 <template>
   <div class="login">
     <main class="box">
-      <div class="brand"><UiBrandMark :size="44" /><span>RadarOps</span></div>
+      <div class="brand"><UiBrandMark :size="44" /><span>SIT-AIOPS</span></div>
       <h1>{{ t("Sign in", "เข้าสู่ระบบ") }}</h1>
       <p class="sub">{{ t("Use your organisation account, or the email and password an admin gave you.", "ใช้บัญชีขององค์กร หรืออีเมลและรหัสผ่านที่ผู้ดูแลให้ไว้") }}</p>
 

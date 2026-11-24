@@ -1,13 +1,13 @@
 <template>
   <div class="page">
     <UiPageHeader eyebrow="Setup" title="Connect something to watch"
-                  subtitle="RadarOps watches what you connect, learns what normal looks like, and investigates on its own when something breaks. Start by connecting one thing — pick whichever you have." />
+                  subtitle="SIT-AIOPS watches what you connect, learns what normal looks like, and investigates on its own when something breaks. Start by connecting one thing — pick whichever you have." />
     <div class="choices">
       <router-link to="/connect/computer" class="choice choice--primary">
         <span class="choice__tag">Most people start here</span>
         <span class="gt"><UiGlyph name="laptop" :size="34" /></span>
         <b>A computer or server</b>
-        <span class="muted">Run one command on it (or let RadarOps sign in and do it). You get CPU, memory and disk, and every service on it shows up. On Linux those services are traced automatically — no code change.</span>
+        <span class="muted">Run one command on it (or let SIT-AIOPS sign in and do it). You get CPU, memory and disk, and every service on it shows up. On Linux those services are traced automatically — no code change.</span>
         <span class="choice__get">You get: health · services · auto-tracing</span>
         <span class="logos"><UiLogo v-for="[l, a] in [['apple', 'macOS'], ['ubuntu', 'Ubuntu'], ['debian', 'Debian'], ['redhat', 'Red Hat'], ['linux', 'Linux'], ['docker', 'Docker']]" :key="l" :name="l" :size="26" :alt="a" /></span>
         <span class="go">1 command — connect a computer ›</span>
@@ -23,23 +23,23 @@
       <router-link to="/cloud?add=1" class="choice">
         <span class="gt"><UiGlyph name="cloud" :size="34" /></span>
         <b>A cloud account</b>
-        <span class="muted">Rent your servers? Give RadarOps a read-only credential and every VM in the account appears on the Fleet, with what the cloud and our agent see together. Proxmox (GIST Starships Cloud), OpenStack, VMware Cloud Director, CloudStack, AWS, Azure, Google Cloud.</span>
+        <span class="muted">Rent your servers? Give SIT-AIOPS a read-only credential and every VM in the account appears on the Fleet, with what the cloud and our agent see together. Proxmox (GIST Starships Cloud), OpenStack, VMware Cloud Director, CloudStack, AWS, Azure, Google Cloud.</span>
         <span class="choice__get">You get: every VM · power state · addresses · changes</span>
         <span class="go">Read-only — connect a cloud ›</span>
       </router-link>
       <router-link to="/connect/website" class="choice">
         <span class="gt"><UiGlyph name="globe" :size="34" /></span>
         <b>A website, from the outside</b>
-        <span class="muted">Can't install anything? Just give a URL. RadarOps calls it every 10 seconds like a browser, learns its normal speed, and opens an incident when it slows down or stops answering.</span>
+        <span class="muted">Can't install anything? Just give a URL. SIT-AIOPS calls it every 10 seconds like a browser, learns its normal speed, and opens an incident when it slows down or stops answering.</span>
         <span class="choice__get">You get: uptime · response time</span>
         <span class="go">No install — watch a URL ›</span>
       </router-link>
     </div>
     <div class="section-label">Good to know</div>
     <UiList plain>
-      <UiListRow title="Outbound only" subtitle="Your machines send data to RadarOps. Nothing needs to be opened on them." />
+      <UiListRow title="Outbound only" subtitle="Your machines send data to SIT-AIOPS. Nothing needs to be opened on them." />
       <UiListRow title="Network" :subtitle="`They must reach this server on ports 8080 and 4318 (KMUTT network or VPN).`" />
-      <UiListRow title="Safety" subtitle="RadarOps never runs anything on a connected computer. Automatic fixes are only for registered services and always need the owner's approval." />
+      <UiListRow title="Safety" subtitle="SIT-AIOPS never runs anything on a connected computer. Automatic fixes are only for registered services and always need the owner's approval." />
     </UiList>
   </div>
 </template>
