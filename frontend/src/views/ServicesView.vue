@@ -8,7 +8,7 @@ usePolling(() => cat.loadServices(), 10000);
 </script>
 <template>
   <div class="page">
-    <UiPageHeader eyebrow="Watch" title="Services" subtitle="Everything RadarOps watches. Apps that send data are added on their own, within a minute.">
+    <UiPageHeader eyebrow="Watch" title="Services" subtitle="Everything SIT-AIOPS watches. Apps that send data are added on their own, within a minute.">
       <UiButton icon="add" to="/connect">Connect</UiButton>
     </UiPageHeader>
     <UiSkeletonPage v-if="!cat.loaded" :header="false" :rows="7" />

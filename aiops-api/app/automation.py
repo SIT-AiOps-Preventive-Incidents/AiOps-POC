@@ -115,7 +115,7 @@ def validate_runbook(b: dict) -> list[str]:
     if not str(b.get("service") or "").strip():
         errs.append("service (or host) is required: the runbook is found by kind + service + fix")
     if b.get("action_type") not in FIX_TYPES:
-        errs.append(f"'{b.get('action_type')}' is not a fix RadarOps can dry-run")
+        errs.append(f"'{b.get('action_type')}' is not a fix SIT-AIOPS can dry-run")
     steps = [s for s in b.get("steps") or [] if str(s).strip()]
     if not steps:
         errs.append("add at least one step")

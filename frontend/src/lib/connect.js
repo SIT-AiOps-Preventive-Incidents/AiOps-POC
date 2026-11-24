@@ -69,7 +69,7 @@ export function progress(job) {
 // "Remove agent": the platform asks, the agent removes itself on its next report (about a minute), then the
 // server disappears from RadarOps. Same ring as connecting; failed when the agent has not answered in 2 minutes.
 export const REMOVAL_STEPS = [["ask", "Ask the agent to remove itself"], ["agent", "Agent removes the collector, tracer and its key"],
-  ["gone", "Removed from RadarOps"]];
+  ["gone", "Removed from SIT-AIOPS"]];
 export function removal({ requestedAt, now = Date.now() / 1000, gone = false }) {
   if (!requestedAt) return null;
   const late = !gone && now - requestedAt > 120;

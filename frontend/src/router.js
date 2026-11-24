@@ -60,5 +60,5 @@ window.addEventListener("radarops:signed-out", () => {
   auth.me = null;
   router.replace({ path: "/login", query: { next: cur.fullPath } });
 });
-router.afterEach((to) => { document.title = to.meta.title ? `${to.meta.title} · RadarOps` : "RadarOps"; });
+router.afterEach((to) => { document.title = to.meta.title ? `${to.meta.title} · SIT-AIOPS` : "SIT-AIOPS"; });
 export default router;

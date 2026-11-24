@@ -221,8 +221,8 @@ function detail(e) {
       <div v-else class="signin">
         <div class="card">
           <div class="head"><h3>{{ t("Single sign-on", "Single sign-on") }}</h3><UiSwitch v-model="ssoForm.sso_enabled" :label="t('Use single sign-on', 'ใช้ single sign-on')" /></div>
-          <p class="sub">{{ t("OpenID Connect: Microsoft Entra ID, Google Workspace, Keycloak, Okta, Dex ... Register RadarOps there with the redirect URL below.",
-                              "OpenID Connect: Microsoft Entra ID, Google Workspace, Keycloak, Okta, Dex ... ลงทะเบียน RadarOps ที่ผู้ให้บริการด้วย redirect URL ด้านล่าง") }}</p>
+          <p class="sub">{{ t("OpenID Connect: Microsoft Entra ID, Google Workspace, Keycloak, Okta, Dex ... Register SIT-AIOPS there with the redirect URL below.",
+                              "OpenID Connect: Microsoft Entra ID, Google Workspace, Keycloak, Okta, Dex ... ลงทะเบียน SIT-AIOPS ที่ผู้ให้บริการด้วย redirect URL ด้านล่าง") }}</p>
           <div class="redirect"><span class="mono small">{{ sso.redirect_uri }}</span><UiButton size="sm" variant="ghost" icon="copy" @click="copy(sso.redirect_uri)">{{ t("Copy", "คัดลอก") }}</UiButton></div>
           <div class="two">
             <UiField v-model="ssoForm.sso_issuer" mono :label="t('Issuer URL', 'Issuer URL')" placeholder="https://accounts.google.com" />
@@ -246,7 +246,7 @@ function detail(e) {
           <div v-for="(r, i) in ssoForm.sso_role_rules" :key="i" class="rule">
             <select v-model="r.claim" class="sel" :aria-label="t('Claim', 'Claim')"><option value="groups">groups</option><option value="roles">roles</option><option value="email">email</option><option value="hd">hd (Google Workspace domain)</option></select>
             <span class="muted">{{ t("contains", "มีค่า") }}</span>
-            <input v-model="r.value" class="inp mono" :placeholder="r.claim === 'email' ? 'name@company.com' : r.claim === 'hd' ? 'example.com' : 'radarops-admins'" :aria-label="t('Value', 'ค่า')">
+            <input v-model="r.value" class="inp mono" :placeholder="r.claim === 'email' ? 'name@company.com' : r.claim === 'hd' ? 'example.com' : 'sit-aiops-admins'" :aria-label="t('Value', 'ค่า')">
             <span class="muted">→</span>
             <select v-model="r.role" class="sel" :aria-label="t('Role', 'บทบาท')"><option v-for="ro in roles?.roles || []" :key="ro.id" :value="ro.id">{{ ro.label }}</option></select>
             <UiButton size="sm" variant="ghost" icon="dismiss" :aria-label="t('Remove rule', 'ลบกฎ')" @click="ssoForm.sso_role_rules.splice(i, 1)" />

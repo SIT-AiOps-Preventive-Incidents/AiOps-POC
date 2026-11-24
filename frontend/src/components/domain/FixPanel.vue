@@ -55,7 +55,7 @@ async function decide(decision) {
         <div class="will__t"><UiIcon name="play" :size="13" />If you approve</div>
         <p v-if="will.manual" class="small">Nothing runs automatically. You confirm that you will follow the runbook yourself.</p>
         <template v-else>
-          <p class="small">RadarOps will run:</p>
+          <p class="small">SIT-AIOPS will run:</p>
           <pre class="will__cmd">{{ will.runs.join("\n") || chosen.label }}</pre>
           <p v-if="will.impact" class="small"><span class="muted">Who notices:</span> {{ will.impact }}</p>
         </template>
@@ -79,7 +79,7 @@ async function decide(decision) {
             {{ approveLabel(chosen) }}</UiButton>
           <p :class="['caption', canApprove ? 'ok' : 'dim']">
             <UiIcon :name="canApprove ? 'shield' : 'alert'" :size="13" />
-            {{ canApprove ? "RadarOps re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : "Turn on “I’m the owner” to enable approval." }}
+            {{ canApprove ? "SIT-AIOPS re-checks the dry run right before it runs." : !chosen.dry_run?.ok ? "The dry run failed, so this fix cannot be approved." : "Turn on “I’m the owner” to enable approval." }}
           </p>
           <UiButton variant="ghost" block icon="dismiss" class="reject" :loading="busy === 'reject'" @click="decide('reject')">Reject this fix</UiButton>
           <UiField v-model="comment" class="cmt" label="Comment (optional)" placeholder="Why approve or reject" />

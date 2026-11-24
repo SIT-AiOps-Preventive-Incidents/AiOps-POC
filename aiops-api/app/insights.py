@@ -28,7 +28,7 @@ def compute(incidents: list[dict], feedback: list[dict], runbook_uses: int, unmo
             settings: dict, now: float) -> list[dict]:
     if not incidents:
         return [{"id": "no_data", "tone": "neutral", "value": "–", "headline": "No incidents yet",
-                 "detail": "Insights appear once RadarOps has seen a few incidents. Run a demo scenario to see them now.",
+                 "detail": "Insights appear once SIT-AIOPS has seen a few incidents. Run a demo scenario to see them now.",
                  "action": {"label": "Demo scenarios", "to": "/scenarios"}, "basis": "Nothing to count yet."}]
     cost_h = float(settings.get("downtime_cost_per_hour") or 0)
     manual_min = float(settings.get("manual_rca_minutes") or 45)

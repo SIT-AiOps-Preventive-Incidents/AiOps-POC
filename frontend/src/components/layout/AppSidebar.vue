@@ -56,9 +56,9 @@ const theme = computed({ get: () => ui.prefs.theme || "dark", set: (v) => ui.set
 </script>
 <template>
   <aside :class="['sidebar', { open: ui.navOpen }]">
-    <router-link to="/" class="brand" aria-label="RadarOps overview">
+    <router-link to="/" class="brand" aria-label="SIT-AIOPS overview">
       <UiBrandMark :size="32" />
-      <b>RadarOps</b><span class="brand__tag">R2</span>
+      <b>SIT-AIOPS</b><span class="brand__tag">R2</span>
     </router-link>
     <nav @click="ui.navOpen = false">
       <template v-for="(g, i) in NAV" :key="i">
