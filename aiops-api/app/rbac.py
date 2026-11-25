@@ -142,6 +142,7 @@ RULES: list[tuple[tuple[str, ...] | str, str, str]] = [
     # demo
     (_MUTATE, r"/api/v1/(scenarios|test-requests)(/.*)?", "demo.run"),
     # reading
+    (("POST",), r"/api/v1/page-summary", "read"),
     (("GET", "HEAD"), r"/(docs|redoc|openapi\.json)(/.*)?", "read"),
     (("GET", "HEAD"), r"/api/.*", "read"),
 ]

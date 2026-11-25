@@ -1,11 +1,13 @@
 <script setup>
 import { ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
-const rows = ref([]);
+const rows = ref(null);
 usePolling(async () => { rows.value = await api.deployments.list(); }, 15000);
 const color = (d) => (d.profile === "bad" ? "var(--c-bad)" : d.author.startsWith("aiops") ? "var(--c-ok)" : "var(--c-primary)");
+usePageFacts(() => ({ recent_deployments: rows.value?.length }));
 </script>
 <template>
   <div class="page">

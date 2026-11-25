@@ -1,10 +1,12 @@
 <script setup>
 import { ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
-const rows = ref([]);
+const rows = ref(null);
 usePolling(async () => { rows.value = await api.notifications.list(); }, 10000);
+usePageFacts(() => ({ recent_notifications: rows.value?.length }));
 </script>
 <template>
   <div class="page">
@@ -15,7 +17,7 @@ usePolling(async () => { rows.value = await api.notifications.list(); }, 10000);
         <template #leading><UiAppTile logo="teams" :status="n.status.startsWith('sent') ? 'ok' : undefined" /></template>
         <template #accessory>{{ ago(n.ts) }}</template>
       </UiListRow>
-      <UiEmpty v-if="!rows.length">Nothing sent yet</UiEmpty>
+      <UiEmpty v-if="rows && !rows.length">Nothing sent yet</UiEmpty>
     </UiList>
   </div>
 </template>

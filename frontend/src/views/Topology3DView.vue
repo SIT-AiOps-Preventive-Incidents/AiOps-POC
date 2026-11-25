@@ -3,6 +3,7 @@
 // click an object for its details, double-click to fly to it. Packets travel along the lines between services
 // that talk to each other.
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { useRouter } from "vue-router";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -402,6 +403,11 @@ onBeforeUnmount(() => {
 });
 const toggleServices = () => { showServices.value = !showServices.value; build(); };
 const open = () => selected.value?.link && router.push(selected.value.link);
+usePageFacts(() => graph.value ? {
+  known_machines: graph.value.nodes.filter((n) => n.id.startsWith("host:") || n.id.startsWith("ip:") || n.kind === "cloud instance").length,
+  networks: counts.value.hub ?? 0,
+  ...(error.value ? { stale_data: 1 } : {}),
+} : {});
 </script>
 <template>
   <div class="page page--wide">

@@ -1,9 +1,16 @@
 <script setup>
 import { usePolling } from "@/composables/usePolling";
+import { usePageFacts } from "@/composables/usePageFacts";
+import { ref } from "vue";
+import { rollup } from "@/lib/insight";
 import { HEALTH_TONE, osLogo } from "@/lib/vocab";
 import { useCatalogStore } from "@/stores/catalog";
 const cat = useCatalogStore();
-usePolling(() => cat.loadHosts(), 10000);
+const hostsLoaded = ref(false);
+usePolling(async () => { await cat.loadHosts(); hostsLoaded.value = true; }, 10000);
+usePageFacts(() => hostsLoaded.value ? {
+  monitored_hosts: cat.hosts.length, hosts_with_issues: rollup(cat.hosts).affected,
+} : {});
 </script>
 <template>
   <div class="page">

@@ -3,6 +3,8 @@
 // thing you watch (the AI, fixes, services, hosts, the fleet), each with the same anatomy - name, what it is, a
 // status line, one big measure and one bar. Below: the queue of incidents and the few switches that matter.
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
+import { overviewFacts, overviewSnapshot } from "@/lib/dashboard";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
@@ -101,6 +103,7 @@ const kindLabel = (i) => INCIDENT_KIND[i.kind]?.label || i.title;
 const entityOf = (i) => i.entity_name || i.entity;
 const SENS = computed(() => [{ value: "low", label: t("Fewer alerts", "แจ้งน้อย") }, { value: "normal", label: t("Normal", "ปกติ") },
   { value: "high", label: t("Catch more", "จับมากขึ้น") }]);
+usePageFacts(() => app.overview ? overviewFacts(overviewSnapshot(app.overview, app.lastLoaded / 1000), app.error) : {});
 </script>
 <template>
   <div class="page page--wide">

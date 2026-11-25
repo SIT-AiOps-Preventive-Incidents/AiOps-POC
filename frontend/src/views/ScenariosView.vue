@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { useRouter } from "vue-router";
 import { api } from "@/lib/api";
 import { useUiStore } from "@/stores/ui";
@@ -51,6 +52,9 @@ async function run(id) {
     if (id !== "reset") setTimeout(() => router.push(id.startsWith("net_") ? "/network" : "/problems"), 900);
   } catch (e) { ui.toast(e.message); } finally { busy.value = ""; }
 }
+usePageFacts(() => ({ available_scenarios: listed.value?.filter((id) => id !== "reset").length,
+  ...(busy.value ? { demo_starting: 1 } : {}),
+}));
 </script>
 <template>
   <div class="page">

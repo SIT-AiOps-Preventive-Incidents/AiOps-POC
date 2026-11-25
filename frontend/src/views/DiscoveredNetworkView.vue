@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { useRoute, useRouter } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -48,6 +49,10 @@ const COUNT = { gateway: ["gateway", "gateways"], connected: ["on SIT-AIOPS", "o
 const counts = (g) => Object.entries(g.counts).map(([k, n]) => `${n} ${(COUNT[k] || [k, k])[n === 1 ? 0 : 1]}`).join(" · ");
 const monitor = (i) => router.push({ path: "/connect/computer", query: { address: i.ip, names: i.name || i.ip } });
 const empty = computed(() => d.value && !d.value.groups.length);
+usePageFacts(() => ({
+  known_machines: d.value?.summary?.machines, networks: d.value?.summary?.segments,
+  ...(scanning.value ? { discovery_requested: 1 } : {}), ...(error.value && d.value ? { stale_data: 1 } : {}),
+}));
 </script>
 <template>
   <div class="page">

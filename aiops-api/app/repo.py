@@ -412,6 +412,9 @@ def save_feedback(iid: int, score: int, rca_correct: bool, comment: str):
 def kpis() -> dict:
     r = db.one("""SELECT count(*) FILTER (WHERE status <> ALL(%s)) AS open,
         count(*) AS total, count(*) FILTER (WHERE status='awaiting_approval') AS awaiting_approval,
+        count(*) FILTER (WHERE status='analyzing') AS analyzing,
+        count(*) FILTER (WHERE status IN ('remediating', 'verifying')) AS fixing,
+        count(*) FILTER (WHERE status='remediation_failed') AS fix_failed,
         avg(extract(epoch FROM detected_at - started_at)) AS mttd_s,
         avg(extract(epoch FROM analyzed_at - detected_at)) AS mtta_s,
         avg(extract(epoch FROM resolved_at - detected_at)) FILTER (WHERE status='resolved') AS mttr_s,

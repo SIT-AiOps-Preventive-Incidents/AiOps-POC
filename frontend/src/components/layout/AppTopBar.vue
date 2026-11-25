@@ -3,6 +3,7 @@
 // and who is signed in (their menu: workspace, role, password, Access, sign out). The page title sits on the page.
 import { computed, onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
+import PageSummary from "@/components/layout/PageSummary.vue";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
@@ -37,8 +38,9 @@ async function savePassword() {
   <header class="topbar">
     <button class="topbar__menu" aria-label="Open menu" @click="ui.navOpen = !ui.navOpen"><UiIcon name="list" :size="22" /></button>
     <div class="spacer" />
+    <PageSummary />
     <button class="search" type="button" @click="openCmd" :aria-label="t('Search', 'ค้นหา')">
-      <UiIcon name="search" :size="16" /><span>{{ t("Search", "ค้นหา") }}</span><kbd>{{ isMac ? "⌘K" : "Ctrl K" }}</kbd>
+      <UiIcon name="search" :size="16" /><span class="search__label">{{ t("Search", "ค้นหา") }}</span><kbd>{{ isMac ? "⌘K" : "Ctrl K" }}</kbd>
     </button>
     <div class="guide">
       <div class="guide__t"><b>{{ t("Guide mode", "โหมดแนะนำ") }}</b><span>{{ t("Explain what each page shows", "อธิบายว่าแต่ละหน้าแสดงอะไร") }}</span></div>
@@ -80,7 +82,7 @@ async function savePassword() {
 .search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px 0 14px; border: 0; border-radius: 14px; background: var(--surface);
   box-shadow: var(--shadow-card); color: var(--c-text-3); cursor: pointer; }
 .search:hover { color: var(--c-text); }
-.search span { font-size: var(--fs-sm); }
+.search__label { font-size: var(--fs-sm); }
 .search kbd { font: 500 11px var(--font-mono, monospace); background: var(--c-fill); border-radius: 5px; padding: 1px 6px; color: var(--c-text-2); }
 .guide { display: flex; align-items: center; gap: 16px; height: 52px; padding: 0 12px 0 16px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card); }
 .guide__t { display: flex; flex-direction: column; line-height: 1.25; } .guide__t b { font-size: var(--fs-sm); } .guide__t span { font-size: 11.5px; color: var(--c-text-3); }
@@ -100,8 +102,10 @@ async function savePassword() {
 .who__item { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--c-text); font: inherit; font-size: var(--fs-sm);
   padding: 9px 10px; border-radius: var(--radius-md); cursor: pointer; text-decoration: none; }
 .who__item:hover { background: var(--c-fill); }
-.who__t { display: flex; flex-direction: column; line-height: 1.25; } .who__t span { font-size: 11.5px; color: var(--c-text-3); } .who__t b { font-size: var(--fs-sm); white-space: nowrap; }
+.who__t { display: flex; flex-direction: column; line-height: 1.25; } .who__t span { font-size: 11.5px; color: var(--c-text-3); } .who__t b { font-size: var(--fs-sm); white-space: nowrap; max-width: 144px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1280px) { .guide__t span, .who__t { display: none; } }
+@media (min-width: 761px) and (max-width: 1280px) { .search__label, .search kbd { display: none; } .search { min-width: 44px; padding-inline: 0; justify-content: center; } }
 @media (max-width: 980px) { .guide { display: none; } }
 @media (max-width: 760px) { .topbar { position: static; right: auto; padding: 0 12px; height: 56px; } .spacer { display: block; flex: 1; } .topbar__menu { display: block; } }
+@media (max-width: 480px) { .topbar { gap: 6px; padding-inline: 8px; } .topbar__menu, .search { min-width: 44px; min-height: 44px; } .search { padding-inline: 0; justify-content: center; } .search__label, .search kbd { display: none; } }
 </style>

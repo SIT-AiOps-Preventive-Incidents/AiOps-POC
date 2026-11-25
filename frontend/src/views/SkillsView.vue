@@ -6,6 +6,7 @@
  * part of the estate (pay-*, checkout ...).
  */
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { kindLabel, skillBody, skillForm, toggle } from "@/lib/automation";
@@ -63,6 +64,7 @@ async function saveSet() {
   } catch (e) { err.value = e.message; } finally { busy.value = false; }
 }
 async function setSetEnabled(s, on) { await api.skillSets.update(s.id, { enabled: on }); refresh(); }
+usePageFacts(() => ({ available_skills: skills.value?.length }));
 </script>
 <template>
   <div class="page page--wide">

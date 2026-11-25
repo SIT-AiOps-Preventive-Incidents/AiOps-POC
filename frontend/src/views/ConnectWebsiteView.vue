@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { ms, slug } from "@/lib/format";
@@ -42,6 +43,12 @@ const clock = (ts) => new Date(ts * 1000).toLocaleTimeString([], { hour12: false
 const tone = (c) => (c.state === "ok" ? "ok" : "bad");
 const answer = (c) => (c.status ? `HTTP ${c.status}` : c.error);
 const ok = (b) => (b ? "ok" : "neutral");
+usePageFacts(() => {
+  if (busy.value) return { connecting: 1 };
+  const latest = checks.value[0];
+  if (latest) return { [latest.state === "ok" ? "check_successful" : "check_failed"]: 1 };
+  return step.value > 1 ? { waiting_for_data: 1 } : {};
+});
 </script>
 <template>
   <div class="page page--narrow">

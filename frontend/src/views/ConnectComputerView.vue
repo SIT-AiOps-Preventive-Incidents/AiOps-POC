@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
@@ -111,6 +112,12 @@ const ne = ref({ name: "", address: "" });
 async function addNodeExporter() {
   try { await cat.addHost({ ...ne.value }); ui.toast("Server added. First data within 15 s."); } catch (e) { ui.toast(e.message); }
 }
+usePageFacts(() => {
+  if (busy.value || bulkBusy.value) return { connecting: 1 };
+  if (connected.value) return { sending_data: 1, discovered_services: services.value.length };
+  if (job.value?.state === "failed" || bulkStat.value.failed) return { connection_failed: 1 };
+  return job.value?.state === "done" ? { waiting_for_data: 1 } : {};
+});
 </script>
 <template>
   <div class="page page--narrow">

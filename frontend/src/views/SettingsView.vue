@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { api } from "@/lib/api";
 import { useUiStore } from "@/stores/ui";
 const ui = useUiStore();
@@ -23,6 +24,7 @@ async function testTeams() {
   const r = await api.notifications.test();
   ui.toast(`Teams: ${r.status}`);
 }
+usePageFacts(() => d.value ? { [d.value.settings.auto_analyze === "1" ? "auto_investigation_on" : "auto_investigation_off"]: 1 } : {});
 </script>
 <template>
   <div v-if="d" class="page page--narrow">

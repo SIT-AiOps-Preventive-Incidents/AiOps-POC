@@ -2,6 +2,7 @@
 // Insights - what the incident history means for the business: cost, time saved, where the toil comes from, what is
 // waiting, what is unseen. Every number shows how it was worked out; the two assumptions are editable in Settings.
 import { ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import InsightCard from "@/components/domain/InsightCard.vue";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -9,6 +10,7 @@ const d = ref(null);
 const error = ref("");
 usePolling(async () => { try { d.value = await api.insights(); error.value = ""; } catch (e) { error.value = e.message; } }, 30000);
 const money = (v, cur) => `${{ THB: "฿", USD: "$", EUR: "€" }[cur] || ""}${Number(v || 0).toLocaleString()}`;
+usePageFacts(() => ({ findings: d.value?.findings?.length, ...(error.value && d.value ? { stale_data: 1 } : {}) }));
 </script>
 <template>
   <div class="page page--wide">
