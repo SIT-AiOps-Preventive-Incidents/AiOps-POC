@@ -6,6 +6,7 @@
  * its details, and connect the ones you do not monitor yet - straight from here.
  */
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { useRouter } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -139,6 +140,11 @@ const matches = computed(() => {
 const pick = (node) => (selected.value = node);
 const open = () => selected.value?.link && router.push(selected.value.link);
 const monitor = () => router.push({ path: "/connect/computer", query: { address: selected.value.cloud?.public_ip || selected.value.ip, names: selected.value.label } });
+usePageFacts(() => g.value ? {
+  known_machines: summary.value.total, monitored_hosts: summary.value.monitored,
+  hosts_with_issues: summary.value.problems, networks: summary.value.networks,
+  ...(error.value ? { stale_data: 1 } : {}),
+} : {});
 </script>
 <template>
   <div class="page page--wide">

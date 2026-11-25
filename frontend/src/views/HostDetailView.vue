@@ -1,5 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
+import { healthFact } from "@/lib/pageSummary";
 import { useRouter } from "vue-router";
 import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
@@ -46,6 +48,9 @@ async function removeAgent() {
 }
 async function forget() { await cat.removeHost(props.name); done(); }
 function done() { confirmRemove.value = false; ui.toast(`${props.name} removed`); router.push("/computers"); }
+usePageFacts(() => gone.value ? {} : {
+  ...healthFact(d.value?.host?.status), discovered_services: d.value?.services?.length,
+});
 </script>
 <template>
   <div v-if="d" class="page">

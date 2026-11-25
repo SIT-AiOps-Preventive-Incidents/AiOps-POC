@@ -4,7 +4,9 @@ import { useAuthStore } from "@/stores/auth";
 
 // Views are lazy-loaded so the first paint only ships the shell + the page you open.
 const routes = [
-  { path: "/", component: () => import("@/views/HomeView.vue"), meta: { title: "Overview" } },
+  { path: "/", component: () => import("@/views/DashboardView.vue"), meta: { title: "Dashboard" } },
+  { path: "/dashboard", redirect: "/" },
+  { path: "/overview", component: () => import("@/views/HomeView.vue"), meta: { title: "Overview" } },
   { path: "/problems", component: () => import("@/views/ProblemsView.vue"), meta: { title: "Incidents" } },
   { path: "/problems/:id", component: () => import("@/views/ProblemDetailView.vue"), props: true, meta: { title: "Incident" } },
   { path: "/map", component: () => import("@/views/ServiceMapView.vue"), meta: { title: "Service Map" } },

@@ -5,6 +5,7 @@
  * and our agent see together (running but silent, stopped in the console, not monitored yet...).
  */
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { useRoute, useRouter } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -76,6 +77,12 @@ const counts = computed(() => ({
 const STATE_TONE = { running: "ok", stopped: "neutral", starting: "info", stopping: "info", error: "bad", unknown: "neutral" };
 const monitor = (i) => router.push({ path: "/connect/computer", query: { address: (i.public_ips[0] || i.private_ips[0]), names: i.name } });
 const providerLabel = (id) => providers.value.find((p) => p.id === id)?.label || id;
+usePageFacts(() => ({
+  cloud_accounts: accounts.value?.length, known_machines: accounts.value ? counts.value.total : undefined,
+  monitored_hosts: accounts.value ? counts.value.monitored : undefined,
+  hosts_with_issues: accounts.value ? counts.value.attention : undefined,
+  ...(busy.value ? { connecting: 1 } : {}), ...(error.value && accounts.value ? { stale_data: 1 } : {}),
+}));
 </script>
 <template>
   <div class="page page--wide">

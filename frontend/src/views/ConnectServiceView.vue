@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { useRoute } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
@@ -62,6 +63,7 @@ usePolling(async () => {
   if (status.value.metrics || status.value.traces || status.value.logs) step.value = 3;
 }, 4000);
 const ok = (b) => (b ? "ok" : "neutral");
+usePageFacts(() => step.value === 3 ? { sending_data: 1 } : step.value === 2 ? { waiting_for_data: 1 } : {});
 </script>
 <template>
   <div class="page page--narrow">

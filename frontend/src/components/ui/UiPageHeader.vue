@@ -19,8 +19,8 @@ defineProps({ title: String, subtitle: String, eyebrow: String, back: Object });
 .ui-ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px 0 22px; min-height: 76px; }
 .ui-ph__eyebrow, .ui-ph h1, .ui-ph__back { margin-right: 600px; }
 .ui-ph__actions { margin-top: 74px; }
-@media (max-width: 1280px) { .ui-ph__eyebrow, .ui-ph h1, .ui-ph__back { margin-right: 330px; } }
-@media (max-width: 980px) { .ui-ph__eyebrow, .ui-ph h1, .ui-ph__back { margin-right: 140px; } .ui-ph__actions { margin-top: 0; } }
+@media (max-width: 1280px) { .ui-ph__eyebrow, .ui-ph h1, .ui-ph__back { margin-right: 380px; } }
+@media (max-width: 980px) { .ui-ph__eyebrow, .ui-ph h1, .ui-ph__back { margin-right: 230px; } .ui-ph__actions { margin-top: 0; } }
 @media (max-width: 760px) { .ui-ph__eyebrow, .ui-ph h1, .ui-ph__back { margin-right: 0; } }
 .ui-ph__text { min-width: 0; flex: 1; }
 .ui-ph__eyebrow { font-size: var(--fs-md); color: var(--c-text-3); margin-bottom: 2px; }

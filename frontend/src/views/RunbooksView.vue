@@ -5,6 +5,7 @@
  * service + fix), so a known problem is solved from its runbook instead of a fresh investigation.
  */
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { FIX_LABEL, kindLabel, runbookBody, runbookForm } from "@/lib/automation";
@@ -38,6 +39,7 @@ async function remove(r) {
   if (armed.value !== r.id) { armed.value = r.id; setTimeout(() => { if (armed.value === r.id) armed.value = null; }, 4000); return; }
   armed.value = null; await api.runbooks.remove(r.id); ui.toast(`Deleted RB-${r.id}`); editing.value = null; refresh();
 }
+usePageFacts(() => ({ enabled_runbooks: rbs.value?.filter((r) => r.enabled).length }));
 </script>
 <template>
   <div class="page page--wide">

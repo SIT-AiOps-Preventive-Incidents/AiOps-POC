@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import MapSidePanel from "@/components/domain/MapSidePanel.vue";
 import ServiceMapCanvas from "@/components/domain/ServiceMapCanvas.vue";
 import TestRequestPanel from "@/components/domain/TestRequestPanel.vue";
@@ -22,6 +23,10 @@ const focusedHost = computed({
 });
 const busy = computed(() => ["sending", "tracing", "playing"].includes(map.test.phase));
 const entry = computed(() => map.data?.nodes.find((n) => n.entry_url));
+usePageFacts(() => ({
+  map_connections: map.data?.edges?.length,
+  ...(map.test.phase !== "idle" ? { [`test_${map.test.phase}`]: 1 } : {}),
+}));
 </script>
 <template>
   <div class="page page--wide">

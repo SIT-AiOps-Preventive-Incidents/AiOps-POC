@@ -34,6 +34,7 @@ const enc = encodeURIComponent;
 
 export const api = {
   overview: () => get("/overview"),
+  pageSummary: (body) => post("/page-summary", body),
   insights: () => get("/insights"),
   health: () => get("/health"),
 

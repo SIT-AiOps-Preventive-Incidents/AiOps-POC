@@ -1,5 +1,6 @@
 <script setup>
 import ProblemRow from "@/components/domain/ProblemRow.vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { useIncidentStore } from "@/stores/incidents";
 const store = useIncidentStore();
@@ -9,6 +10,12 @@ const sections = [
   { key: "inProgress", title: "In progress", empty: "No incidents are being worked on" },
   { key: "recentlyClosed", title: "Recently closed", empty: "No history yet. Run a demo scenario to see one." },
 ];
+usePageFacts(() => store.loaded ? {
+  open_incidents: store.inProgress.length + store.needsApproval.length, awaiting_approval: store.needsApproval.length,
+  ai_investigations: store.list.filter((i) => i.status === "analyzing").length,
+  fixes_in_progress: store.list.filter((i) => i.status === "remediating" || i.status === "verifying").length,
+  recent_closed_incidents: store.recentlyClosed.length,
+} : {});
 </script>
 <template>
   <div class="page">

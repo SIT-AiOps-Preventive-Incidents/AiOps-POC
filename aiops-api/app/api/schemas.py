@@ -1,7 +1,33 @@
 """Request bodies. Pydantic validates them, so handlers only see well-formed input (bad input -> 422)."""
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+
+class PageSummaryIn(BaseModel):
+    page: Literal[
+        "dashboard", "technical_overview", "incident_list", "incident_detail", "service_list", "service_detail",
+        "host_list", "host_detail", "service_map", "fleet_map", "fleet_list", "fleet_3d", "cloud_accounts", "insights",
+        "connect", "connect_computer", "connect_service", "connect_website", "ai_skills", "playbooks", "runbooks",
+        "notifications", "deployments", "demo_scenarios", "pricing", "design_system", "settings", "access", "page_not_found",
+    ]
+    locale: Literal["en", "th"]
+    facts: dict[Literal[
+        "open_incidents", "awaiting_approval", "ai_investigations", "fixes_in_progress", "failed_fixes",
+        "recent_closed_incidents", "monitored_services", "services_with_issues", "monitored_hosts", "hosts_with_issues",
+        "resources_without_data", "affected_services", "proposed_fixes", "applications", "network_devices",
+        "discovered_services", "map_connections", "known_machines", "networks", "cloud_accounts", "findings",
+        "available_skills", "enabled_runbooks", "enabled_playbooks", "recent_notifications", "recent_deployments",
+        "available_scenarios", "detector_active", "detector_unconfirmed", "stale_data", "incident_open",
+        "incident_analyzing", "incident_awaiting_approval", "incident_remediating", "incident_verifying",
+        "incident_resolved", "incident_rejected", "incident_closed", "incident_remediation_failed", "health_healthy",
+        "health_problem", "health_down", "health_offline", "health_no_data", "test_sending", "test_tracing",
+        "test_playing", "test_error", "connecting", "connection_failed", "waiting_for_data", "sending_data",
+        "check_successful", "check_failed", "discovery_requested", "demo_starting", "auto_investigation_on",
+        "auto_investigation_off", "issue_error_rate", "issue_latency", "issue_host_cpu", "issue_host_mem",
+        "issue_host_disk", "issue_host_down", "issue_auth_bruteforce", "issue_log_errors", "issue_container_cpu",
+        "issue_container_mem", "issue_container_down",
+    ], Annotated[int, Field(strict=True, ge=0, le=2**53 - 1)]] = Field(max_length=16)
 
 
 class ServiceIn(BaseModel):

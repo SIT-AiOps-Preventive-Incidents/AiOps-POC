@@ -18,7 +18,8 @@ const entity = (i) => i.entity_name || i.entity;
 
 function PAGES() {
   return [
-    { icon: "home", label: t("Overview", "ภาพรวม"), to: "/" },
+    { icon: "home", label: t("Dashboard", "สรุปสถานะ"), to: "/" },
+    { icon: "pulse", label: t("Overview", "ภาพรวมเชิงเทคนิค"), to: "/overview" },
     { icon: "warning", label: t("Incidents", "เหตุการณ์"), to: "/problems" },
     { icon: "server", label: t("Fleet", "ฟลีต"), to: "/network" },
     { icon: "flowchart", label: t("Service map", "แผนผังบริการ"), to: "/map" },

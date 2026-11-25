@@ -15,7 +15,8 @@ const { t } = useI18n();
 // what you run (the machines; the services and their calls); Fleet opens into its views as a small tree.
 const NAV = computed(() => [
   { label: t("Main", "หลัก"), items: [
-    { to: "/", label: t("Overview", "ภาพรวม"), icon: "home" },
+    { to: "/", label: t("Dashboard", "สรุปสถานะ"), icon: "home" },
+    { to: "/overview", label: t("Overview", "ภาพรวมเชิงเทคนิค"), icon: "pulse" },
     { to: "/problems", label: t("Incidents", "เหตุการณ์"), icon: "warning", badge: true },
     { to: "/insights", label: t("Insights", "อินไซต์"), icon: "pulse" },
     { to: "/network", label: t("Fleet", "ฟลีต"), icon: "server", children: [
@@ -56,7 +57,7 @@ const theme = computed({ get: () => ui.prefs.theme || "dark", set: (v) => ui.set
 </script>
 <template>
   <aside :class="['sidebar', { open: ui.navOpen }]">
-    <router-link to="/" class="brand" aria-label="SIT-AIOPS overview">
+    <router-link to="/" class="brand" aria-label="SIT-AIOPS Dashboard">
       <UiBrandMark :size="32" />
       <b>SIT-AIOPS</b><span class="brand__tag">R2</span>
     </router-link>

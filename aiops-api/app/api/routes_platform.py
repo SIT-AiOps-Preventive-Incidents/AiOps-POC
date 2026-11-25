@@ -1,8 +1,10 @@
 """Everything else under /api/v1: overview, deployments, runbooks, skills, teams, notifications, settings,
 demo scenarios and the platform's own health."""
 import asyncio
+import json
 import os
 import random
+import re
 
 import httpx
 from fastapi import APIRouter, Request, Response
@@ -10,7 +12,7 @@ from fastapi import APIRouter, Request, Response
 from .. import datasets, db, detector, health, llm, notify, remediation, repo
 from .. import telemetry as tm
 from .errors import ApiError, not_found
-from .schemas import DeploymentIn, RunbookPatch
+from .schemas import DeploymentIn, PageSummaryIn, RunbookPatch
 
 router = APIRouter(prefix="/api/v1")
 GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://localhost:3001")
@@ -28,6 +30,32 @@ async def overview():
     return {"services": services, "discovered": discovered, "hosts": hosts, "open_problems": open_,
             "kpi": repo.kpis(), "detector": detector.LAST_RUN, "llm": await llm.status(),
             "grafana_url": GRAFANA_URL, "otlp_endpoint": OTLP_PUBLIC, "public_url": PUBLIC_URL}
+
+
+_summary_lock = asyncio.Lock()
+_SUMMARY_PROMPT = (
+    'Return JSON with a single "summary" string in the requested language. Keep it to two short sentences. '
+    'Explain what is happening and what is in progress for a nontechnical reader. Use only the supplied facts. '
+    'A zero count means none for that fact. Missing facts are unknown. If there are no facts, explain the page purpose '
+    'in one sentence without suggesting any activity is in progress. If stale_data is present, refer to the last update. '
+    'Avoid jargon, markdown, speculation, recommendations and claims about actions not reported in the data.'
+)
+
+
+@router.post("/page-summary", tags=["ai"], summary="Summarize the visible page's counters and states")
+async def page_summary(body: PageSummaryIn):
+    if _summary_lock.locked():
+        raise ApiError(503, "page summary is busy")
+    context = {"page": body.page, "language": "Thai" if body.locale == "th" else "English", "facts": body.facts}
+    async with _summary_lock:
+        result, _ = await llm.chat_json(_SUMMARY_PROMPT, json.dumps(context), max_tokens=280, timeout=25)
+    summary = (result or {}).get("summary")
+    if not isinstance(summary, str) or not 0 < len(summary.strip()) <= 480:
+        raise ApiError(503, "page summary unavailable")
+    thai = re.search(r"[\u0e01-\u0e5b]", summary)
+    if (body.locale == "th" and not thai) or (body.locale == "en" and (thai or not re.search(r"[A-Za-z]", summary))):
+        raise ApiError(503, "page summary unavailable in the requested language")
+    return {"summary": summary.strip()}
 
 
 @router.get("/health", tags=["overview"], summary="Liveness of the platform's dependencies")

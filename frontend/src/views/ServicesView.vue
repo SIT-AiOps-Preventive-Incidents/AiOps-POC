@@ -1,10 +1,16 @@
 <script setup>
 import ServiceRow from "@/components/domain/ServiceRow.vue";
+import { usePageFacts } from "@/composables/usePageFacts";
+import { rollup } from "@/lib/insight";
 import { usePolling } from "@/composables/usePolling";
 import { useCatalogStore } from "@/stores/catalog";
 
 const cat = useCatalogStore();
 usePolling(() => cat.loadServices(), 10000);
+usePageFacts(() => cat.loaded ? {
+  applications: cat.applications.length, network_devices: cat.network.length,
+  discovered_services: cat.discoveredProcesses.length, services_with_issues: rollup(cat.services).affected,
+} : {});
 </script>
 <template>
   <div class="page">

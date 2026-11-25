@@ -4,6 +4,7 @@
  * fix in time. A playbook never applies a fix on its own; every fix still waits for a person.
  */
 import { computed, ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import { usePolling } from "@/composables/usePolling";
 import { api } from "@/lib/api";
 import { kindLabel, playbookBody, playbookForm, playbookSentence, toggle } from "@/lib/automation";
@@ -44,6 +45,7 @@ const STARTERS = [
   { name: "Login attacks go to security", trigger: { kinds: ["auth_bruteforce"] }, actions: { owner_team: "team-security", escalate_after_min: 10 } },
   { name: "Disk and memory go to platform", trigger: { kinds: ["host_disk", "host_mem"] }, actions: { owner_team: "team-platform", escalate_after_min: 60 } },
 ];
+usePageFacts(() => ({ enabled_playbooks: pbs.value?.filter((p) => p.enabled).length }));
 </script>
 <template>
   <div class="page page--wide">

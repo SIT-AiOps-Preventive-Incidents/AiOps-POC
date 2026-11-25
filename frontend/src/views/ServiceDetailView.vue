@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
+import { healthFact } from "@/lib/pageSummary";
 import { useRouter } from "vue-router";
 import ProblemRow from "@/components/domain/ProblemRow.vue";
 import TraceWaterfall from "@/components/domain/TraceWaterfall.vue";
@@ -19,6 +21,7 @@ const trace = ref(null);
 const openTrace = async (id) => { try { trace.value = await api.map.trace(id); } catch (e) { ui.toast(e.message); } };
 const confirmRemove = ref(false);
 async function remove() { await cat.removeService(props.name); router.push("/services"); }
+usePageFacts(() => healthFact(d.value?.health?.status));
 </script>
 <template>
   <div v-if="d" class="page">

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { usePageFacts } from "@/composables/usePageFacts";
 import FeedbackCard from "@/components/domain/FeedbackCard.vue";
 import FixPanel from "@/components/domain/FixPanel.vue";
 import InvestigationTimeline from "@/components/domain/InvestigationTimeline.vue";
@@ -84,6 +85,10 @@ const traceOpen = ref(false);
 async function openTrace(id) {
   try { trace.value = await api.map.trace(id); traceOpen.value = true; } catch (e) { ui.toast(e.message); }
 }
+usePageFacts(() => inc.value ? {
+  [`issue_${inc.value.kind}`]: 1, [`incident_${inc.value.status}`]: 1,
+  affected_services: inc.value.affected?.length, proposed_fixes: inc.value.candidates?.length,
+} : {});
 </script>
 <template>
   <div v-if="inc" class="page">
