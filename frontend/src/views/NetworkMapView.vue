@@ -9,6 +9,7 @@ import { computed, ref } from "vue";
 import { usePageFacts } from "@/composables/usePageFacts";
 import { useRouter } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
+import { at } from "@/lib/base";
 import { api } from "@/lib/api";
 
 const router = useRouter();
@@ -199,7 +200,7 @@ usePageFacts(() => g.value ? {
           </g>
           <g v-for="b in view.boxes" :key="b.id" class="node" role="button" tabindex="0" @click="pick(b.node)" @keydown.enter="pick(b.node)">
             <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="12" :class="['box', b.kind]" />
-            <image :href="`/icons/f/${b.kind === 'hub' ? 'server' : b.kind === 'cloudhub' ? 'cloud' : 'globe'}_regular.svg`" :x="b.x + 14" :y="b.y + b.h / 2 - 9" width="18" height="18" />
+            <image :href="at(`icons/f/${b.kind === 'hub' ? 'server' : b.kind === 'cloudhub' ? 'cloud' : 'globe'}_regular.svg`)" :x="b.x + 14" :y="b.y + b.h / 2 - 9" width="18" height="18" />
             <text :x="b.x + 40" :y="b.y + (b.sub ? 20 : 28)" class="nm">{{ b.label }}</text>
             <text v-if="b.sub" :x="b.x + 40" :y="b.y + 36" class="kd">{{ b.sub }}</text>
           </g>

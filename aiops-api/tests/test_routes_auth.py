@@ -423,3 +423,39 @@ def test_behind_https_the_session_cookie_is_secure(env):
     assert "secure" in r.headers["set-cookie"].lower()
     r = login(c, "dev@x.co", "dev password 12")
     assert "secure" not in r.headers["set-cookie"].lower()
+
+
+# ------------------------------------------------------------------ behind a proxy that puts a path in front
+def test_the_cookie_is_kept_to_the_path_the_app_is_served_under(env):
+    _, c = env
+    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-app-base": "/capstone26/cp26pt1/"})
+    assert r.status_code == 200 and "path=/capstone26/cp26pt1/" in r.headers["set-cookie"].lower()
+    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"})
+    assert "path=/;" in r.headers["set-cookie"].lower() + ";"
+
+
+@pytest.mark.parametrize("bad", ["capstone26/", "/a/../b/", "/a; domain=evil.example/", "//evil.example/", "/no-end-slash"])
+def test_a_base_path_that_is_not_a_plain_folder_is_ignored(env, bad):
+    _, c = env
+    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-app-base": bad})
+    assert "path=/;" in r.headers["set-cookie"].lower() + ";" and "evil" not in r.headers["set-cookie"].lower()
+
+
+def test_signing_out_clears_the_cookie_at_the_same_path(env):
+    _, c = env
+    c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"})
+    r = c.post("/api/v1/auth/logout", headers={"x-app-base": "/capstone26/cp26pt1/"})
+    assert r.status_code == 204 and "path=/capstone26/cp26pt1/" in r.headers["set-cookie"].lower()
+
+
+def test_the_cookie_is_secure_when_the_page_was_opened_over_https(env):
+    _, c = env
+    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"origin": "https://public.example"})
+    assert "secure" in r.headers["set-cookie"].lower()
+
+
+def test_single_sign_on_comes_back_to_the_public_address_with_its_path(env, monkeypatch):
+    _, c = env
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", "https://public.example/capstone26/cp26pt1")
+    r = c.get("/api/v1/auth/sso/callback?state=nope&code=x", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"].startswith("https://public.example/capstone26/cp26pt1/#/login?error=")

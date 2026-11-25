@@ -1,4 +1,5 @@
 // REST client for /api/v1. Every call returns parsed JSON or throws ApiError with the server's error body.
+import { at, BASE } from "./base.js";
 
 export class ApiError extends Error {
   constructor(status, code, message, details) {
@@ -10,9 +11,9 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body) {
-  const res = await fetch(`/api/v1${path}`, {
+  const res = await fetch(at(`api/v1${path}`), {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: { "X-App-Base": BASE, ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new CustomEvent("radarops:signed-out"));

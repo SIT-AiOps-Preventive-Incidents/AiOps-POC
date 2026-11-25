@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
 import { THEMES, useUiStore } from "@/stores/ui";
+import { at } from "@/lib/base";
 import { useI18n } from "@/lib/i18n";
 
 const app = useAppStore();
@@ -42,7 +43,7 @@ const NAV = computed(() => [
   { label: t("Demo & tools", "เดโม่และเครื่องมือ"), items: [
     ...(auth.can("demo.run") ? [{ to: "/scenarios", label: t("Demo scenarios", "สถานการณ์เดโม่"), icon: "flash" }] : []),
     { href: app.grafanaUrl, label: "Grafana", icon: "pulse" },
-    { href: "/docs", label: t("API docs", "เอกสาร API"), icon: "book" },
+    { href: at("docs"), label: t("API docs", "เอกสาร API"), icon: "book" },
     { to: "/pricing", label: t("Pricing", "ราคา"), icon: "tag" },
     { to: "/design", label: t("Design system", "ดีไซน์ซิสเต็ม"), icon: "color" },
   ] },

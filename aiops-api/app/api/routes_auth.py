@@ -4,7 +4,7 @@ import os
 import re
 import secrets
 import time
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx
 from fastapi import APIRouter, Request, Response
@@ -32,10 +32,21 @@ def _client(request: Request) -> tuple[str, str]:
     return (request.client.host if request.client else ""), request.headers.get("user-agent", "")
 
 
-def _set_cookie(request: Request, response: Response, token: str):
-    https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+_FOLDER = re.compile(r"/(?:(?!\.{1,2}/)[A-Za-z0-9._-]+/)*")
+
+
+def _base_path(request: Request) -> str:
+    """The folder the web app is served under. A proxy may put a path in front of us (and other apps beside us on the
+    same host name), so the page says where it is and the session cookie is kept to that folder."""
+    b = request.headers.get("x-app-base") or "/"
+    return b if _FOLDER.fullmatch(b) else "/"
+
+
+def _set_cookie(request: Request, response: Response, token: str, path: str | None = None):
+    https = (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+             or request.headers.get("origin", "").startswith("https://"))
     response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_HOURS * 3600, httponly=True, samesite="lax",
-                        secure=https, path="/")
+                        secure=https, path=path or _base_path(request))
 
 
 def _me(u: dict) -> dict:
@@ -80,7 +91,7 @@ async def logout(request: Request):
         st.end_session(tok)
     st.audit(current_user(request), "logout", {})
     r = Response(status_code=204)
-    r.delete_cookie(auth.COOKIE, path="/")
+    r.delete_cookie(auth.COOKIE, path=_base_path(request))
     return r
 
 
@@ -145,7 +156,7 @@ def _redirect_uri(request: Request) -> str:
 
 
 def _back_to_login(msg: str) -> RedirectResponse:
-    return RedirectResponse("/#/login?error=" + quote(msg[:200]), status_code=302)
+    return RedirectResponse(REDIRECT_BASE + "/#/login?error=" + quote(msg[:200]), status_code=302)
 
 
 @router.get("/auth/sso/start", summary="Go to the single sign-on provider")
@@ -190,8 +201,8 @@ async def sso_callback(request: Request, state: str = "", code: str = "", error:
     except Exception as e:
         return _back_to_login(f"single sign-on failed: {type(e).__name__}")
     ip, ua = _client(request)
-    resp = RedirectResponse("/#/", status_code=302)
-    _set_cookie(request, resp, st.start_session(u["id"], "sso", ip, ua))
+    resp = RedirectResponse(REDIRECT_BASE + "/#/", status_code=302)
+    _set_cookie(request, resp, st.start_session(u["id"], "sso", ip, ua), urlsplit(REDIRECT_BASE).path.rstrip("/") + "/")
     st.audit({"email": u["email"]}, "login", {"via": "sso", "ip": ip})
     return resp
 

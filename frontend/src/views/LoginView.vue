@@ -5,6 +5,7 @@
  */
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { at } from "@/lib/base";
 import { api } from "@/lib/api";
 import { nextPath } from "@/lib/access";
 import { useI18n } from "@/lib/i18n";
@@ -68,7 +69,7 @@ async function submit() {
           <p v-if="error" class="err" role="alert">{{ error }}</p>
 
           <template v-if="providers">
-            <UiButton v-if="providers.sso.enabled" block size="lg" href="/api/v1/auth/sso/start" icon="person">{{ providers.sso.label }}</UiButton>
+            <UiButton v-if="providers.sso.enabled" block size="lg" :href="at('api/v1/auth/sso/start')" icon="person">{{ providers.sso.label }}</UiButton>
             <div v-if="providers.sso.enabled && providers.password" class="or"><span>{{ t("or", "หรือ") }}</span></div>
             <form v-if="providers.password" class="form" @submit.prevent="submit">
               <UiField v-model="email" type="email" autocomplete="username" :label="t('Email', 'อีเมล')" placeholder="you@company.com" />
