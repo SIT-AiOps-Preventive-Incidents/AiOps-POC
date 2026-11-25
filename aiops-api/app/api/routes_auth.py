@@ -1,16 +1,17 @@
 """Signing in and who may do what: password sign-in, single sign-on (OpenID Connect), your own session, and for
 admins the people, the roles and the permission matrix (rules in auth.py and rbac.py)."""
+import logging
 import os
 import re
 import secrets
 import time
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import RedirectResponse
 
-from .. import auth, auth_store as st, rbac
+from .. import auth, auth_store as st, public_url, rbac
 from .errors import ApiError, not_found
 from .guard import current_user
 
@@ -19,8 +20,11 @@ THROTTLE = auth.Throttle()
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _meta_cache: dict = {}
 # The address people reach RadarOps at over https (e.g. https://cp26pt1.sit.kmutt.ac.th:8443). Providers such as Google
-# only send people back to an https address, so the redirect URL is built from this when it is set.
-REDIRECT_BASE = os.environ.get("SSO_REDIRECT_BASE", "").rstrip("/")
+# only send people back to an https address, so the redirect URL is built from this when it is set. A folder at the end
+# (https://host/some/folder) is where a proxy serves us, and the session cookie stays inside it. See public_url.py.
+REDIRECT_BASE = os.environ.get("SSO_REDIRECT_BASE", "")
+if REDIRECT_BASE.strip() and not public_url.parse(REDIRECT_BASE):
+    logging.getLogger("aiops.auth").warning("SSO_REDIRECT_BASE is not a plain http(s) address, so it is not used")
 
 
 def _check(errs: list[str]):
@@ -32,21 +36,30 @@ def _client(request: Request) -> tuple[str, str]:
     return (request.client.host if request.client else ""), request.headers.get("user-agent", "")
 
 
-_FOLDER = re.compile(r"/(?:(?!\.{1,2}/)[A-Za-z0-9._-]+/)*")
+def _public() -> public_url.PublicUrl | None:
+    return public_url.parse(REDIRECT_BASE)
 
 
-def _base_path(request: Request) -> str:
-    """The folder the web app is served under. A proxy may put a path in front of us (and other apps beside us on the
-    same host name), so the page says where it is and the session cookie is kept to that folder."""
-    b = request.headers.get("x-app-base") or "/"
-    return b if _FOLDER.fullmatch(b) else "/"
+def _where(request: Request) -> tuple[str, bool]:
+    """The path the session cookie belongs to and whether the browser is on https. Through the public address both come
+    from its configuration; anywhere else the app is at the root, and https is what the connection or our own proxy says."""
+    p = _public()
+    if p and p.serves(request.headers.get("host")):
+        return p.path, p.https
+    ours = public_url.trusted_proxy(request.client.host if request.client else None)
+    return "/", request.url.scheme == "https" or (ours and request.headers.get("x-forwarded-proto") == "https")
 
 
-def _set_cookie(request: Request, response: Response, token: str, path: str | None = None):
-    https = (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
-             or request.headers.get("origin", "").startswith("https://"))
-    response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_HOURS * 3600, httponly=True, samesite="lax",
-                        secure=https, path=path or _base_path(request))
+def _cookie_paths() -> set[str]:
+    p = _public()
+    return {"/", p.path} if p else {"/"}
+
+
+def _set_cookie(request: Request, response: Response, token: str):
+    path, https = _where(request)
+    for other in _cookie_paths() - {path}:     # an older cookie at another path could win over the new one
+        response.delete_cookie(auth.COOKIE, path=other)
+    response.set_cookie(auth.COOKIE, token, max_age=auth.SESSION_HOURS * 3600, httponly=True, samesite="lax", secure=https, path=path)
 
 
 def _me(u: dict) -> dict:
@@ -91,7 +104,8 @@ async def logout(request: Request):
         st.end_session(tok)
     st.audit(current_user(request), "logout", {})
     r = Response(status_code=204)
-    r.delete_cookie(auth.COOKIE, path=_base_path(request))
+    for path in _cookie_paths():               # wherever sign-in put it
+        r.delete_cookie(auth.COOKIE, path=path)
     return r
 
 
@@ -152,11 +166,19 @@ async def fetch_jwks(meta: dict) -> dict:
 
 
 def _redirect_uri(request: Request) -> str:
-    return (REDIRECT_BASE or str(request.base_url).rstrip("/")) + "/api/v1/auth/sso/callback"
+    tail = "api/v1/auth/sso/callback"
+    p = _public()
+    return p.join(tail) if p else str(request.base_url).rstrip("/") + "/" + tail
+
+
+def _page(tail: str) -> str:
+    """A page of the web app, at the public address when there is one."""
+    p = _public()
+    return p.join(tail) if p else "/" + tail
 
 
 def _back_to_login(msg: str) -> RedirectResponse:
-    return RedirectResponse(REDIRECT_BASE + "/#/login?error=" + quote(msg[:200]), status_code=302)
+    return RedirectResponse(_page("#/login?error=" + quote(msg[:200], safe="")), status_code=302)
 
 
 @router.get("/auth/sso/start", summary="Go to the single sign-on provider")
@@ -201,8 +223,8 @@ async def sso_callback(request: Request, state: str = "", code: str = "", error:
     except Exception as e:
         return _back_to_login(f"single sign-on failed: {type(e).__name__}")
     ip, ua = _client(request)
-    resp = RedirectResponse(REDIRECT_BASE + "/#/", status_code=302)
-    _set_cookie(request, resp, st.start_session(u["id"], "sso", ip, ua), urlsplit(REDIRECT_BASE).path.rstrip("/") + "/")
+    resp = RedirectResponse(_page("#/"), status_code=302)
+    _set_cookie(request, resp, st.start_session(u["id"], "sso", ip, ua))
     st.audit({"email": u["email"]}, "login", {"via": "sso", "ip": ip})
     return resp
 

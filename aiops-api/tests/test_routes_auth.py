@@ -419,43 +419,94 @@ def test_the_redirect_url_follows_the_https_front_door_when_set(env, monkeypatch
 
 def test_behind_https_the_session_cookie_is_secure(env):
     _, c = env
-    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-forwarded-proto": "https"})
+    caddy = TestClient(c.app, client=("172.18.0.5", 5000))
+    r = caddy.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-forwarded-proto": "https"})
     assert "secure" in r.headers["set-cookie"].lower()
     r = login(c, "dev@x.co", "dev password 12")
     assert "secure" not in r.headers["set-cookie"].lower()
 
 
 # ------------------------------------------------------------------ behind a proxy that puts a path in front
-def test_the_cookie_is_kept_to_the_path_the_app_is_served_under(env):
+PUBLIC = "https://public.example/capstone26/cp26pt1"
+AT_PUBLIC = {"host": "public.example"}
+PW = {"email": "dev@x.co", "password": "dev password 12"}
+
+
+def cookies(r):
+    """Every Set-Cookie of the answer as {path: (value, attributes)}."""
+    out = {}
+    for h in r.headers.get_list("set-cookie"):
+        parts = [p.strip() for p in h.split(";")]
+        at = {p.split("=")[0].lower(): p.partition("=")[2] for p in parts[1:]}
+        out[at["path"]] = (parts[0].partition("=")[2].strip('"'), at)
+    return out
+
+
+@pytest.mark.parametrize("configured", [PUBLIC, PUBLIC + "/", PUBLIC + "//"])
+def test_through_the_public_address_the_cookie_is_kept_to_its_path(env, monkeypatch, configured):
     _, c = env
-    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-app-base": "/capstone26/cp26pt1/"})
-    assert r.status_code == 200 and "path=/capstone26/cp26pt1/" in r.headers["set-cookie"].lower()
-    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"})
-    assert "path=/;" in r.headers["set-cookie"].lower() + ";"
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", configured)
+    got = cookies(c.post("/api/v1/auth/login", json=PW, headers=AT_PUBLIC))
+    assert got["/capstone26/cp26pt1/"][0] and "secure" in got["/capstone26/cp26pt1/"][1] and "httponly" in got["/capstone26/cp26pt1/"][1]
+    assert got["/"][0] == "" and got["/"][1]["max-age"] == "0"      # no older cookie at the root can win over the new one
 
 
-@pytest.mark.parametrize("bad", ["capstone26/", "/a/../b/", "/a; domain=evil.example/", "//evil.example/", "/no-end-slash"])
-def test_a_base_path_that_is_not_a_plain_folder_is_ignored(env, bad):
+def test_directly_on_the_vm_the_cookie_is_at_the_root_and_works_without_https(env, monkeypatch):
     _, c = env
-    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"x-app-base": bad})
-    assert "path=/;" in r.headers["set-cookie"].lower() + ";" and "evil" not in r.headers["set-cookie"].lower()
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", PUBLIC)
+    got = cookies(login(c, PW["email"], PW["password"]))
+    assert got["/"][0] and "secure" not in got["/"][1] and c.get("/api/v1/auth/me").status_code == 200
 
 
-def test_signing_out_clears_the_cookie_at_the_same_path(env):
+@pytest.mark.parametrize("forged", [{"x-app-base": "/evil/"}, {"x-forwarded-prefix": "/evil"}, {"x-forwarded-host": "public.example"},
+                                    {"origin": "https://public.example"}, {"host": "public.example.evil.com"}])
+def test_nothing_a_caller_sends_can_move_the_cookie_or_make_it_secure(env, monkeypatch, forged):
     _, c = env
-    c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"})
-    r = c.post("/api/v1/auth/logout", headers={"x-app-base": "/capstone26/cp26pt1/"})
-    assert r.status_code == 204 and "path=/capstone26/cp26pt1/" in r.headers["set-cookie"].lower()
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", PUBLIC)
+    got = cookies(c.post("/api/v1/auth/login", json=PW, headers=forged))
+    live = {p: a for p, (v, a) in got.items() if v}
+    assert list(live) == ["/"] and "secure" not in live["/"]
 
 
-def test_the_cookie_is_secure_when_the_page_was_opened_over_https(env):
+def test_https_is_believed_from_our_own_proxy_only(env):
     _, c = env
-    r = c.post("/api/v1/auth/login", json={"email": "dev@x.co", "password": "dev password 12"}, headers={"origin": "https://public.example"})
-    assert "secure" in r.headers["set-cookie"].lower()
+    xfp = {"x-forwarded-proto": "https"}
+    inside = TestClient(c.app, client=("172.18.0.5", 5000))
+    outside = TestClient(c.app, client=("202.44.9.103", 5000))
+    assert "secure" in cookies(inside.post("/api/v1/auth/login", json=PW, headers=xfp))["/"][1]
+    assert "secure" not in cookies(outside.post("/api/v1/auth/login", json=PW, headers=xfp))["/"][1]
 
 
-def test_single_sign_on_comes_back_to_the_public_address_with_its_path(env, monkeypatch):
+@pytest.mark.parametrize("headers", [AT_PUBLIC, {}])
+def test_signing_out_removes_the_cookie_wherever_it_was_set_and_ends_the_session(env, monkeypatch, headers):
+    s, c = env
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", PUBLIC)
+    live = {p: v for p, (v, _) in cookies(c.post("/api/v1/auth/login", json=PW, headers=headers)).items() if v}
+    (path, tok), = live.items()
+    r = c.post("/api/v1/auth/logout", headers={**headers, "cookie": f"{auth.COOKIE}={tok}"})
+    gone = cookies(r)
+    assert r.status_code == 204 and path in gone and all(v == "" and a["max-age"] == "0" for v, a in gone.values())
+    assert c.get("/api/v1/auth/me", headers={**headers, "cookie": f"{auth.COOKIE}={tok}"}).status_code == 401
+
+
+@pytest.mark.parametrize("configured", [PUBLIC, PUBLIC + "/"])
+def test_single_sign_on_comes_back_to_the_public_address_with_one_slash(env, monkeypatch, configured):
     _, c = env
-    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", "https://public.example/capstone26/cp26pt1")
+    login(c, "admin@x.co", "admin password 1")
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", configured)
     r = c.get("/api/v1/auth/sso/callback?state=nope&code=x", follow_redirects=False)
-    assert r.status_code == 302 and r.headers["location"].startswith("https://public.example/capstone26/cp26pt1/#/login?error=")
+    assert r.status_code == 302 and r.headers["location"].startswith(PUBLIC + "/#/login?error=")
+    assert c.get("/api/v1/auth/sso").json()["redirect_uri"] == PUBLIC + "/api/v1/auth/sso/callback"
+
+
+def test_a_public_address_that_is_not_one_is_ignored(env, monkeypatch):
+    _, c = env
+    monkeypatch.setattr(routes_auth, "REDIRECT_BASE", "https://user:pw@evil.example/a?x=1")
+    r = c.get("/api/v1/auth/sso/callback?state=nope&code=x", follow_redirects=False)
+    assert r.headers["location"].startswith("/#/login?error=")
+
+
+def test_the_reason_in_the_address_is_fully_encoded(env):
+    _, c = env
+    r = c.get("/api/v1/auth/sso/callback", params={"error": "a/b?c=1&d#e <x>"}, follow_redirects=False)
+    assert r.headers["location"] == "/#/login?error=a%2Fb%3Fc%3D1%26d%23e%20%3Cx%3E"
