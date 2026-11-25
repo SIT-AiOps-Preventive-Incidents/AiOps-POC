@@ -7,6 +7,7 @@
  *  - Test request playback: a dot travels each hop of a real trace, in order, and stamps the time spent there.
  */
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { at } from "@/lib/base";
 import { ms, num, pct, rate } from "@/lib/format";
 import { languageLogo, osLogo } from "@/lib/vocab";
 import { useMapStore } from "@/stores/map";
@@ -182,7 +183,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <!-- host lanes -->
       <g v-for="lane in graph.laneBoxes" :key="lane.host">
         <rect x="12" :y="lane.y" :width="graph.W - 24" :height="lane.h" rx="14" class="lane" />
-        <image v-if="osLogo(lane.os)" :class="{ 'ui-logo--mono': osLogo(lane.os) === 'apple' }" :href="`/icons/b/${osLogo(lane.os)}.svg`" x="26" :y="lane.y + 11" width="16" height="16" />
+        <image v-if="osLogo(lane.os)" :class="{ 'ui-logo--mono': osLogo(lane.os) === 'apple' }" :href="at(`icons/b/${osLogo(lane.os)}.svg`)" x="26" :y="lane.y + 11" width="16" height="16" />
         <text :x="osLogo(lane.os) ? 48 : 26" :y="lane.y + 24" class="lane-title">{{ lane.host }} <tspan class="lane-sub">· {{ lane.count }} {{ lane.count === 1 ? "service" : "services" }} not on the traced request path</tspan></text>
       </g>
 
@@ -203,8 +204,8 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
          role="button" :aria-label="n.name" tabindex="0" @click="emit('select', n.id)" @keydown.enter="emit('select', n.id)" @keydown.space.prevent="emit('select', n.id)">
         <rect class="box" :x="n.x" :y="n.y" :width="W" :height="nodeH(n)" rx="11" />
         <circle :cx="n.x + 20" :cy="n.y + 20" r="13" class="logo-bg" />
-        <image v-if="logoOf(n)" :href="`/icons/b/${logoOf(n)}.svg`" :x="n.x + 12" :y="n.y + 12" width="16" height="16" />
-        <image v-else :href="`/icons/f/${n.kind === 'client' ? 'globe' : n.kind === 'external' ? 'database' : 'apps'}_regular.svg`" :x="n.x + 12" :y="n.y + 12" width="16" height="16" />
+        <image v-if="logoOf(n)" :href="at(`icons/b/${logoOf(n)}.svg`)" :x="n.x + 12" :y="n.y + 12" width="16" height="16" />
+        <image v-else :href="at(`icons/f/${n.kind === 'client' ? 'globe' : n.kind === 'external' ? 'database' : 'apps'}_regular.svg`)" :x="n.x + 12" :y="n.y + 12" width="16" height="16" />
         <circle v-if="n.kind !== 'client'" :cx="n.x + 31" :cy="n.y + 10" r="4" :class="['sdot', bad(n) ? 'bad' : n.rps != null || n.seen_recently ? 'ok' : 'off']" />
         <foreignObject :x="n.x + 38" :y="n.y + 7" :width="W - 46" :height="n.instances?.length ? 42 : nodeH(n) - 12">
           <div class="nd" xmlns="http://www.w3.org/1999/xhtml">

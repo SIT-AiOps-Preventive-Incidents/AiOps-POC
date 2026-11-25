@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { usePageFacts } from "@/composables/usePageFacts";
+import { appUrl } from "@/lib/base";
 import { healthFact } from "@/lib/pageSummary";
 import { useRouter } from "vue-router";
 import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
@@ -33,7 +34,7 @@ usePolling(async () => {
 }, 3000);
 const confirmRemove = ref(false);
 const pct0 = (v) => `${Math.round(v)}%`;
-const origin = window.location.origin;
+const origin = appUrl();
 const isAgent = computed(() => d.value?.host.agent === "aiops-agent");
 const job = computed(() => removal({ requestedAt: d.value?.host.uninstall_requested_at, now: now.value, gone: gone.value }));
 const ring = computed(() => progress(job.value));

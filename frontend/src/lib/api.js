@@ -1,4 +1,5 @@
 // REST client for /api/v1. Every call returns parsed JSON or throws ApiError with the server's error body.
+import { at } from "./base.js";
 
 export class ApiError extends Error {
   constructor(status, code, message, details) {
@@ -10,7 +11,7 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body) {
-  const res = await fetch(`/api/v1${path}`, {
+  const res = await fetch(at(`api/v1${path}`), {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,

@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 
 // `npm run dev` proxies the API to the VM so the UI can be developed locally.
 export default defineConfig({
+  base: "./",   // files are found next to the page, so the app works under any path
   plugins: [vue()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {

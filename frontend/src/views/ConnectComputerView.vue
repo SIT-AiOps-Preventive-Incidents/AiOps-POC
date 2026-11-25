@@ -4,6 +4,7 @@ import { usePageFacts } from "@/composables/usePageFacts";
 import AutoTraceStatus from "@/components/domain/AutoTraceStatus.vue";
 import ServiceRow from "@/components/domain/ServiceRow.vue";
 import { usePolling } from "@/composables/usePolling";
+import { appUrl } from "@/lib/base";
 import { api } from "@/lib/api";
 import { bulkBody, connectBody, hostName, installCommand, missing, missingCred, parseTargets, progress } from "@/lib/connect";
 import { slug } from "@/lib/format";
@@ -74,7 +75,7 @@ async function connectBulk() {
 // ---- what the connected server looks like (also used by "run the command yourself") ----
 const own = ref({ name: ui.prefs.computerName || "my-mac", os: "mac" });
 const ownName = computed(() => slug(own.value.name) || "my-mac");
-const command = computed(() => installCommand({ origin: window.location.origin, name: ownName.value }));
+const command = computed(() => installCommand({ origin: appUrl(), name: ownName.value }));
 const watching = computed(() => target.value || ownName.value);
 const host = ref(null);
 const services = ref([]);

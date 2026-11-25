@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { usePageFacts } from "@/composables/usePageFacts";
 import { useRoute } from "vue-router";
 import { usePolling } from "@/composables/usePolling";
+import { appUrl } from "@/lib/base";
 import { api } from "@/lib/api";
 import { slug } from "@/lib/format";
 import { useAppStore } from "@/stores/app";
@@ -17,7 +18,7 @@ const step = ref(1);
 const svc = ref(route.query.name ? String(route.query.name) : "");
 const owner = ref(ui.prefs.lastOwner || "");
 const rt = ref("python");
-const origin = window.location.origin;
+const origin = appUrl();
 const otlp = computed(() => app.otlpEndpoint);
 const status = ref(null);
 
