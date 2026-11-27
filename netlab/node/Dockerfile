@@ -4,5 +4,5 @@ FROM quay.io/frrouting/frr:10.2.1
 RUN apk add --no-cache net-snmp net-snmp-tools lldpd tcpdump
 COPY snmpd.conf /etc/snmp/snmpd.conf
 COPY start.sh /start.sh
-RUN chmod +x /start.sh
+RUN sed -i 's/\r$//' /start.sh && chmod +x /start.sh
 ENTRYPOINT ["/start.sh"]

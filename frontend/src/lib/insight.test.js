@@ -29,6 +29,7 @@ test("each evidence line is tagged with the data it came from", () => {
   assert.equal(evidenceSource("Host napat-mac: CPU None%, memory 78.2%, disk 94.62%"), "Metrics");
   assert.equal(evidenceSource("No deployment of frontend in the last 60 minutes"), "Deploys");
   assert.equal(evidenceSource("link core-1:eth2 is down, BGP peer lost"), "Network");
+  assert.equal(evidenceSource("Suricata saw a login burst. The application logs identify failed logins."), "Suricata");
   assert.equal(evidenceSource("This machine is observe-only"), null);
 });
 

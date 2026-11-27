@@ -7,6 +7,14 @@ x-demo: &demo
   mem_limit: 256m
   networks: [aiops]
 
+x-suricata: &suricata
+  image: jasonish/suricata:8.0.8
+  profiles: [suricata]
+  environment: {ENABLE_CRON: "yes"}
+  cap_add: [NET_ADMIN, NET_RAW, SYS_NICE]
+  restart: unless-stopped
+  mem_limit: 384m
+
 services:
   # ---------------- Observability (namespace "obs") ----------------
   otel-collector:
@@ -16,6 +24,8 @@ services:
     volumes:
       - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
       - edge-logs:/var/log/edge:ro
+      - suricata-edge-logs:/var/log/suricata-edge:ro
+      - suricata-checkout-logs:/var/log/suricata-checkout:ro
     ports: ["4317:4317", "4318:4318"]
     restart: unless-stopped
     mem_limit: 384m
@@ -176,6 +186,26 @@ services:
     networks: [aiops]
     depends_on: [frontend-a, frontend-b]
 
+  suricata-edge:
+    <<: *suricata
+    network_mode: service:edge-fw
+    depends_on:
+      edge-fw: {condition: service_started, restart: true}
+    command: ["-c", "/aiops/suricata.yaml", "--pcap=any", "port 80 or port 53 or tcp port 443"]
+    volumes:
+      - ./suricata:/aiops:ro
+      - suricata-edge-logs:/var/log/suricata
+
+  suricata-checkout:
+    <<: *suricata
+    network_mode: service:checkout
+    depends_on:
+      checkout: {condition: service_started, restart: true}
+    command: ["-c", "/aiops/suricata.yaml", "--pcap=any", "tcp port 8000 or port 53 or tcp port 443"]
+    volumes:
+      - ./suricata:/aiops:ro
+      - suricata-checkout-logs:/var/log/suricata
+
   frontend-a:
     <<: *demo
     container_name: frontend-a
@@ -234,6 +264,8 @@ volumes:
   api-data:
   pg-data:
   edge-logs:
+  suricata-edge-logs:
+  suricata-checkout-logs:
   ollama:
     external: true
 

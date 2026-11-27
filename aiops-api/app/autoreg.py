@@ -19,7 +19,7 @@ from . import telemetry as tm
 
 WINDOW = "15m"
 EVERY_S = 60
-IGNORE = {"aiops-agent", "unknown_service"}   # the agent's own logs, and spans from apps that never set a name
+IGNORE = {"aiops-agent", "unknown_service", "suricata"}  # platform telemetry and apps without a service name
 
 
 def pick_new(traces: dict[str, float], logs: dict[str, str | None], known: set[str]) -> list[dict]:

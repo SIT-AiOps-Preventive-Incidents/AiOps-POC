@@ -33,6 +33,7 @@ TOOL_CATALOG = {
     "getTopSourceIPs": {"label": "Busiest source IPs in logs", "on": "service", "reads": True},
     "searchLoadBalancerLogs": {"label": "Load balancer access log", "on": "any", "reads": True},
     "searchFirewallLogs": {"label": "Firewall log", "on": "any", "reads": True},
+    "getSuricataEvidence": {"label": "Suricata evidence from the shop edge and checkout", "on": "service", "reads": True},
     "getHostMetrics": {"label": "Host CPU, memory, disk", "on": "host", "reads": True},
     "getTopProcesses": {"label": "Busiest processes on the host", "on": "host", "reads": True},
     "getContainerStats": {"label": "Container CPU and memory", "on": "any", "reads": True},

@@ -14,6 +14,7 @@ export function confidenceLevel(c, { llmOk = true } = {}) {
 
 // Which data an evidence line came from, so each claim is tied to a source.
 const SOURCES = [
+  ["Suricata", /^Suricata\b/i],
   ["Traces", /\btraces?\b|\bspans?\b/i],
   ["Logs", /\blogs?\b|exception|traceback/i],
   ["Deploys", /\bdeploy(ment|ed)?s?\b|\brollback\b/i],
