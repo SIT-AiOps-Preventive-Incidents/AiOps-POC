@@ -20,6 +20,7 @@ log = logging.getLogger("netdisco")
 SCAN_S = int(os.environ.get("NET_SCAN_S", "60"))
 LABEL = "aiops.netdevice"
 _state = {"topo": None, "scanning": False}
+_scan_lock = asyncio.Lock()
 
 
 def init():
@@ -94,19 +95,20 @@ def has_sources() -> bool:
 
 async def scan() -> dict:
     """One full discovery pass. Returns the topology (also kept for the API)."""
-    addrs = device_addresses()
-    community = db.settings().get("net_snmp_community") or "public"
-    devices = list(await asyncio.gather(*(snmp.poll(a, community) for a in addrs)))
-    endpoints = await asyncio.to_thread(_endpoints)
-    known = await asyncio.to_thread(_known)
-    topo = topology.build(devices, endpoints, known, now=time.time())
-    topo["impacted_services"] = topology.impacted_services(topo)
-    topo["sources"] = addrs
-    await asyncio.to_thread(_save, topo)
-    for e in topo["events"]:
-        log.info("network event %s: %s", e["kind"], e["text"])
-    _state["topo"] = topo
-    return topo
+    async with _scan_lock:
+        addrs = device_addresses()
+        community = db.settings().get("net_snmp_community") or "public"
+        devices = list(await asyncio.gather(*(snmp.poll(a, community) for a in addrs)))
+        endpoints = await asyncio.to_thread(_endpoints)
+        known = await asyncio.to_thread(_known)
+        topo = topology.build(devices, endpoints, known, now=time.time())
+        topo["impacted_services"] = topology.impacted_services(topo)
+        topo["sources"] = addrs
+        await asyncio.to_thread(_save, topo)
+        for e in topo["events"]:
+            log.info("network event %s: %s", e["kind"], e["text"])
+        _state["topo"] = topo
+        return topo
 
 
 async def current() -> dict:

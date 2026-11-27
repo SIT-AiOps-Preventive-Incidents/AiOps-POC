@@ -22,6 +22,30 @@ receivers:
       - type: add
         field: resource["device.type"]
         value: load-balancer
+  filelog/suricata:
+    include: [/var/log/suricata-edge/eve.json, /var/log/suricata-checkout/eve.json]
+    include_file_path: true
+    start_at: end
+    operators:
+      - type: json_parser
+        parse_to: attributes.eve
+        on_error: drop
+        timestamp:
+          parse_from: attributes.eve.timestamp
+          layout_type: gotime
+          layout: '2006-01-02T15:04:05.999999999-0700'
+      # Keep the original JSON body, including the full precision of 64-bit flow IDs.
+      - type: remove
+        field: attributes.eve
+      - type: regex_parser
+        parse_from: attributes["log.file.path"]
+        regex: '^/var/log/suricata-(?P<sensor>edge|checkout)/eve\.json$'
+      - type: move
+        from: attributes.sensor
+        to: resource["service.namespace"]
+      - type: add
+        field: resource["service.name"]
+        value: suricata
   otlp:
     protocols:
       grpc: {endpoint: 0.0.0.0:4317}
@@ -94,3 +118,7 @@ service:
       receivers: [otlp, filelog/firewall, filelog/lb]
       processors: [memory_limiter, batch]
       exporters: [otlphttp/loki, count/logs]
+    logs/suricata:
+      receivers: [filelog/suricata]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]

@@ -16,7 +16,7 @@ const SCEN = [
 ];
 // Offered only while the network lab (netlab/) runs; they show up on the Network page first.
 const NET = [
-  { id: "net_link_down", icon: "flowchart", title: "Uplink cut", what: "The cable between sw-data and the core router goes down. payment and inventory lose their path to checkout.", ai: "sees the link go down on the Network page, which services sit behind it, and checkout's errors on Incidents." },
+  { id: "net_link_down", icon: "flowchart", title: "Uplink cut", what: "The cable between sw-data and the core router goes down. Payment and inventory lose their path to checkout.", ai: "checks failing checkout traces against the link state and any Suricata TCP flows in Problems." },
   { id: "net_host_port", icon: "developer_board", title: "Server port down", what: "sw-data's port toward the payment and inventory servers goes down.", ai: "marks both servers down on the map and names the switch port." },
   { id: "net_rogue_device", icon: "shield", title: "Unknown device plugged in", what: "A device nobody registered joins the app network and starts talking.", ai: "flags it as an unknown asset on the switch port where it appeared." },
 ];

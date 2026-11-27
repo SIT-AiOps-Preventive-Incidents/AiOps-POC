@@ -1,0 +1,43 @@
+%YAML 1.1
+---
+default-log-dir: /var/log/suricata
+default-rule-path: /aiops
+rule-files: [local.rules]
+
+capture:
+  # Keep the offload settings of the application sharing this network namespace.
+  disable-offloading: false
+  checksum-validation: none
+pcap:
+  - interface: any
+    promisc: no
+    checksum-checks: no
+    snaplen: 65535
+stream:
+  inline: no
+  reassembly:
+    depth: 64kb
+flow-timeouts:
+  tcp:
+    new: 5
+    emergency-new: 2
+    closed: 5
+stats:
+  enabled: yes
+  interval: 10
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            metadata: no
+        - flow
+        - dns
+        - tls:
+            extended: yes
+        - stats:
+            totals: yes
+            threads: no

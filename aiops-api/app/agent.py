@@ -15,7 +15,7 @@ import re
 import time
 from collections import Counter
 
-from . import automation, automation_store, db, llm, notify, remediation, repo, servicemap
+from . import automation, automation_store, db, llm, notify, remediation, repo, servicemap, suricata
 from . import telemetry as tm
 
 PLATFORM_HOST = os.environ.get("PLATFORM_HOST", "cp26pt1")
@@ -25,7 +25,7 @@ SKILLS = {
         "category": "Service", "name": "Service error analysis", "kinds": ["error_rate", "traffic_drop"],
         "description": "Failure-rate spikes in a service: trace error origin, error logs, version/commit correlation.",
         "tools": ["getMetric", "searchTraces", "whoAnswers", "findSilentServices", "searchLoadBalancerLogs", "getErrorRateByVersion", "getDeployHistory",
-                  "searchLogs"]},
+                  "searchLogs", "getSuricataEvidence"]},
     "service-latency-analysis": {
         "category": "Service", "name": "Service latency analysis", "kinds": ["latency"],
         "description": "Response-time degradation: slow-trace self-time breakdown, warning logs, recent changes.",
@@ -43,7 +43,7 @@ SKILLS = {
     "security-auth-analysis": {
         "category": "Security", "name": "Security / authentication analysis", "kinds": ["auth_bruteforce"],
         "description": "Suspicious authentication activity: firewall + app logs, failed-login bursts, source IP concentration.",
-        "tools": ["searchFirewallLogs", "searchLogs", "getTopSourceIPs", "getMetric"]},
+        "tools": ["searchFirewallLogs", "searchLogs", "getTopSourceIPs", "getMetric", "getSuricataEvidence"]},
 }
 
 KIND_LABEL = {"error_rate": "Failure rate increase", "latency": "Response time degradation",
@@ -284,7 +284,8 @@ TOOLS = {"getMetric": t_getMetric, "getErrorRateByVersion": t_getErrorRateByVers
          "getDeployHistory": t_getDeployHistory, "searchTraces": t_searchTraces, "searchLogs": t_searchLogs,
          "getTopSourceIPs": t_getTopSourceIPs, "getHostMetrics": t_getHostMetrics,
          "getContainerStats": t_getContainerStats, "searchLoadBalancerLogs": t_searchLoadBalancerLogs,
-         "searchFirewallLogs": t_searchFirewallLogs, "getTopProcesses": t_getTopProcesses}
+         "searchFirewallLogs": t_searchFirewallLogs, "getTopProcesses": t_getTopProcesses,
+         "getSuricataEvidence": suricata.investigate}
 
 
 class Run:
@@ -382,6 +383,13 @@ async def play_service_error(run: Run, sig: dict) -> tuple[dict, list]:
         "silent_services": silent, "unanswered_calls": unanswered, "unanswered_callee": callee,
         "origin_container": await container_facts(run, origin),
     }
+    if sig["kind"] == "error_rate" and ("checkout" in (ent, origin) or any(u["caller"] == "checkout" for u in unanswered)):
+        evidence = await run.tool("getSuricataEvidence", service="checkout")
+        if not evidence.get("error"):
+            facts["suricata"] = evidence
+        if evidence.get("link"):
+            facts["evidence_confidence"] = 0.9
+            return facts, [{"type": "manual", "params": {}}]
     cands = []
     if instance_specific:
         cands.append({"type": "restart_instance", "params": {"service": origin, "instance": hot_inst}})
@@ -512,6 +520,10 @@ async def play_security(run: Run, sig: dict) -> tuple[dict, list]:
     agree = fw_top.get("ip") == top.get("ip")
     facts["firewall_confirms_source"] = agree
     facts["evidence_confidence"] = round(min(0.95, 0.45 + 0.35 * top.get("share", 0) + (0.15 if agree else 0)), 2)
+    if ent == "frontend":
+        evidence = await run.tool("getSuricataEvidence", service=ent)
+        if not evidence.get("error"):
+            facts["suricata"] = evidence
     return facts, cands
 
 
@@ -546,12 +558,18 @@ def _container_line(service: str, c: dict | None) -> list[str]:
 def findings(kind: str, facts: dict) -> list[str]:
     """Evidence restated as plain sentences - small models reason far better over these than raw JSON."""
     f, out = facts, []
+    packet_evidence = f.get("suricata", {})
     if kind == "error_rate":
         o = f["error_origin_service"]
         votes = f.get("trace_origin_votes") or {}
         sil = f.get("silent_services") or []
         un, callee = f.get("unanswered_calls") or [], f.get("unanswered_callee")
-        if un and callee:
+        if packet_evidence.get("link"):
+            checkout_call = next((u for u in un if u["caller"] == "checkout"), None)
+            if checkout_call:
+                out.append(f"In {checkout_call['traces']} sampled error traces, checkout's outbound "
+                           f"{checkout_call['call']} span has no downstream server span.")
+        elif un and callee:
             u = un[0]
             out.append(f"In {u['traces']} sampled error traces, {u['caller']} called {u['call']} and got no answer; "
                        f"in healthy traces that call is answered by {callee}.")
@@ -646,12 +664,35 @@ def findings(kind: str, facts: dict) -> list[str]:
             out.append("This machine is observe-only; the fix is a manual step for its owner.")
         for l in f.get("busiest_workload_logs") or []:
             out.append(f"Log from that workload: {l}")
+    if burst := packet_evidence.get("login_burst"):
+        out.append(f"Suricata saw a burst of POST /api/login requests at the edge at {_hhmm(burst['ts'])} "
+                   f"from packet source {burst['wire_source']} (flow {burst['flow_id']}). "
+                   "The application logs identify the failed logins and the forwarded client IP.")
+        if packets := burst.get("packets"):
+            out.append(f"Suricata recorded {packets['sent']} forward packets and {packets['received']} reverse packets "
+                       f"on that same flow {burst['flow_id']}.")
+    for flow in packet_evidence.get("flows", []):
+        out.append(f"Suricata saw {flow['sent']} forward and {flow['received']} reverse TCP packets at {_hhmm(flow['ts'])} "
+                   f"from checkout ({flow['source_ip']}) to {flow['target']} ({flow['target_ip']}:8000), "
+                   f"flow {flow['flow_id']}.")
+    if link := packet_evidence.get("link"):
+        out.append(f"Network discovery (SNMP/LLDP) reports the link {' to '.join(link['ends'])} down and "
+                   f"the path to {', '.join(link['ips'])} cut off.")
+    if "kernel_drops" in packet_evidence:
+        out.append(f"Suricata checkout sensor reports {packet_evidence['kernel_drops']} cumulative kernel capture drops.")
     return out
 
 
 def fallback_text(kind: str, facts: dict, action: dict) -> dict:
     a = remediation.label(action)
     if kind == "error_rate":
+        packet_evidence = facts.get("suricata", {})
+        if link := packet_evidence.get("link"):
+            targets = sorted({f["target"] for f in packet_evidence["flows"] if f["target_ip"] in link["ips"]})
+            rc = f"The link {' to '.join(link['ends'])} is down, cutting checkout off from {', '.join(targets)}."
+            return {"root_cause": rc, "summary": " ".join(findings(kind, facts)),
+                    "runbook": ["Check both ports of the down link in Network Map", "Restore the link",
+                                "Confirm checkout requests succeed and the destination responds again"]}
         sd = facts.get("suspect_deploy")
         sil = facts.get("silent_services") or []
         callee = facts.get("unanswered_callee")
@@ -712,6 +753,9 @@ def grounding_problems(kind: str, facts: dict, action: dict, rc: str) -> tuple[l
     target = action.get("params", {}).get("service") or facts.get("service") or ""
     if kind in ("error_rate", "latency") and target and target.lower() not in low:
         hard.append(f"does not name the origin service '{target}'")
+    link = facts.get("suricata", {}).get("link")
+    if link and any(end.split(":", 1)[0].lower() not in low for end in link["ends"]):
+        hard.append("does not name both ends of the evidenced down link")
     if re.search(r"roll(ed|ing)?[ -]?back|restart(ed)?|block(ed)?", low):
         hard.append("describes the proposed remediation as if it were the cause")
     sd = facts.get("suspect_deploy")
@@ -734,7 +778,7 @@ async def summarize(inc: dict, skill: str, facts: dict, action: dict, run: Run, 
     lessons_txt = "\n".join(f"- {l}" for l in lessons(skill)) or "- none"
     fl = findings(inc["kind"], facts) + list(extra)
     team = f"\n\nThe team's instructions for this kind of incident:\n{instructions.strip()}" if instructions.strip() else ""
-    user = (f"Alert: {inc['title']}\n\nFindings from metrics, traces, logs and deploy history:\n" +
+    user = (f"Alert: {inc['title']}\n\nFindings from metrics, traces, logs, deploy history and network telemetry:\n" +
             "\n".join(f"{i + 1}. {x}" for i, x in enumerate(fl)) +
             f"\n\nLessons from engineers' feedback on earlier analyses:\n{lessons_txt}{team}\n\n"
             f"Proposed fix (passed a dry run, NOT executed, waiting for the owner): {remediation.label(action)}\n\n"

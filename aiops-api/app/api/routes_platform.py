@@ -175,12 +175,28 @@ async def patch_settings(body: dict):
 
 # ---------------- demo scenarios ----------------
 SCENARIOS = ["bad_deploy", "instance_fault", "slow_db", "cpu_hog", "brute_force", "reset"]
+NETLAB_UPLINK_IP = "10.20.255.11"
 
 
-def _scenarios() -> list[str]:
-    """The shop faults need the shop; everything but `reset` is a shop fault."""
+async def _netlab_running() -> bool:
+    return datasets.DATASET == "shop" and (await tm.container_ip_map()).get(NETLAB_UPLINK_IP) == "sw-data"
+
+
+async def _set_netlab_uplink(up: bool):
+    code, output = await tm.container_exec("sw-data", ["ip", "-o", "-4", "addr", "show", "to", f"{NETLAB_UPLINK_IP}/32"])
+    port = re.fullmatch(r"\d+:\s+(eth\d+)(?:@\S+)?\s+inet\s+" + re.escape(NETLAB_UPLINK_IP) + r"/29\b.*",
+                        output.strip())
+    if code or not port:
+        raise ApiError(409, "could not find the netlab sw-data uplink")
+    code, _ = await tm.container_exec("sw-data", ["ip", "link", "set", "dev", port[1], "up" if up else "down"])
+    if code:
+        raise ApiError(502, "could not change the netlab sw-data uplink")
+
+
+async def _scenarios() -> list[str]:
     shop = SCENARIOS[:-1] if datasets.DATASET == "shop" else []
-    return shop + SCENARIOS[-1:]
+    network = ["net_link_down"] if await _netlab_running() else []
+    return shop + network + SCENARIOS[-1:]
 
 
 async def _post(url: str, body: dict):
@@ -192,7 +208,7 @@ async def _post(url: str, body: dict):
 
 @router.get("/scenarios", tags=["demo"])
 async def list_scenarios():
-    names = await asyncio.to_thread(_scenarios)
+    names = await _scenarios()
     return await datasets.replay_cases() + names
 
 
@@ -202,6 +218,11 @@ async def run_scenario(scenario: str):
         if scenario not in await datasets.replay_cases():
             raise not_found("scenario", scenario)
         await datasets.play(scenario)
+        return {"scenario": scenario, "status": "started"}
+    if scenario == "net_link_down":
+        if not await _netlab_running():
+            raise not_found("scenario", scenario)
+        await _set_netlab_uplink(up=False)
         return {"scenario": scenario, "status": "started"}
     if scenario not in SCENARIOS:
         raise not_found("scenario", scenario)
@@ -225,6 +246,8 @@ async def run_scenario(scenario: str):
         await datasets.reset()        # AnoMod replay back to the normal run
         if datasets.DATASET != "shop":
             return {"scenario": scenario, "status": "reset"}
+        if await _netlab_running():
+            await _set_netlab_uplink(up=True)
         with open(remediation.BLOCKLIST, "w") as f:
             f.write("# managed by AIOps remediation (owner-approved block_ip actions)\n")
         await tm.container_exec(remediation.FW_CONTAINER, ["nginx", "-s", "reload"])
